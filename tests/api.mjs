@@ -77,6 +77,7 @@ const mock = http.createServer(async (req, res) => {
     assert.ok(body.messages[1].content[1].image_url.url.startsWith('data:image/jpeg;base64,'));
     sawImage = true;
   }
+  const mealRequest = body.messages[0].content.includes('采购需求解析器');
   res.setHeader('Content-Type', 'application/json');
   res.end(
     JSON.stringify({
@@ -86,15 +87,17 @@ const mock = http.createServer(async (req, res) => {
             content: JSON.stringify(
               image
                 ? { candidates: [{ name: '新鲜菠菜', category: 'vegetables', score: 0.92 }] }
-                : {
-                    categories: ['vegetables'],
-                    min: null,
-                    max: 5,
-                    productIds: [],
-                    leafy: true,
-                    sort: 'price',
-                    relevant: true,
-                  },
+                : mealRequest
+                  ? { people: 2, budget: 50, wants: ['fish', 'greens'], dishIds: [] }
+                  : {
+                      categories: ['vegetables'],
+                      min: null,
+                      max: 5,
+                      productIds: [],
+                      leafy: true,
+                      sort: 'price',
+                      relevant: true,
+                    },
             ),
           },
         },
@@ -188,6 +191,36 @@ try {
     guide.products.map((p) => p.id),
     ['bokchoy', 'spinach'],
   );
+  const meal = await (
+    await request('/assistant', {
+      message: '两个人吃，预算50元，想吃鱼和绿叶菜，家里有葱姜',
+      context: { cart: [] },
+    })
+  ).json();
+  assert.equal(meal.engine, 'model');
+  assert.equal(meal.mealPlan.total, 39);
+  assert.equal(meal.action, undefined);
+  const confirmation = await (
+    await request('/assistant', {
+      message: '油盐也有，确认清单',
+      context: {
+        cart: [],
+        meal: meal.mealPlan.preferences,
+        recipeIds: meal.mealPlan.recipes.map((recipe) => recipe.id),
+      },
+    })
+  ).json();
+  assert.equal(confirmation.action.type, 'apply_plan');
+  assert.equal(confirmation.mealPlan.canApply, true);
+  assert.equal(
+    (
+      await request('/assistant', {
+        message: '确认清单',
+        context: { cart: [{ productId: 'spinach', quantity: -1, checked: false }] },
+      })
+    ).status,
+    400,
+  );
   const form = new FormData();
   form.append(
     'image',
@@ -203,6 +236,15 @@ try {
   invalid.append('image', new Blob(['not an image'], { type: 'image/jpeg' }), 'bad.jpg');
   assert.equal((await fetch(`${base}/api/vision`, { method: 'POST', body: invalid })).status, 400);
   failModel = true;
+  const mealFallback = await (
+    await request('/assistant', {
+      message: '两个人吃，预算50元，想吃鱼和绿叶菜',
+      context: { cart: [] },
+    })
+  ).json();
+  assert.equal(mealFallback.engine, 'rules');
+  assert.ok(mealFallback.mealPlan);
+  assert.ok(mealFallback.fallback);
   const fallback = await (await request('/chat', { message: '五元以内的绿叶蔬菜' })).json();
   assert.equal(fallback.engine, 'rules');
   assert.ok(fallback.fallback);

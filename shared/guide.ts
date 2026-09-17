@@ -11,7 +11,7 @@ const groups: [Category, RegExp][] = [
   ['pantry', /粮油|大米|食用油|菜籽油/],
 ];
 
-function normalizeChineseNumbers(input: string) {
+export function normalizeChineseNumbers(input: string) {
   const digits: Record<string, number> = {
     零: 0,
     一: 1,

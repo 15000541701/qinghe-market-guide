@@ -12,7 +12,15 @@ import {
   Sprout,
   X,
 } from 'lucide-react';
-import type { GuideResponse, Product, QueryFilters, VisionResponse } from '../../shared/types';
+import type {
+  GuideResponse,
+  MealPlan,
+  Product,
+  QueryFilters,
+  ShoppingAction,
+  ShoppingContext,
+  VisionResponse,
+} from '../../shared/types';
 import { categoryLabels } from '../../shared/catalog';
 import { api, money, post, useSpeech } from '../lib';
 
@@ -24,6 +32,9 @@ type Message = {
   image?: string;
   vision?: VisionResponse;
   warning?: string;
+  trace?: string[];
+  meal?: boolean;
+  receipt?: boolean;
 };
 const welcome: Message = {
   id: 0,
@@ -37,8 +48,29 @@ interface Props {
   onAdd: (p: Product) => void;
   onToast: (text: string) => void;
   ai: boolean;
+  context: ShoppingContext;
+  onPlan: (plan: MealPlan | null) => void;
+  onAction: (action: ShoppingAction) => Promise<string>;
+  onBusy: (busy: boolean) => void;
+  request: { id: number; text: string } | null;
+  onRequestConsumed: () => void;
+  visible: boolean;
 }
-export default function ChatPanel({ products, onResults, onNavigate, onAdd, onToast, ai }: Props) {
+export default function ChatPanel({
+  products,
+  onResults,
+  onNavigate,
+  onAdd,
+  onToast,
+  ai,
+  context,
+  onPlan,
+  onAction,
+  onBusy,
+  request,
+  onRequestConsumed,
+  visible,
+}: Props) {
   const [messages, setMessages] = useState<Message[]>([welcome]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
@@ -49,8 +81,17 @@ export default function ChatPanel({ products, onResults, onNavigate, onAdd, onTo
   const busyRef = useRef(false);
   const { listening, toggle } = useSpeech((text) => setInput(text), onToast);
   useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-  }, [messages, busy]);
+    onBusy(busy);
+  }, [busy]);
+  useEffect(() => {
+    if (request) {
+      onRequestConsumed();
+      void send(request.text);
+    }
+  }, [request?.id]);
+  useEffect(() => {
+    if (visible && scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  }, [messages, busy, visible]);
   const send = async (text: string) => {
     text = text.trim();
     if (!text || busyRef.current) return;
@@ -59,19 +100,37 @@ export default function ChatPanel({ products, onResults, onNavigate, onAdd, onTo
     setInput('');
     setMessages((previous) => [...previous, { id: sequence.current++, role: 'user', text }]);
     try {
-      const result = await api<GuideResponse>('/chat', post({ message: text, previous: filters }));
+      const result = await api<GuideResponse>(
+        '/assistant',
+        post({ message: text, previous: filters, context }),
+      );
+      let responseText = result.text;
+      let actionSucceeded = false;
+      if (result.mealPlan) onPlan(result.mealPlan);
+      if (result.action) {
+        try {
+          responseText = await onAction(result.action);
+          actionSucceeded = true;
+        } catch (error) {
+          responseText = error instanceof Error ? error.message : '操作未完成，请重试。';
+        }
+      }
       setFilters(result.filters);
       setMessages((previous) => [
         ...previous,
         {
           id: sequence.current++,
           role: 'assistant',
-          text: result.text,
-          products: result.products,
+          text: responseText,
+          products: result.mealPlan || result.action ? [] : result.products,
           warning: result.fallback,
+          trace: result.action && !actionSucceeded ? ['核对最新商品数据', '操作未完成，原清单保留'] : result.trace,
+          meal: !!result.mealPlan,
+          receipt: actionSucceeded && !!result.action && ['add', 'remove', 'apply_plan'].includes(result.action.type),
         },
       ]);
-      onResults(result.products, `“${text.length > 20 ? text.slice(0, 20) + '…' : text}”的推荐`);
+      if (!result.action || result.mealPlan)
+        onResults(result.products, `“${text.length > 20 ? text.slice(0, 20) + '…' : text}”的推荐`);
     } catch (error) {
       setMessages((previous) => [
         ...previous,
@@ -173,6 +232,7 @@ export default function ChatPanel({ products, onResults, onNavigate, onAdd, onTo
           onClick={() => {
             setMessages([welcome]);
             setFilters({ categories: [] });
+            onPlan(null);
             onResults([], '');
           }}
         >
@@ -201,6 +261,39 @@ export default function ChatPanel({ products, onResults, onNavigate, onAdd, onTo
                 <p>{message.text}</p>
               </div>
               {message.warning && <p className="message-warning">{message.warning}</p>}
+              {message.meal && (
+                <button
+                  className="text-button"
+                  onClick={() =>
+                    document
+                      .getElementById('meal-plan')
+                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  }
+                >
+                  查看菜谱与整单预算
+                  <ArrowRight size={14} />
+                </button>
+              )}
+              {message.receipt && (
+                <button
+                  className="text-button"
+                  disabled={busy}
+                  onClick={() => void send('撤销上一步')}
+                >
+                  撤销上一次清单操作
+                  <RotateCcw size={13} />
+                </button>
+              )}
+              {!!message.trace?.length && (
+                <details className="agent-trace">
+                  <summary>本次处理过程</summary>
+                  <ol>
+                    {message.trace.map((step, index) => (
+                      <li key={index}>{step}</li>
+                    ))}
+                  </ol>
+                </details>
+              )}
               {message.vision && (
                 <div className="vision-candidates">
                   {message.vision.candidates.map((candidate, i) => (
@@ -255,14 +348,16 @@ export default function ChatPanel({ products, onResults, onNavigate, onAdd, onTo
         {messages.length === 1 && (
           <div className="starter-questions">
             <p>不知道怎么问？试试这些</p>
-            {['推荐 10 元以内的绿叶蔬菜', '想买 20 到 40 元的鱼', '有什么适合早餐的商品'].map(
-              (text) => (
-                <button key={text} onClick={() => void send(text)}>
-                  <span>{text}</span>
-                  <ArrowUp size={14} />
-                </button>
-              ),
-            )}
+            {[
+              '两个人吃，预算50元，想吃鱼和绿叶菜，家里有葱姜',
+              '推荐 10 元以内的绿叶蔬菜',
+              '想买 20 到 40 元的鱼',
+            ].map((text) => (
+              <button key={text} onClick={() => void send(text)}>
+                <span>{text}</span>
+                <ArrowUp size={14} />
+              </button>
+            ))}
           </div>
         )}
         {busy && (

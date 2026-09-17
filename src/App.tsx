@@ -27,12 +27,23 @@ import {
 } from 'lucide-react';
 import { categoryLabels, entrance, zones } from '../shared/catalog';
 import { buildRoute } from '../shared/navigation';
-import type { Category, ListItem, Product, Route } from '../shared/types';
+import type { Category, ListItem, MealPlan, Product, Route, ShoppingAction } from '../shared/types';
 import { api, money } from './lib';
 import Admin from './components/Admin';
 import ChatPanel from './components/ChatPanel';
 import ProductCard from './components/ProductCard';
 import StoreMap from './components/StoreMap';
+import MealPanel from './components/MealPanel';
+import { buildMealPlan } from '../shared/meal-planner';
+import {
+  amountLabel,
+  cartTotal,
+  isWeighed,
+  lineCents,
+  mutateShoppingList,
+  quantityStep,
+  roundQuantity,
+} from '../shared/shopping';
 
 type Tab = 'guide' | 'map' | 'list';
 function loadList(): ListItem[] {
@@ -42,9 +53,13 @@ function loadList(): ListItem[] {
       ? parsed.filter(
           (x) =>
             typeof x?.productId === 'string' &&
-            Number.isInteger(x.quantity) &&
+            Number.isFinite(x.quantity) &&
             x.quantity > 0 &&
             x.quantity <= 99 &&
+            (x.purchasedQuantity === undefined ||
+              (Number.isFinite(x.purchasedQuantity) &&
+                x.purchasedQuantity >= 0 &&
+                x.purchasedQuantity <= 999)) &&
             typeof x.checked === 'boolean',
         )
       : [];
@@ -67,7 +82,37 @@ export default function App() {
   const [current, setCurrent] = useState<Category | 'entrance'>('entrance');
   const [route, setRoute] = useState<Route | null>(null);
   const [selected, setSelected] = useState<Category | undefined>();
-  const [list, setList] = useState<ListItem[]>(loadList);
+  const [list, setListState] = useState<ListItem[]>(loadList);
+  const listRef = useRef(list);
+  const undoStack = useRef<ListItem[][]>([]);
+  const [mealPlan, setMealPlan] = useState<MealPlan | null>(null);
+  const [chatBusy, setChatBusy] = useState(false);
+  const [chatRequest, setChatRequest] = useState<{ id: number; text: string } | null>(null);
+  const requestNumber = useRef(0);
+  const setList = (update: ListItem[] | ((previous: ListItem[]) => ListItem[])) => {
+    const before = listRef.current;
+    const next = typeof update === 'function' ? update(before) : update;
+    if (JSON.stringify(before) === JSON.stringify(next)) return;
+    undoStack.current = [...undoStack.current.slice(-9), before.map((item) => ({ ...item }))];
+    listRef.current = next;
+    setListState(next);
+  };
+  const displayedPlan = useMemo(
+    () =>
+      mealPlan
+        ? buildMealPlan(
+            mealPlan.preferences,
+            products,
+            list,
+            mealPlan.recipes.map((recipe) => recipe.id),
+          )
+        : null,
+    [mealPlan, products, list],
+  );
+  const askAgent = (text: string) => {
+    setTab('guide');
+    setChatRequest({ id: ++requestNumber.current, text });
+  };
   const [toast, setToast] = useState('');
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const notify = (text: string) => {
@@ -110,12 +155,8 @@ export default function App() {
     const product = products.find((p) => p.id === item.productId);
     return product ? [{ ...item, product }] : [];
   });
-  const listCount = availableList.reduce((sum, item) => sum + item.quantity, 0);
-  const total =
-    availableList.reduce(
-      (sum, item) => sum + Math.round(item.product.price * 100) * item.quantity,
-      0,
-    ) / 100;
+  const listCount = availableList.length;
+  const total = cartTotal(list, products);
   const add = (product: Product) => {
     if (!product.stock) return;
     setList((previous) =>
@@ -124,8 +165,10 @@ export default function App() {
             item.productId === product.id
               ? {
                   ...item,
+                  purchasedQuantity:
+                    (item.purchasedQuantity || 0) + (item.checked ? item.quantity : 0),
                   checked: false,
-                  quantity: Math.min(item.quantity + 1, product.stock, 99),
+                  quantity: Math.min((item.checked ? 0 : item.quantity) + 1, product.stock, 99),
                 }
               : item,
           )
@@ -185,6 +228,51 @@ export default function App() {
       ),
     );
     setTab('map');
+  };
+  const executeAction = async (action: ShoppingAction): Promise<string> => {
+    if (action.type === 'undo') {
+      const before = undoStack.current.pop();
+      if (!before) return '当前没有可以撤销的清单操作。';
+      listRef.current = before;
+      setListState(before);
+      const message = `已撤销上一次清单操作。待购合计 ¥${money(cartTotal(before, products))}。`;
+      notify(message);
+      return message;
+    }
+    if (action.type === 'navigate') {
+      if (action.category) {
+        navigateTo(action.category, true);
+        return `已规划前往${categoryLabels[action.category]}的路线，可在地图中查看。`;
+      }
+      const pending = listRef.current
+        .filter((item) => !item.checked)
+        .flatMap(
+          (item) => products.find((p) => p.id === item.productId && p.stock > 0)?.category || [],
+        );
+      if (!pending.length) return '清单里没有待购的在售商品。请先确认采购方案或加入商品。';
+      const nextRoute = buildRoute(
+        pending,
+        current === 'entrance' ? entrance : zones.find((z) => z.id === current)!.location,
+      );
+      setRoute(nextRoute);
+      setTab('map');
+      return `已按待购清单规划 ${nextRoute.stops.length} 个分区的路线，约 ${nextRoute.distance} 米。到达后可说“去下一站”推进模拟行程。`;
+    }
+    if (action.type === 'next') {
+      if (!route?.stops.length) return '当前没有正在进行的路线。可以先说“按清单规划路线”。';
+      const reached = route.stops[0];
+      arrive();
+      setTab('map');
+      return route.stops.length > 1
+        ? `已模拟到达${categoryLabels[reached]}，下一站是${categoryLabels[route.stops[1]]}。`
+        : `已模拟到达${categoryLabels[reached]}，本次路线完成。`;
+    }
+    const freshProducts = await api<Product[]>('/products');
+    setProducts(freshProducts);
+    const result = mutateShoppingList(listRef.current, freshProducts, action);
+    if (result.changed) setList(result.list);
+    notify(result.text);
+    return result.text;
   };
   const shown = useMemo(() => {
     const source = recommendations
@@ -337,8 +425,24 @@ export default function App() {
                   onAdd={add}
                   onToast={notify}
                   ai={ai}
+                  context={{
+                    cart: list,
+                    meal: displayedPlan?.preferences,
+                    recipeIds: displayedPlan?.recipes.map((recipe) => recipe.id),
+                  }}
+                  onPlan={setMealPlan}
+                  onAction={executeAction}
+                  onBusy={setChatBusy}
+                  request={chatRequest}
+                  onRequestConsumed={() => setChatRequest(null)}
+                  visible={tab === 'guide'}
                 />
-                {tab === 'guide' && <StoreMap {...mapProps} />}
+                {tab === 'guide' &&
+                  (displayedPlan ? (
+                    <MealPanel plan={displayedPlan} busy={chatBusy} onSend={askAgent} />
+                  ) : (
+                    <StoreMap {...mapProps} />
+                  ))}
               </div>
               <div className="discovery-strip">
                 <div className="discovery-image" />
@@ -496,6 +600,12 @@ export default function App() {
                     按购物清单规划
                   </button>
                   <p className="field-note">示例平面图，无真实室内定位。请手动设置“我的位置”。</p>
+                  {displayedPlan && (
+                    <button className="text-button" onClick={() => setTab('guide')}>
+                      返回菜谱与导购对话
+                      <ArrowRight size={14} />
+                    </button>
+                  )}
                 </aside>
                 <StoreMap {...mapProps} expanded />
               </div>
@@ -523,7 +633,7 @@ export default function App() {
                     <div className="shopping-items">
                       <div className="section-heading">
                         <h2>
-                          我的购物清单 <span className="muted compact">{listCount} 件</span>
+                          我的购物清单 <span className="muted compact">{listCount} 种</span>
                         </h2>
                         <button
                           className="text-button"
@@ -563,6 +673,12 @@ export default function App() {
                               {item.product.unit}
                               {!item.product.stock ? ' · 已售罄' : ''}
                             </span>
+                            <span>{amountLabel(item.product, item.quantity)}</span>
+                            {!!item.purchasedQuantity && (
+                              <span>
+                                此前已购：{amountLabel(item.product, item.purchasedQuantity)}
+                              </span>
+                            )}
                             <button
                               className="text-button"
                               onClick={() => navigateTo(item.product.category, true)}
@@ -574,12 +690,20 @@ export default function App() {
                           <div className="quantity-control">
                             <button
                               aria-label={`减少${item.product.name}数量`}
-                              disabled={item.quantity <= 1}
+                              disabled={item.quantity <= quantityStep(item.product)}
                               onClick={() =>
                                 setList((previous) =>
                                   previous.map((entry) =>
                                     entry.productId === item.productId
-                                      ? { ...entry, quantity: entry.quantity - 1 }
+                                      ? {
+                                          ...entry,
+                                          quantity: roundQuantity(
+                                            Math.max(
+                                              quantityStep(item.product),
+                                              entry.quantity - quantityStep(item.product),
+                                            ),
+                                          ),
+                                        }
                                       : entry,
                                   ),
                                 )
@@ -587,15 +711,27 @@ export default function App() {
                             >
                               <Minus size={13} />
                             </button>
-                            <span>{item.quantity}</span>
+                            <span>
+                              {isWeighed(item.product)
+                                ? amountLabel(item.product, item.quantity).replace('预计 ', '')
+                                : item.quantity}
+                            </span>
                             <button
                               aria-label={`增加${item.product.name}数量`}
-                              disabled={item.quantity >= Math.min(99, item.product.stock)}
+                              disabled={
+                                item.quantity + quantityStep(item.product) >
+                                Math.min(99, item.product.stock)
+                              }
                               onClick={() =>
                                 setList((previous) =>
                                   previous.map((entry) =>
                                     entry.productId === item.productId
-                                      ? { ...entry, quantity: entry.quantity + 1 }
+                                      ? {
+                                          ...entry,
+                                          quantity: roundQuantity(
+                                            entry.quantity + quantityStep(item.product),
+                                          ),
+                                        }
                                       : entry,
                                   ),
                                 )
@@ -605,7 +741,7 @@ export default function App() {
                             </button>
                           </div>
                           <strong className="item-total">
-                            ¥{money(item.product.price * item.quantity)}
+                            ¥{money(lineCents(item.product, item.quantity) / 100)}
                           </strong>
                           <button
                             className="icon-button"
@@ -625,8 +761,8 @@ export default function App() {
                       <ShoppingBasket size={27} strokeWidth={1.4} />
                       <h2>这一趟，要买这些。</h2>
                       <div>
-                        <span>商品件数</span>
-                        <strong>{listCount} 件</strong>
+                        <span>商品种类</span>
+                        <strong>{listCount} 种</strong>
                       </div>
                       <div>
                         <span>待逛分区</span>
@@ -642,10 +778,31 @@ export default function App() {
                         </strong>
                       </div>
                       <div className="list-total">
-                        <span>预计合计</span>
+                        <span>待购合计</span>
                         <strong>¥{money(total)}</strong>
                       </div>
                       <p>按商品标注单位计价，称重商品以实际结算为准。</p>
+                      {displayedPlan?.preferences.budget != null && (
+                        <p
+                          className={
+                            total > displayedPlan.preferences.budget
+                              ? 'budget-exceeded'
+                              : 'budget-remains'
+                          }
+                        >
+                          整单预算 ¥{money(displayedPlan.preferences.budget)} ·{' '}
+                          {total > displayedPlan.preferences.budget
+                            ? `已超出 ¥${money(total - displayedPlan.preferences.budget)}`
+                            : `还余 ¥${money(displayedPlan.preferences.budget - total)}`}
+                        </p>
+                      )}
+                      <button
+                        className="text-button"
+                        disabled={!undoStack.current.length}
+                        onClick={() => void executeAction({ type: 'undo' })}
+                      >
+                        撤销上一次清单操作
+                      </button>
                       <button
                         className="button primary"
                         onClick={planList}

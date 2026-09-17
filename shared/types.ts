@@ -33,6 +33,7 @@ export type Product = {
   marketSource?: string;
   marketReference?: MarketReference;
   createdAt: string;
+  saleMode?: 'weight' | 'pack';
 };
 export type QueryFilters = {
   categories: Category[];
@@ -47,7 +48,58 @@ export type GuideResponse = {
   filters: QueryFilters;
   engine: 'rules' | 'model';
   fallback?: string;
+  mealPlan?: MealPlan;
+  action?: ShoppingAction;
+  trace?: string[];
 };
+export type MealWant = 'fish' | 'greens' | 'vegetables' | 'meat' | 'shrimp' | 'egg' | 'breakfast';
+export type MealPreferences = {
+  people: number;
+  budget: number | null;
+  wants: MealWant[];
+  owned: string[];
+  excluded: string[];
+  buyPantry: string[];
+  dishIds: string[];
+  cheaper: boolean;
+  includeRice: boolean;
+};
+export type PlannedRecipe = {
+  id: string;
+  title: string;
+  minutes: number;
+  steps: string[];
+  ingredients: string[];
+};
+export type MealLine = {
+  product: Product;
+  quantity: number;
+  amount: string;
+  cost: number;
+  dishes: string[];
+};
+export type MealPlan = {
+  preferences: MealPreferences;
+  recipes: PlannedRecipe[];
+  items: MealLine[];
+  owned: string[];
+  pendingPantry: string[];
+  missing: string[];
+  total: number;
+  addedCost: number;
+  existingCost: number;
+  remaining: number | null;
+  canApply: boolean;
+  notes: string[];
+};
+export type ShoppingAction =
+  | { type: 'add'; items: { productId: string; quantity: number }[] }
+  | { type: 'remove'; productIds: string[] }
+  | { type: 'apply_plan'; items: { productId: string; quantity: number }[]; budget: number | null }
+  | { type: 'navigate'; category?: Category }
+  | { type: 'next' }
+  | { type: 'undo' };
+export type ShoppingContext = { cart: ListItem[]; meal?: MealPreferences; recipeIds?: string[] };
 export type VisionCandidate = {
   name: string;
   category: Category;
@@ -109,5 +161,10 @@ export type MarketSearchResult = {
   latestDate: string | null;
   notice: string;
 };
-export type ListItem = { productId: string; quantity: number; checked: boolean };
+export type ListItem = {
+  productId: string;
+  quantity: number;
+  checked: boolean;
+  purchasedQuantity?: number;
+};
 export type Route = { points: Point[]; stops: Category[]; distance: number; minutes: number };

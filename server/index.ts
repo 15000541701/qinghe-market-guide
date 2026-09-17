@@ -13,6 +13,7 @@ import { recommendPrice } from '../shared/pricing';
 import { zones } from '../shared/catalog';
 import type { Product } from '../shared/types';
 import { lookupMarket, MarketError } from './market';
+import { shoppingAgent, shoppingContextSchema } from './shopping-agent';
 import { convertMarketPrice, isValidMarketDate, XINFADI_SOURCE_URL } from '../shared/market';
 
 const app = express();
@@ -47,6 +48,10 @@ const querySchema = z.object({
 app.post('/api/chat', async (req, res) => {
   const input = querySchema.parse(req.body);
   res.json(await guide(input.message, getProducts(), input.previous));
+});
+app.post('/api/assistant', async (req, res) => {
+  const input = querySchema.extend({ context: shoppingContextSchema }).parse(req.body);
+  res.json(await shoppingAgent(input.message, getProducts(), input.context, input.previous));
 });
 const upload = multer({
   storage: multer.memoryStorage(),

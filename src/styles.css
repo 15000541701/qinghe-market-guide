@@ -2600,6 +2600,280 @@ td {
   position: relative;
 }
 
+.meal-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  min-width: 0;
+  scroll-margin-top: 20px;
+}
+.meal-panel .panel-heading {
+  min-height: 65px;
+}
+.meal-panel .panel-heading h2 {
+  font-size: 16px;
+}
+.meal-content {
+  padding: 22px;
+}
+.meal-budget {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  background: #eff4e7;
+  border-radius: 10px;
+  padding: 19px 21px;
+}
+.meal-budget > div {
+  display: grid;
+  gap: 8px;
+}
+.meal-budget > div:last-child {
+  text-align: right;
+}
+.meal-budget span {
+  color: #606f56;
+  font-size: 12px;
+}
+.meal-budget strong {
+  font-size: 32px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--green);
+}
+.meal-budget > div:last-child > strong {
+  font-size: 17px;
+  font-weight: 500;
+}
+.meal-budget.over-budget {
+  background: #fff7f2;
+}
+.meal-budget.over-budget strong {
+  color: #a15b38;
+}
+.meal-cost-note {
+  font-size: 11px;
+  color: #606f56;
+  margin-top: 10px;
+}
+.meal-recipes {
+  margin: 19px 0 22px;
+}
+.recipe-detail {
+  border-bottom: 1px solid var(--line);
+}
+.recipe-detail > summary {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  cursor: pointer;
+  padding: 14px 0;
+  list-style: none;
+}
+.recipe-detail > summary > span {
+  flex: 1;
+  display: grid;
+  gap: 5px;
+}
+.recipe-detail > summary strong {
+  font-size: 14px;
+  font-weight: 500;
+}
+.recipe-detail > summary small {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: #606f56;
+}
+.recipe-method {
+  padding: 0 0 14px 29px;
+  font-size: 12px;
+  line-height: 1.8;
+  color: #606f56;
+}
+.recipe-method ol {
+  padding-left: 18px;
+}
+.recipe-method li {
+  margin: 7px 0;
+}
+.recipe-method p:last-child {
+  font-size: 10px;
+}
+.meal-shopping-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.meal-shopping-heading > h3 {
+  font-size: 14px;
+}
+.meal-shopping-heading > span {
+  color: var(--muted);
+  font-size: 11px;
+}
+.meal-ingredients {
+  margin: 5px 0 14px;
+}
+.meal-ingredient {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 0;
+  border-bottom: 1px solid var(--line);
+}
+.meal-ingredient > img {
+  width: 48px;
+  height: 48px;
+  border-radius: 7px;
+  object-fit: cover;
+}
+.meal-ingredient > div {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+.meal-ingredient > div > strong {
+  font-size: 13px;
+  font-weight: 500;
+}
+.meal-ingredient > div > span {
+  font-size: 11px;
+  color: #606f56;
+}
+.meal-ingredient > div > small {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  color: #606f56;
+}
+.meal-ingredient > strong {
+  font-size: 16px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.meal-owned {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 11px;
+  color: #606f56;
+  margin: 15px 0;
+}
+.meal-owned > svg {
+  margin-top: 3px;
+}
+.pantry-check {
+  padding: 12px 0;
+  border-top: 1px solid var(--line);
+  margin: 8px 0 12px;
+}
+.pantry-check > strong {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--green);
+}
+.pantry-check > p {
+  font-size: 11px;
+  color: #606f56;
+  margin-top: 5px;
+}
+.meal-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 17px;
+  flex-wrap: wrap;
+}
+.meal-actions .button {
+  font-size: 12px;
+}
+.meal-route {
+  margin-top: 10px;
+}
+.meal-notes {
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+  margin-top: 17px;
+}
+.meal-notes > p {
+  font-size: 10px;
+  color: #606f56;
+  margin-top: 3px;
+}
+.meal-content > .inline-error {
+  margin-top: 12px;
+}
+.agent-trace {
+  margin-top: 8px;
+  color: #606f56;
+  font-size: 10px;
+}
+.agent-trace > summary {
+  cursor: pointer;
+  padding: 4px 0;
+}
+.agent-trace > ol {
+  padding-left: 18px;
+  line-height: 1.8;
+}
+.quantity-control > span {
+  width: auto;
+  min-width: 30px;
+  padding: 0 4px;
+}
+.budget-exceeded {
+  color: #a15b38 !important;
+}
+.budget-remains {
+  color: var(--green) !important;
+}
+@media (max-width: 480px) {
+  .meal-content {
+    padding: 17px;
+  }
+  .meal-budget {
+    padding: 16px 14px;
+    gap: 9px;
+  }
+  .meal-budget span {
+    font-size: 10px;
+  }
+  .meal-budget strong {
+    font-size: 28px;
+  }
+  .meal-budget > div:last-child > strong {
+    font-size: 15px;
+  }
+  .meal-panel .panel-heading {
+    padding: 16px;
+    gap: 8px;
+  }
+  .meal-panel .panel-heading h2 {
+    font-size: 15px;
+  }
+  .meal-panel .panel-heading .small-tag {
+    font-size: 9px;
+    padding: 4px 6px;
+  }
+  .meal-actions .button {
+    flex: 1;
+    padding: 10px 8px;
+    font-size: 11px;
+  }
+  .meal-ingredient {
+    gap: 9px;
+  }
+  .meal-ingredient > img {
+    width: 43px;
+    height: 43px;
+  }
+}
+
 .market-lookup {
   margin-top: 22px;
   padding-top: 18px;
