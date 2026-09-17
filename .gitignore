@@ -1,0 +1,12 @@
+node_modules/
+dist/
+data/
+.cache/
+.env
+.env.*
+!.env.example
+*.log
+.impeccable/review/
+.impeccable/documenter-task.md
+.impeccable/config.local.json
+test-results/

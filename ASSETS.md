@@ -1,0 +1,28 @@
+# 展示图片来源
+
+图片仅为商品示意。下载时的原始地址记录于 public/images/*.source.json。
+
+- apple — [Unsplash](https://images.unsplash.com/photo-1560806887-1e4cd0b6cbd6?auto=format&fit=crop&w=600&q=82)
+- banana — [Unsplash](https://images.unsplash.com/photo-1571771894821-ce9b6c11b08e?auto=format&fit=crop&w=600&q=82)
+- beef — [Unsplash](https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?auto=format&fit=crop&w=600&q=82)
+- bokchoy — [Wikimedia Commons](https://thumb.wikimedia.org/wikipedia/commons/thumb/9/99/Bok_Choy_%2849553125456%29.jpg/330px-Bok_Choy_%2849553125456%29.jpg) · [来源页面](https://en.wikipedia.org/wiki/Bok_choy)
+- bread — [Unsplash](https://images.unsplash.com/photo-1509440159596-0249088772ff?auto=format&fit=crop&w=600&q=82)
+- broccoli — [Unsplash](https://images.unsplash.com/photo-1459411621453-7b03977f4bfc?auto=format&fit=crop&w=600&q=82)
+- carrot — [Unsplash](https://images.unsplash.com/photo-1447175008436-054170c2e979?auto=format&fit=crop&w=600&q=82)
+- chicken — [Unsplash](https://images.unsplash.com/photo-1604503468506-a8da13d82791?auto=format&fit=crop&w=600&q=82)
+- croissant — [Unsplash](https://images.unsplash.com/photo-1555507036-ab1f4038808a?auto=format&fit=crop&w=600&q=82)
+- egg — [Unsplash](https://images.unsplash.com/photo-1518569656558-1f25e69d93d7?auto=format&fit=crop&w=600&q=82)
+- fish — [Unsplash](https://images.unsplash.com/photo-1510130387422-82bed34b37e9?auto=format&fit=crop&w=600&q=82)
+- lettuce — [Unsplash](https://images.unsplash.com/photo-1622206151226-18ca2c9ab4a1?auto=format&fit=crop&w=600&q=82)
+- market — [Unsplash](https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=900&q=82)
+- milk — [Unsplash](https://images.unsplash.com/photo-1563636619-e9143da7973b?auto=format&fit=crop&w=600&q=82)
+- oil — [Unsplash](https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=600&q=82)
+- orange — [Unsplash](https://images.unsplash.com/photo-1547514701-42782101795e?auto=format&fit=crop&w=600&q=82)
+- pork — [Unsplash](https://images.unsplash.com/photo-1607623814075-e51df1bdc82f?auto=format&fit=crop&w=600&q=82)
+- rice — [Unsplash](https://images.unsplash.com/photo-1586201375761-83865001e31c?auto=format&fit=crop&w=600&q=82)
+- salmon — [Unsplash](https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?auto=format&fit=crop&w=600&q=82)
+- shrimp — [Unsplash](https://images.unsplash.com/photo-1565680018434-b513d5e5fd47?auto=format&fit=crop&w=600&q=82)
+- spinach — [Unsplash](https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&w=600&q=82)
+- strawberry — [Unsplash](https://images.unsplash.com/photo-1464965911861-746a04b4bca6?auto=format&fit=crop&w=600&q=82)
+- tomato — [Unsplash](https://images.unsplash.com/photo-1546094096-0df4bcaaa337?auto=format&fit=crop&w=600&q=82)
+- yogurt — [Unsplash](https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=600&q=82)

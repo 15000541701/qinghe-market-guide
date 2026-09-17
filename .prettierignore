@@ -1,0 +1,8 @@
+node_modules
+dist
+data
+.cache
+.impeccable
+public/images
+test-results
+package-lock.json
