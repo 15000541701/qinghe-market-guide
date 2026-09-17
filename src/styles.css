@@ -2600,6 +2600,222 @@ td {
   position: relative;
 }
 
+.market-lookup {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+.market-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.market-heading h3 {
+  font-size: 14px;
+}
+.market-heading a {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.market-search-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  margin-top: 13px;
+}
+.market-search-row > .field {
+  flex: 1;
+  min-width: 0;
+}
+.market-search-row > .button {
+  min-height: 40px;
+}
+.market-loading {
+  margin-top: 15px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.market-loading > .skeleton {
+  height: 64px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+.market-error {
+  margin-top: 14px;
+  font-size: 12px;
+}
+.market-results {
+  margin-top: 16px;
+}
+.market-result-status {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--green);
+}
+.market-results > .field-note {
+  margin-top: 5px;
+}
+.market-quote-list {
+  margin-top: 12px;
+  max-height: 260px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #c7d1bc transparent;
+}
+.market-quote {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+}
+.market-quote:hover {
+  background: #f5f8ef;
+}
+.market-quote.selected {
+  background: #eff4e7;
+}
+.market-quote.unavailable {
+  cursor: default;
+}
+.market-quote > input {
+  accent-color: var(--green);
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  margin: 4px 0 0;
+}
+.quote-description {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 6px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #606f56;
+  overflow-wrap: anywhere;
+}
+.quote-description > strong {
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 500;
+}
+.quote-description strong > span {
+  display: block;
+  font-size: 10px;
+  font-weight: 400;
+  color: #606f56;
+  margin-top: 3px;
+}
+.quote-price {
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 10px;
+  color: #606f56;
+  font-variant-numeric: tabular-nums;
+  max-width: 125px;
+  overflow-wrap: anywhere;
+}
+.quote-price > strong {
+  font-size: 18px;
+  color: var(--green);
+  font-weight: 500;
+}
+.quote-price > small {
+  font-size: 10px;
+  text-align: right;
+}
+.quote-warning {
+  color: #95502d;
+}
+.market-conversion {
+  display: grid;
+  grid-template-columns: 135px minmax(0, 1fr);
+  gap: 12px 18px;
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid var(--line);
+}
+.market-conversion > div {
+  align-self: end;
+  display: grid;
+  gap: 8px;
+  padding-bottom: 5px;
+}
+.market-conversion > div > span {
+  font-size: 11px;
+  color: #606f56;
+}
+.market-conversion > div > strong {
+  font-size: 17px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.market-conversion > p {
+  grid-column: 1 / -1;
+  margin-top: 0;
+}
+.market-conversion > button {
+  grid-column: 1 / -1;
+  justify-self: start;
+}
+.market-fetched {
+  margin-top: 11px;
+  font-size: 10px;
+  color: #606f56;
+}
+.market-applied {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 12px;
+  color: var(--green);
+  font-size: 11px;
+  line-height: 1.8;
+}
+.market-applied > svg {
+  margin-top: 3px;
+}
+.price-evidence small {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 480px) {
+  .market-search-row {
+    flex-wrap: wrap;
+  }
+  .market-search-row > .field {
+    flex-basis: 100%;
+  }
+  .market-search-row > .button {
+    width: 100%;
+  }
+  .market-quote {
+    padding: 12px 3px;
+    gap: 7px;
+  }
+  .quote-price {
+    max-width: 104px;
+  }
+  .quote-description {
+    font-size: 10px;
+  }
+  .market-conversion {
+    grid-template-columns: 110px minmax(0, 1fr);
+    gap: 12px;
+  }
+  .market-conversion > div > strong {
+    font-size: 15px;
+  }
+}
+
 @media (max-width: 480px) {
   .floorplan .zone-name {
     font-size: 34px;

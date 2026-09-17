@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight,
   Check,
@@ -18,12 +18,15 @@ import {
 import { categoryLabels, zones } from '../../shared/catalog';
 import type {
   Category,
+  MarketReference,
   PriceAdvice,
   Product,
   VisionCandidate,
   VisionResponse,
 } from '../../shared/types';
 import { ApiError, api, money, parseSpokenPrice, post, useSpeech } from '../lib';
+import MarketLookup from './MarketLookup';
+import { marketToday } from '../../shared/market';
 
 interface Props {
   products: Product[];
@@ -31,7 +34,7 @@ interface Props {
   onToast: (message: string) => void;
   ai: boolean;
 }
-const today = () => new Date().toISOString().slice(0, 10);
+const today = marketToday;
 export default function Admin({ products, onRefresh, onToast, ai }: Props) {
   const [editing, setEditing] = useState<string | null>(null);
   const [name, setName] = useState('');
@@ -52,11 +55,30 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
   const [marketPrice, setMarketPrice] = useState('');
   const [marketSource, setMarketSource] = useState('');
   const [marketDate, setMarketDate] = useState(today());
+  const [liveReference, setLiveReference] = useState<{
+    context: string;
+    value: MarketReference;
+  } | null>(null);
+  const [manualContext, setManualContext] = useState('');
+  const [adviceRevision, setAdviceRevision] = useState(0);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
   const inputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const busyRef = useRef(false);
+  const referenceContext = [editing, name, unit, baseline].join('|');
+  const baselineProduct = products.find((product) => product.id === baseline);
+  const reference = useMemo<MarketReference | undefined>(() => {
+    if (liveReference?.context === referenceContext) return liveReference.value;
+    if (manualContext !== referenceContext || !marketPrice) return undefined;
+    return {
+      price: Number(marketPrice),
+      source: marketSource.trim(),
+      date: marketDate,
+      unit,
+      kind: 'retail',
+    };
+  }, [liveReference, referenceContext, manualContext, marketPrice, marketSource, marketDate, unit]);
   const { listening, toggle } = useSpeech((text) => {
     const value = parseSpokenPrice(text);
     if (value && value > 0) {
@@ -69,18 +91,24 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
 
   useEffect(() => {
     const controller = new AbortController();
+    setAdvice(null);
     const referenceProduct = products.find((p) => p.id === baseline);
-    if (referenceProduct && referenceProduct.unit !== unit) {
+    if (
+      (referenceProduct && referenceProduct.unit !== unit) ||
+      (reference && (!(reference.price > 0) || !reference.source || !reference.date))
+    ) {
       setAdvice(null);
       setAdvising(false);
       return;
     }
     setAdvising(true);
     void api<PriceAdvice>('/pricing', {
-      ...post({ productId: baseline || undefined }),
+      ...post({ productId: baseline || undefined, reference }),
       signal: controller.signal,
     })
-      .then(setAdvice)
+      .then((result) => {
+        if (!controller.signal.aborted) setAdvice(result);
+      })
       .catch((error) => {
         if (!controller.signal.aborted) setError(error.message);
       })
@@ -88,7 +116,13 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
         if (!controller.signal.aborted) setAdvising(false);
       });
     return () => controller.abort();
-  }, [baseline, unit, products]);
+  }, [baseline, unit, products, reference, adviceRevision, referenceContext]);
+
+  useEffect(() => {
+    setMarketPrice('');
+    setMarketSource('');
+    setMarketDate(today());
+  }, [referenceContext]);
 
   const reset = () => {
     setEditing(null);
@@ -106,6 +140,7 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
     setMarketPrice('');
     setMarketSource('');
     setMarketDate(today());
+    setLiveReference(null);
   };
   const changeCategory = (id: Category) => {
     setCategory(id);
@@ -170,10 +205,7 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
     setMarketSource('');
     formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
-  const reference = marketPrice
-    ? { price: Number(marketPrice), source: marketSource.trim(), date: marketDate }
-    : undefined;
-  const recalculate = async () => {
+  const recalculate = () => {
     if (reference && (!(reference.price > 0) || !reference.source || !reference.date)) {
       setError('请同时填写有效的参考价、来源和日期。');
       return;
@@ -183,17 +215,8 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
       setError('参考商品的计价单位与当前单位不一致，请重新选择参考商品。');
       return;
     }
-    setAdvising(true);
     setError('');
-    try {
-      setAdvice(
-        await api<PriceAdvice>('/pricing', post({ productId: baseline || undefined, reference })),
-      );
-    } catch (error) {
-      setError((error as Error).message);
-    } finally {
-      setAdvising(false);
-    }
+    setAdviceRevision((value) => value + 1);
   };
   const save = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -406,6 +429,23 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
               ))}
             </select>
           </label>
+          <MarketLookup
+            key={referenceContext}
+            name={name || baselineProduct?.name || ''}
+            unit={unit}
+            product={baselineProduct}
+            applied={
+              reference ||
+              (baselineProduct?.unit === unit ? baselineProduct.marketReference : undefined)
+            }
+            onApply={(value) => {
+              setLiveReference({ context: referenceContext, value });
+              setMarketPrice('');
+              setMarketSource('');
+              setError('');
+              onToast('已使用所选批发报价重新计算建议，最终售价由你确认。');
+            }}
+          />
           <div className="price-advice">
             <div>
               <span>建议售价</span>
@@ -451,11 +491,14 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
               <small>近 30 天 · {advice?.sampleCount || 0} 条记录</small>
             </div>
             <div>
-              <span>市场参考价</span>
+              <span>
+                {advice?.marketKind === 'wholesale' ? '零售参考（批发价加价后）' : '市场参考价'}
+              </span>
               <strong>
                 {advice?.marketPrice != null ? `¥${money(advice.marketPrice)}` : '暂无有效参考'}
               </strong>
               <small>{advice?.marketSource || '需要日期与来源'}</small>
+              {advice?.marketDate && <small>报价日期：{advice.marketDate}</small>}
             </div>
           </div>
           {!!advice?.history.length && (
@@ -483,10 +526,12 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
           )}
           <details className="market-reference">
             <summary>
-              补充市场参考价
+              手动补充零售参考价
               <Plus size={14} />
             </summary>
-            <p className="field-note">请按当前计价单位填写。超过 7 天的参考价不会用于计算。</p>
+            <p className="field-note">
+              按当前计价单位填写零售参考价。手动输入会替换新发地参考；超过 7 天的报价不参与计算。
+            </p>
             <div className="form-grid">
               <label className="field">
                 参考价（元）
@@ -496,7 +541,11 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
                   max="100000"
                   step="0.01"
                   value={marketPrice}
-                  onChange={(event) => setMarketPrice(event.target.value)}
+                  onChange={(event) => {
+                    setLiveReference(null);
+                    setManualContext(referenceContext);
+                    setMarketPrice(event.target.value);
+                  }}
                   placeholder="例如 5.20"
                 />
               </label>
@@ -506,7 +555,11 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
                   type="date"
                   value={marketDate}
                   max={today()}
-                  onChange={(event) => setMarketDate(event.target.value)}
+                  onChange={(event) => {
+                    setLiveReference(null);
+                    setManualContext(referenceContext);
+                    setMarketDate(event.target.value);
+                  }}
                 />
               </label>
               <label className="field span-two">
@@ -514,7 +567,11 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
                 <input
                   value={marketSource}
                   maxLength={100}
-                  onChange={(event) => setMarketSource(event.target.value)}
+                  onChange={(event) => {
+                    setLiveReference(null);
+                    setManualContext(referenceContext);
+                    setMarketSource(event.target.value);
+                  }}
                   placeholder="例如：供应商报价单，9 月 17 日"
                 />
               </label>

@@ -673,7 +673,7 @@ export default function App() {
           <Sprout size={15} />
           青禾 · 让每一次采购轻松一点
         </span>
-        <span>商品、价格与地图为演示数据 · 图片仅供展示</span>
+        <span>初始商品与地图为演示数据 · 图片仅供展示</span>
         <span>虚拟超市导购原型</span>
       </footer>
       {toast && (

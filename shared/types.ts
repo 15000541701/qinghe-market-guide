@@ -31,6 +31,7 @@ export type Product = {
   marketPrice?: number;
   marketDate?: string;
   marketSource?: string;
+  marketReference?: MarketReference;
   createdAt: string;
 };
 export type QueryFilters = {
@@ -72,6 +73,41 @@ export type PriceAdvice = {
   history: PriceRecord[];
   marketSource?: string;
   marketDate?: string;
+  marketKind?: 'retail' | 'wholesale';
+  wholesalePrice?: number | null;
+  markupPercent?: number;
+};
+export type MarketQuote = {
+  id: string;
+  name: string;
+  category: string;
+  origin: string;
+  spec: string;
+  low: number;
+  average: number;
+  high: number;
+  unit: string;
+  date: string;
+};
+export type MarketReference = {
+  price: number;
+  source: string;
+  date: string;
+  unit?: string;
+  kind?: 'retail' | 'wholesale';
+  markupPercent?: number;
+  quote?: MarketQuote;
+  sourceUrl?: string;
+  fetchedAt?: string;
+};
+export type MarketSearchResult = {
+  query: string;
+  source: string;
+  sourceUrl: string;
+  fetchedAt: string;
+  quotes: MarketQuote[];
+  latestDate: string | null;
+  notice: string;
 };
 export type ListItem = { productId: string; quantity: number; checked: boolean };
 export type Route = { points: Point[]; stops: Category[]; distance: number; minutes: number };

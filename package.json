@@ -10,8 +10,9 @@
     "dev": "concurrently -k -n api,web \"tsx watch server/index.ts\" \"vite --host 127.0.0.1\"",
     "build": "tsc --noEmit && vite build",
     "start": "tsx server/index.ts",
-    "test": "tsx --test tests/core.test.ts",
+    "test": "tsx --test tests/core.test.ts tests/market.test.ts",
     "test:e2e": "node tests/e2e.mjs",
+    "test:market": "node tests/market-e2e.mjs",
     "format": "prettier --write src shared server scripts tests vite.config.ts",
     "check:ai": "tsx scripts/check-ai.ts"
   },

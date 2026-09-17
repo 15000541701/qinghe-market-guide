@@ -1,9 +1,10 @@
-import type { PriceAdvice, Product } from './types';
+import type { MarketReference, PriceAdvice, Product } from './types';
+import { isFreshMarketDate } from './market';
 
 const round = (n: number) => Math.round(n * 100) / 100;
 export function recommendPrice(
   product?: Product,
-  reference?: { price: number; source: string; date: string },
+  reference?: MarketReference,
   now = new Date(),
 ): PriceAdvice {
   const history = (product?.history || []).filter((h) => {
@@ -22,8 +23,9 @@ export function recommendPrice(
       ? prices[mid]
       : (prices[mid - 1] + prices[mid]) / 2
     : null;
-  const market =
+  const market: MarketReference | undefined =
     reference ||
+    product?.marketReference ||
     (product?.marketPrice
       ? {
           price: product.marketPrice,
@@ -31,17 +33,31 @@ export function recommendPrice(
           date: product.marketDate || '',
         }
       : undefined);
-  const marketAge = market ? now.getTime() - new Date(market.date).getTime() : Infinity;
-  const marketPrice =
-    market && market.price > 0 && marketAge <= 7 * 86400000 && marketAge >= -86400000
-      ? market.price
-      : null;
+  const validMarket =
+    market &&
+    Number.isFinite(market.price) &&
+    market.price > 0 &&
+    isFreshMarketDate(market.date, now) &&
+    (!market.unit || !product || market.unit === product.unit);
+  const isWholesale = market?.kind === 'wholesale';
+  const validMarkup =
+    market?.markupPercent !== undefined &&
+    Number.isFinite(market.markupPercent) &&
+    market.markupPercent >= 0 &&
+    market.markupPercent <= 300;
+  const marketPrice = validMarket
+    ? isWholesale
+      ? validMarkup
+        ? round(market.price * (1 + market.markupPercent! / 100))
+        : null
+      : market.price
+    : null;
   const price = round(
     median !== null && marketPrice !== null
       ? median * 0.7 + marketPrice * 0.3
       : (median ?? marketPrice ?? 0),
   );
-  const explanation =
+  let explanation =
     median !== null && marketPrice !== null
       ? `近 30 天 ${history.length} 次价格的中位数占 70%，7 天内参考价占 30%。`
       : median !== null
@@ -49,6 +65,10 @@ export function recommendPrice(
         : marketPrice !== null
           ? '暂无同商品历史，使用 7 天内的参考价。'
           : '暂无有效的同商品历史或参考价，请先手动输入售价或补充参考价。';
+  if (isWholesale && marketPrice !== null)
+    explanation += ` 零售参考由批发均价 ¥${market.price.toFixed(2)} 按加价率 ${market.markupPercent}% 试算，未另计运输、损耗等费用。`;
+  else if (isWholesale && validMarket)
+    explanation += ' 批发价尚未设置有效加价率，未直接用于零售价建议。';
   return {
     price,
     low: round(price * 0.9),
@@ -64,5 +84,8 @@ export function recommendPrice(
     history,
     marketSource: market?.source,
     marketDate: market?.date,
+    marketKind: market?.kind || 'retail',
+    wholesalePrice: isWholesale && validMarket ? market.price : null,
+    markupPercent: market?.markupPercent,
   };
 }

@@ -12,6 +12,8 @@ import { getProduct, getProducts, saveProduct } from './db';
 import { recommendPrice } from '../shared/pricing';
 import { zones } from '../shared/catalog';
 import type { Product } from '../shared/types';
+import { lookupMarket, MarketError } from './market';
+import { convertMarketPrice, isValidMarketDate, XINFADI_SOURCE_URL } from '../shared/market';
 
 const app = express();
 const uploads = path.resolve(process.env.DATA_DIR || 'data', 'uploads');
@@ -89,38 +91,93 @@ app.post('/api/vision', upload.single('image'), async (req, res) => {
   }
 });
 
-const marketSchema = z.object({
-  price: z.number().positive().max(100000),
-  source: z.string().trim().min(1).max(100),
-  date: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/)
-    .refine((date) => Number.isFinite(Date.parse(date)), '参考日期无效'),
+const quoteSchema = z
+  .object({
+    id: z.string().max(100),
+    name: z.string().min(1).max(80),
+    category: z.string().max(80),
+    origin: z.string().max(100),
+    spec: z.string().max(120),
+    unit: z.string().min(1).max(30),
+    low: z.number().positive().max(1000000),
+    average: z.number().positive().max(1000000),
+    high: z.number().positive().max(1000000),
+    date: z.string().refine(isValidMarketDate, '报价日期无效'),
+  })
+  .refine((quote) => quote.low <= quote.average && quote.average <= quote.high, '报价范围不正确');
+const marketSchema = z
+  .object({
+    price: z.number().positive().max(100000),
+    source: z.string().trim().min(1).max(100),
+    date: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/)
+      .refine(isValidMarketDate, '参考日期无效'),
+    unit: z.string().min(1).max(20).optional(),
+    kind: z.enum(['retail', 'wholesale']).optional(),
+    markupPercent: z.number().min(0).max(300).optional(),
+    quote: quoteSchema.optional(),
+    sourceUrl: z.literal(XINFADI_SOURCE_URL).optional(),
+    fetchedAt: z.iso.datetime().optional(),
+  })
+  .superRefine((reference, context) => {
+    if (
+      reference.quote &&
+      (reference.kind !== 'wholesale' ||
+        !reference.unit ||
+        reference.date !== reference.quote.date ||
+        convertMarketPrice(reference.quote.average, reference.quote.unit, reference.unit) !==
+          reference.price)
+    ) {
+      context.addIssue({ code: 'custom', message: '批发报价的日期、单位或换算金额不一致。' });
+    }
+  });
+app.post('/api/market-prices', async (req, res) => {
+  const input = z
+    .object({
+      query: z
+        .string()
+        .trim()
+        .min(1)
+        .max(40)
+        .regex(/^[\p{L}\p{N}\s()（）·-]+$/u, '请使用商品名称查询'),
+    })
+    .parse(req.body);
+  res.setHeader('Cache-Control', 'no-store');
+  res.json(await lookupMarket(input.query));
 });
 app.post('/api/pricing', (req, res) => {
   const input = z
     .object({ productId: z.string().max(80).optional(), reference: marketSchema.optional() })
     .parse(req.body);
-  res.json(
-    recommendPrice(input.productId ? getProduct(input.productId) : undefined, input.reference),
+  const product = input.productId ? getProduct(input.productId) : undefined;
+  if (product && input.reference?.unit && input.reference.unit !== product.unit) {
+    res.status(400).json({ error: '参考价单位与历史商品不一致，请换算后重试。' });
+    return;
+  }
+  res.json(recommendPrice(product, input.reference));
+});
+const productSchema = z
+  .object({
+    name: z.string().trim().min(1).max(60),
+    category: categories,
+    price: z.number().positive().max(100000),
+    unit: z.string().trim().min(1).max(20),
+    stock: z.number().int().min(0).max(1000000),
+    shelf: z.string().trim().min(1).max(20),
+    image: z
+      .string()
+      .max(200)
+      .regex(/^\/(?:images\/[a-z0-9-]+\.jpg|uploads\/[a-f0-9-]+\.jpg)$/)
+      .optional(),
+    description: z.string().max(200).optional(),
+    source: z.enum(['manual', 'suggested']),
+    reference: marketSchema.optional(),
+  })
+  .refine(
+    (input) => !input.reference?.unit || input.reference.unit === input.unit,
+    '商品与参考价的计价单位不一致',
   );
-});
-const productSchema = z.object({
-  name: z.string().trim().min(1).max(60),
-  category: categories,
-  price: z.number().positive().max(100000),
-  unit: z.string().trim().min(1).max(20),
-  stock: z.number().int().min(0).max(1000000),
-  shelf: z.string().trim().min(1).max(20),
-  image: z
-    .string()
-    .max(200)
-    .regex(/^\/(?:images\/[a-z0-9-]+\.jpg|uploads\/[a-f0-9-]+\.jpg)$/)
-    .optional(),
-  description: z.string().max(200).optional(),
-  source: z.enum(['manual', 'suggested']),
-  reference: marketSchema.optional(),
-});
 app.post('/api/products', (req, res) => {
   const input = productSchema.parse(req.body);
   const now = new Date().toISOString();
@@ -155,6 +212,7 @@ app.post('/api/products', (req, res) => {
     marketPrice: input.reference?.price,
     marketSource: input.reference?.source,
     marketDate: input.reference?.date,
+    marketReference: input.reference,
   };
   res.status(201).json(saveProduct(product));
 });
@@ -195,9 +253,15 @@ app.patch('/api/products/:id', (req, res) => {
             marketPrice: reference.price,
             marketSource: reference.source,
             marketDate: reference.date,
+            marketReference: reference,
           }
         : unitChanged
-          ? { marketPrice: undefined, marketSource: undefined, marketDate: undefined }
+          ? {
+              marketPrice: undefined,
+              marketSource: undefined,
+              marketDate: undefined,
+              marketReference: undefined,
+            }
           : {}),
     }),
   );
@@ -212,6 +276,10 @@ if (existsSync(dist)) {
 }
 app.use(
   (error: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    if (error instanceof MarketError) {
+      res.status(error.status).json({ error: error.message });
+      return;
+    }
     if (error instanceof z.ZodError) {
       res.status(400).json({
         error: `输入有误：${error.issues[0]?.path.join('.')} ${error.issues[0]?.message}`,
