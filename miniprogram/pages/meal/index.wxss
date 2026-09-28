@@ -1,0 +1,76 @@
+.budget-panel {
+  margin: 28rpx 0 22rpx;
+  padding: 28rpx;
+  background: #edf3e4;
+  border-radius: 22rpx;
+}
+.big-price {
+  font-size: 58rpx;
+  font-weight: 600;
+  color: #315443;
+  font-variant-numeric: tabular-nums;
+}
+.budget-right {
+  text-align: right;
+  font-size: 28rpx;
+}
+.over {
+  background: #fff7f2;
+  color: #934e2c;
+}
+.over .big-price {
+  color: #934e2c;
+}
+.recipes {
+  margin-top: 26rpx;
+}
+.recipe {
+  border-bottom: 1rpx solid #e3e7de;
+}
+.recipe-header {
+  border: 0;
+  background: transparent;
+  border-radius: 0;
+  padding: 24rpx 0;
+  text-align: left;
+}
+.recipe-header .note {
+  font-size: 23rpx;
+}
+.recipe-steps {
+  font-size: 26rpx;
+  color: #526343;
+  line-height: 1.9;
+  padding: 0 10rpx 22rpx;
+}
+.recipe-steps view {
+  margin-top: 10rpx;
+}
+.item-line .thumb {
+  width: 88rpx;
+  height: 96rpx;
+}
+.item-line .note {
+  font-size: 23rpx;
+}
+.line-price {
+  font-size: 30rpx;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.owned {
+  font-size: 26rpx;
+  color: #526343;
+  margin: 26rpx 0;
+}
+.pantry {
+  border-top: 1rpx solid #e3e7de;
+  padding-top: 20rpx;
+}
+.pantry .note {
+  margin-top: 12rpx;
+}
+.actions button {
+  font-size: 26rpx;
+  padding: 24rpx 15rpx;
+}

@@ -1,0 +1,54 @@
+.map-scroll {
+  background: #f5f7ee;
+  width: 100%;
+}
+.map-tools {
+  padding: 16rpx;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  border-top: 1rpx solid #e3e7de;
+}
+.position-control {
+  font-size: 25rpx;
+  padding: 16rpx 0;
+  color: #315443;
+}
+.map-tools .small {
+  font-size: 23rpx;
+  padding: 17rpx 18rpx;
+}
+.map-tools .row {
+  gap: 8rpx;
+}
+.map-note {
+  margin-top: 20rpx;
+  font-size: 24rpx;
+}
+.zone-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14rpx;
+}
+.zone-grid button {
+  width: calc(50% - 7rpx);
+  border: 0;
+  text-align: left;
+  padding: 24rpx;
+}
+.route {
+  padding: 24rpx;
+  background: #edf3e4;
+  border-top: 1rpx solid #d8e1d0;
+}
+.route .note {
+  font-size: 23rpx;
+}
+.route .item-name {
+  font-size: 29rpx;
+}
+.panel-head {
+  font-size: 28rpx;
+}
+.panel-head .tag {
+  font-weight: 400;
+}

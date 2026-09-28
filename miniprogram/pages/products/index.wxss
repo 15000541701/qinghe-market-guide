@@ -1,0 +1,79 @@
+.search {
+  margin-top: 28rpx;
+}
+.categories {
+  white-space: nowrap;
+  margin-top: 22rpx;
+}
+.category {
+  display: inline-block;
+  margin-right: 10rpx;
+  padding: 17rpx 23rpx;
+  border: 0;
+  background: transparent;
+  font-size: 26rpx;
+}
+.category.selected {
+  background: #315443;
+  color: white;
+}
+.sorting {
+  margin: 20rpx 0;
+}
+.sort-control {
+  padding: 15rpx 6rpx;
+  font-size: 24rpx;
+  color: #526343;
+}
+.grid {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+.product {
+  width: 48%;
+  flex: 0 0 48%;
+  margin-bottom: 30rpx;
+  min-width: 0;
+}
+.photo {
+  width: 100%;
+  height: 250rpx;
+  border-radius: 18rpx;
+  background: #e7ebdf;
+}
+.location {
+  font-size: 22rpx;
+  color: #606f56;
+  margin: 14rpx 0 7rpx;
+}
+.item-name {
+  font-size: 29rpx;
+}
+.description {
+  font-size: 23rpx;
+  color: #606f56;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 8rpx 0 14rpx;
+}
+.unit {
+  font-size: 22rpx;
+  font-weight: 400;
+  color: #606f56;
+}
+.tools {
+  gap: 6rpx;
+  margin-top: 8rpx;
+  flex-wrap: wrap;
+}
+.tools .small {
+  font-size: 22rpx;
+  padding: 18rpx 14rpx;
+}
+.tools .text-button {
+  font-size: 24rpx;
+  padding: 18rpx 0;
+}

@@ -1,0 +1,69 @@
+.empty-icon {
+  width: 80rpx;
+  height: 80rpx;
+  margin-bottom: 24rpx;
+}
+.cart-item {
+  padding: 26rpx 0;
+  border-bottom: 1rpx solid #e3e7de;
+}
+.cart-item .thumb {
+  width: 86rpx;
+  height: 100rpx;
+}
+.cart-item .note {
+  font-size: 23rpx;
+}
+.cart-item .row {
+  gap: 10rpx;
+}
+.checked .item-name {
+  text-decoration: line-through;
+  color: #606f56;
+}
+.checked .thumb {
+  opacity: 0.55;
+}
+.quantity-row {
+  margin-top: 16rpx;
+}
+.quantity {
+  display: flex;
+  align-items: center;
+  border: 1rpx solid #d8e1d0;
+  border-radius: 12rpx;
+  overflow: hidden;
+}
+.quantity button {
+  border: 0;
+  border-radius: 0;
+  font-size: 23rpx;
+  padding: 18rpx 15rpx;
+}
+.quantity text {
+  font-size: 23rpx;
+  padding: 0 7rpx;
+}
+.item-total {
+  font-size: 28rpx;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.summary .note {
+  margin-top: 20rpx;
+}
+.budget {
+  margin-top: 18rpx;
+  color: #315443;
+  font-size: 26rpx;
+}
+.budget.over {
+  color: #934e2c;
+}
+.cart-item .error {
+  font-size: 24rpx;
+}
+checkbox {
+  transform: scale(0.85);
+  transform-origin: center;
+}

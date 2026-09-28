@@ -1,0 +1,53 @@
+{
+  "pages": [
+    "pages/guide/index",
+    "pages/products/index",
+    "pages/map/index",
+    "pages/cart/index",
+    "pages/meal/index",
+    "pages/store/index",
+    "pages/settings/index"
+  ],
+  "window": {
+    "navigationBarTitleText": "青禾 · 虚拟超市",
+    "navigationBarBackgroundColor": "#f7f8f4",
+    "navigationBarTextStyle": "black",
+    "backgroundColor": "#f7f8f4"
+  },
+  "tabBar": {
+    "color": "#697467",
+    "selectedColor": "#315443",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/guide/index",
+        "text": "导购",
+        "iconPath": "assets/chat.png",
+        "selectedIconPath": "assets/chat-active.png"
+      },
+      {
+        "pagePath": "pages/products/index",
+        "text": "商品",
+        "iconPath": "assets/products.png",
+        "selectedIconPath": "assets/products-active.png"
+      },
+      {
+        "pagePath": "pages/map/index",
+        "text": "地图",
+        "iconPath": "assets/map.png",
+        "selectedIconPath": "assets/map-active.png"
+      },
+      {
+        "pagePath": "pages/cart/index",
+        "text": "清单",
+        "iconPath": "assets/bag.png",
+        "selectedIconPath": "assets/bag-active.png"
+      }
+    ]
+  },
+  "networkTimeout": { "request": 55000, "uploadFile": 55000 },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}

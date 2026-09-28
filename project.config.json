@@ -1,0 +1,9 @@
+{
+  "description": "青禾虚拟超市微信小程序（课程演示）",
+  "miniprogramRoot": "miniprogram/",
+  "compileType": "miniprogram",
+  "appid": "wx82bc6c6723a17943",
+  "projectname": "qinghe-market-guide",
+  "setting": { "es6": true, "enhance": true, "postcss": true, "minified": true, "urlCheck": false },
+  "packOptions": { "ignore": [], "include": [] }
+}

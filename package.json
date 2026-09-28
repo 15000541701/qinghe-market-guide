@@ -9,6 +9,9 @@
   "scripts": {
     "dev": "concurrently -k -n api,web \"tsx watch server/index.ts\" \"vite --host 127.0.0.1\"",
     "build": "tsc --noEmit && vite build",
+    "build:mini": "node scripts/build-miniprogram.mjs",
+    "test:mini": "npm run build:mini && node --import tsx --test tests/miniprogram.test.mjs",
+    "test:mini:e2e": "node tests/miniprogram-e2e.mjs",
     "start": "tsx server/index.ts",
     "test": "tsx --test tests/core.test.ts tests/market.test.ts tests/meal.test.ts",
     "test:e2e": "node tests/e2e.mjs",
@@ -37,6 +40,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
     "concurrently": "^9.2.1",
+    "esbuild": "^0.28.2",
     "playwright": "^1.58.0",
     "prettier": "^3.9.7",
     "typescript": "^5.9.3",

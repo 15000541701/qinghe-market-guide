@@ -1,0 +1,122 @@
+.panel-head .text-button {
+  font-weight: 400;
+}
+.upload {
+  width: 100%;
+  background: #f1f5e9;
+  border: 1rpx dashed #9eb48b;
+  min-height: 230rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 16rpx;
+}
+.upload image {
+  width: 100%;
+  height: 240rpx;
+}
+.upload .note {
+  font-size: 22rpx;
+}
+.candidates {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-top: 15rpx;
+}
+.candidates button {
+  font-size: 23rpx;
+}
+.form-grid {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+.form-grid .field {
+  width: 48%;
+}
+.form-grid .picker {
+  font-size: 26rpx;
+  padding-left: 15rpx;
+  padding-right: 10rpx;
+}
+.advice {
+  margin-top: 26rpx;
+  padding: 25rpx;
+  background: #edf3e4;
+  border-radius: 18rpx;
+}
+.advice .note {
+  font-size: 24rpx;
+  margin-top: 12rpx;
+}
+.advice .row {
+  gap: 12rpx;
+}
+.advice .price {
+  font-size: 45rpx;
+  margin-top: 8rpx;
+}
+.evidence {
+  margin-top: 24rpx;
+  line-height: 1.9;
+}
+.market-results {
+  margin-top: 22rpx;
+}
+.quote {
+  padding: 22rpx 8rpx;
+  border-bottom: 1rpx solid #e3e7de;
+  gap: 6rpx;
+}
+.quote.selected {
+  background: #edf3e4;
+}
+.quote .note {
+  font-size: 22rpx;
+}
+.quote .item-name {
+  font-size: 27rpx;
+}
+.quote-price {
+  text-align: right;
+  max-width: 185rpx;
+  font-weight: 500;
+  font-size: 30rpx;
+}
+.quote-price .note {
+  font-weight: 400;
+}
+.quote-warning {
+  color: #934e2c;
+  font-size: 23rpx;
+}
+.markup-note {
+  margin: 18rpx 0;
+}
+.retail {
+  font-size: 28rpx;
+  color: #315443;
+  margin-bottom: 22rpx;
+}
+.applied {
+  margin: 20rpx 0;
+  color: #315443;
+  font-size: 24rpx;
+}
+.item-line .note {
+  font-size: 23rpx;
+}
+.item-line .thumb {
+  width: 85rpx;
+  height: 98rpx;
+}
+.item-line .small {
+  font-size: 25rpx;
+}
+radio {
+  transform: scale(0.8);
+  transform-origin: center;
+}

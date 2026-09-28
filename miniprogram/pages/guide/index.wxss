@@ -1,0 +1,138 @@
+.guide-page {
+  padding: 24rpx;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.guide-top {
+  margin-bottom: 20rpx;
+}
+.guide-title {
+  font-size: 36rpx;
+  font-weight: 600;
+}
+.chat-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  border: 1rpx solid #e3e7de;
+  background: white;
+  border-radius: 22rpx;
+  overflow: hidden;
+}
+.chat-heading {
+  padding: 6rpx 24rpx;
+  border-bottom: 1rpx solid #e3e7de;
+  font-weight: 500;
+}
+.leaf {
+  width: 38rpx;
+  height: 38rpx;
+}
+.chat-history {
+  flex: 1;
+  min-height: 0;
+  padding: 22rpx;
+}
+.message {
+  margin-bottom: 25rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+.message.user {
+  align-items: flex-end;
+}
+.bubble {
+  background: #f2f5ed;
+  padding: 20rpx 24rpx;
+  border-radius: 4rpx 20rpx 20rpx 20rpx;
+  font-size: 28rpx;
+  max-width: 96%;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.user .bubble {
+  background: #315443;
+  color: white;
+  border-radius: 20rpx 4rpx 20rpx 20rpx;
+}
+.chat-photo {
+  width: 260rpx;
+  height: 200rpx;
+  display: block;
+  margin-bottom: 12rpx;
+}
+.trace {
+  font-size: 22rpx;
+  line-height: 1.8;
+  color: #606f56;
+  margin-top: 10rpx;
+}
+.warning {
+  color: #934e2c;
+}
+.candidate {
+  width: 100%;
+  margin-top: 12rpx;
+}
+.chat-product {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  width: 100%;
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid #e3e7de;
+}
+.chat-product .thumb {
+  width: 68rpx;
+  height: 68rpx;
+}
+.chat-product .small {
+  padding: 17rpx 13rpx;
+}
+.chat-product .item-name {
+  font-size: 26rpx;
+}
+.chat-product .note {
+  font-size: 22rpx;
+}
+.composer {
+  flex-shrink: 0;
+  margin: 0 20rpx 18rpx;
+  border: 1rpx solid #cad8be;
+  border-radius: 18rpx;
+  padding: 10rpx 16rpx;
+}
+.composer textarea {
+  border: 0;
+  height: 110rpx;
+  padding: 8rpx;
+  font-size: 28rpx;
+}
+.starters {
+  padding: 18rpx 0;
+}
+.starters button {
+  margin: 14rpx 0;
+  text-align: left;
+  font-size: 26rpx;
+}
+.thinking {
+  padding-bottom: 16rpx;
+}
+.chat-bottom {
+  height: 12rpx;
+}
+.bottom-tools {
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 8rpx;
+}
+.bottom-tools .note {
+  font-size: 22rpx;
+}
+.error {
+  margin-bottom: 20rpx;
+}

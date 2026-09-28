@@ -10,3 +10,6 @@ data/
 .impeccable/documenter-task.md
 .impeccable/config.local.json
 test-results/
+project.private.config.json
+miniprogram/lib/
+miniprogram/assets/

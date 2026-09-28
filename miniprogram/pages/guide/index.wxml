@@ -1,0 +1,23 @@
+<view class="guide-page" style="height:{{pageHeight}}px">
+  <view class="guide-top row"><view class="grow"><view class="guide-title">今天，想买点什么？</view><view class="note">{{ai ? '大模型已配置' : '规则导购可用'}} · 示例门店</view></view><button class="text-button" bindtap="settings">连接设置</button></view>
+  <view wx:if="{{error}}" class="error"><text>{{error}}</text><button class="text-button" bindtap="retry">重新连接</button></view>
+  <view wx:if="{{loading}}" class="note">正在连接门店…</view>
+  <view class="chat-panel">
+    <view class="row chat-heading"><view class="row"><image src="/assets/leaf-active.png" class="leaf"/><text>小禾导购</text></view><button class="text-button" bindtap="reset" disabled="{{busy}}">新对话</button></view>
+    <scroll-view class="chat-history" scroll-y style="height:{{chatHeight}}px" scroll-into-view="{{scrollTo}}" scroll-with-animation>
+      <view wx:for="{{messages}}" wx:key="id" class="message {{item.role}}">
+        <view class="bubble"><image wx:if="{{item.imageUrl}}" class="chat-photo" src="{{item.imageUrl}}" mode="aspectFit"/><text selectable>{{item.text}}</text></view>
+        <view wx:if="{{item.warning}}" class="note warning">{{item.warning}}</view>
+        <button wx:if="{{item.meal}}" class="text-button" bindtap="openPlan">查看菜谱与整单预算</button>
+        <button wx:if="{{item.receipt}}" class="text-button" bindtap="undo" disabled="{{busy}}">撤销上一次清单操作</button>
+        <view wx:if="{{item.trace.length}}" class="trace"><text wx:for="{{item.trace}}" wx:for-item="step" wx:key="*this">{{step}}；</text></view>
+        <button wx:for="{{item.candidates}}" wx:for-item="candidate" wx:for-index="ci" wx:key="name" class="candidate row" data-message="{{item.id}}" data-index="{{ci}}" bindtap="chooseCandidate"><text>{{candidate.name}}</text><text class="note">{{candidate.categoryName}}</text></button>
+        <view wx:for="{{item.products}}" wx:for-item="product" wx:key="id" class="chat-product"><image class="thumb" src="{{product.imageUrl}}" mode="aspectFill"/><view class="grow"><view class="item-name">{{product.name}}</view><view class="note">¥{{product.priceText}} / {{product.unit}}</view></view><button class="small" bindtap="go" data-id="{{product.id}}">带我去</button><button class="text-button" bindtap="add" data-id="{{product.id}}" disabled="{{busy}}">加入</button></view>
+      </view>
+      <view wx:if="{{messages.length === 1}}" class="starters"><view class="note">试试这样问</view><button wx:for="{{starters}}" wx:key="*this" data-text="{{item}}" bindtap="starter" disabled="{{busy}}">{{item}}</button></view>
+      <view wx:if="{{busy}}" class="note thinking">小禾正在处理，请稍候…</view><view id="chat-bottom" class="chat-bottom"></view>
+    </scroll-view>
+    <view class="composer"><textarea placeholder="想买什么？说说人数、预算或商品" placeholder-class="placeholder" value="{{input}}" bindinput="input" maxlength="800" auto-height="{{false}}" adjust-position cursor-spacing="18"/><view class="row"><button class="text-button" bindtap="photo" disabled="{{busy}}">拍照 / 图片找货</button><button class="primary small" bindtap="send" loading="{{busy}}" disabled="{{busy || !input}}">发送</button></view></view>
+  </view>
+  <view class="row bottom-tools"><button wx:if="{{hasPlan}}" class="text-button" bindtap="openPlan">我的采购方案</button><button class="text-button" bindtap="store">超市端</button><text class="note">可用手机键盘语音输入</text></view>
+</view>

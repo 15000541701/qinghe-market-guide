@@ -1,0 +1,17 @@
+.address-note {
+  margin-top: 22rpx;
+}
+.status {
+  margin-top: 22rpx;
+  color: #315443;
+  font-size: 26rpx;
+}
+.clear-button {
+  margin-top: 24rpx;
+}
+.panel-body .field:first-child {
+  margin-top: 0;
+}
+.footer-note {
+  line-height: 1.9;
+}
