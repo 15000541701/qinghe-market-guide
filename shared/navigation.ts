@@ -1,7 +1,8 @@
 import { entrance, extraObstacles, zones } from './catalog';
-import type { Category, Point, Route } from './types';
+import type { Category, Point, Route, Shelf, StoreSection } from './types';
+import { fixedFixtures } from './layout';
 
-export function isWalkable(p: Point) {
+export function isWalkable(p: Point, sections: StoreSection[] = [], fixtures?: Shelf[]) {
   return (
     Number.isInteger(p.x) &&
     Number.isInteger(p.y) &&
@@ -9,13 +10,37 @@ export function isWalkable(p: Point) {
     p.x <= 31 &&
     p.y >= 1 &&
     p.y <= 23 &&
-    ![...zones.map((z) => z.rect), ...extraObstacles].some(
-      (r) => p.x >= r.x && p.x < r.x + r.w && p.y >= r.y && p.y < r.y + r.h,
-    )
+    !(
+      fixtures
+        ? [
+            ...fixtures.flatMap((fixture) =>
+              fixture.footprint
+                ? [
+                    fixture.footprint,
+                    ...(fixture.kind === 'service-counter'
+                      ? [{ ...fixture.footprint, y: fixture.footprint.y - 1, h: 1 }]
+                      : []),
+                  ]
+                : [],
+            ),
+            ...fixedFixtures.map((fixture) => fixture.rect),
+          ]
+        : [
+            ...(sections.length ? sections.filter((section) => section.active) : zones).map(
+              (section) => section.rect,
+            ),
+            ...extraObstacles,
+          ]
+    ).some((r) => p.x >= r.x && p.x < r.x + r.w && p.y >= r.y && p.y < r.y + r.h)
   );
 }
-export function findPath(start: Point, end: Point): Point[] {
-  if (!isWalkable(start) || !isWalkable(end)) return [];
+export function findPath(
+  start: Point,
+  end: Point,
+  sections: StoreSection[] = [],
+  fixtures?: Shelf[],
+): Point[] {
+  if (!isWalkable(start, sections, fixtures) || !isWalkable(end, sections, fixtures)) return [];
   const key = (p: Point) => `${p.x},${p.y}`;
   const queue = [start];
   const previous = new Map<string, Point | null>([[key(start), null]]);
@@ -36,7 +61,7 @@ export function findPath(start: Point, end: Point): Point[] {
       { x: p.x, y: p.y + 1 },
       { x: p.x, y: p.y - 1 },
     ]) {
-      if (isWalkable(next) && !previous.has(key(next))) {
+      if (isWalkable(next, sections, fixtures) && !previous.has(key(next))) {
         previous.set(key(next), p);
         queue.push(next);
       }
@@ -64,6 +89,63 @@ export function buildRoute(targets: Category[], start = entrance): Route {
   }
   const distance = Math.max(0, points.length - 1) * 2;
   return { points, stops, distance, minutes: Math.max(1, Math.ceil(distance / 60)) };
+}
+export function buildShelfRoute(
+  targets: Shelf[],
+  start = entrance,
+  sections: StoreSection[] = [],
+  fixtures: Shelf[] = targets,
+): Route {
+  const unique = [...new Map(targets.map((shelf) => [shelf.id, shelf])).values()];
+  const stops: Category[] = [];
+  const shelfStops: Shelf[] = [];
+  const unreachable = unique
+    .filter(
+      (shelf) =>
+        !shelf.reachable || !shelf.position || !isWalkable(shelf.position, sections, fixtures),
+    )
+    .map((shelf) => `${shelf.name}（未配置可达通道点）`);
+  const pending = unique.filter(
+    (shelf) => shelf.reachable && shelf.position && isWalkable(shelf.position, sections, fixtures),
+  );
+  const points = [start];
+  while (pending.length) {
+    const paths = pending
+      .flatMap((shelf) => {
+        if (!shelf.position) return [];
+        const path = findPath(points.at(-1)!, shelf.position, sections, fixtures);
+        return path.length ? [{ shelf, path }] : [];
+      })
+      .sort((a, b) => a.path.length - b.path.length);
+    if (!paths.length) {
+      unreachable.push(
+        ...pending
+          .filter(
+            (shelf) =>
+              shelf.reachable && shelf.position && isWalkable(shelf.position, sections, fixtures),
+          )
+          .map((shelf) => `${shelf.name}（当前地图不可达）`),
+      );
+      break;
+    }
+    const closest = paths[0];
+    points.push(...closest.path.slice(1));
+    stops.push(closest.shelf.sectionId);
+    shelfStops.push(closest.shelf);
+    pending.splice(
+      pending.findIndex((shelf) => shelf.id === closest.shelf.id),
+      1,
+    );
+  }
+  const distance = Math.max(0, points.length - 1) * 2;
+  return {
+    points,
+    stops,
+    shelfStops,
+    unreachable,
+    distance,
+    minutes: Math.max(1, Math.ceil(distance / 60)),
+  };
 }
 export function routeInstructions(points: Point[]): string[] {
   const segments: { direction: string; length: number }[] = [];

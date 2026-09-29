@@ -1,4 +1,4 @@
-import type { Category, GuideResponse, Product, QueryFilters } from './types';
+import type { Category, GuideResponse, Product, QueryFilters, StoreCategory } from './types';
 import { categoryLabels } from './catalog';
 
 const groups: [Category, RegExp][] = [
@@ -45,9 +45,19 @@ export function parseQuery(
   message: string,
   previous: QueryFilters = { categories: [] },
   catalog: Product[] = [],
+  storeCategories: StoreCategory[] = [],
 ): QueryFilters {
   const text = normalizeChineseNumbers(message.trim().toLowerCase());
-  const categories = groups.filter(([, regex]) => regex.test(text)).map(([id]) => id);
+  const categories = [
+    ...groups.filter(([, regex]) => regex.test(text)).map(([id]) => id),
+    ...storeCategories
+      .filter(
+        (category) =>
+          category.active &&
+          (text.includes(category.name.toLowerCase()) || text.includes(category.id.toLowerCase())),
+      )
+      .map((category) => category.id),
+  ];
   const exact = catalog.filter((p) =>
     [p.name, ...p.aliases].some((a) => a.length >= 2 && text.includes(a.toLowerCase())),
   );
@@ -120,8 +130,9 @@ export function respondToQuery(
   message: string,
   products: Product[],
   previous?: QueryFilters,
+  storeCategories: StoreCategory[] = [],
 ): GuideResponse {
-  const filters = parseQuery(message, previous, products);
+  const filters = parseQuery(message, previous, products, storeCategories);
   const hasIntent =
     filters.categories.length > 0 ||
     !!filters.term ||
@@ -141,7 +152,14 @@ export function respondToQuery(
       ? '绿叶蔬菜'
       : filters.term === '鱼类'
         ? '鱼类'
-        : filters.categories.map((c) => categoryLabels[c]).join('、') || '商品';
+        : filters.categories
+            .map(
+              (c) =>
+                storeCategories.find((category) => category.id === c)?.name ||
+                categoryLabels[c] ||
+                c,
+            )
+            .join('、') || '商品';
   const range =
     filters.min !== undefined && filters.max !== undefined
       ? `${filters.min}–${filters.max} 元`

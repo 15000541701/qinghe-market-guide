@@ -8,6 +8,9 @@ const root = process.cwd();
 const dataDir = path.join(root, 'test-results', `api-${Date.now()}`);
 await mkdir(dataDir, { recursive: true });
 let failModel = false;
+let failWeekGenerator = false;
+let useNonFoodWeekIngredient = false;
+let nonFoodProductId = '';
 let sawImage = false;
 let marketCalls = 0;
 const marketDate = new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10);
@@ -78,6 +81,7 @@ const mock = http.createServer(async (req, res) => {
     sawImage = true;
   }
   const mealRequest = body.messages[0].content.includes('采购需求解析器');
+  const weekGenerator = body.messages[0].content.includes('你先规划正常饭菜');
   res.setHeader('Content-Type', 'application/json');
   res.end(
     JSON.stringify({
@@ -87,17 +91,91 @@ const mock = http.createServer(async (req, res) => {
             content: JSON.stringify(
               image
                 ? { candidates: [{ name: '新鲜菠菜', category: 'vegetables', score: 0.92 }] }
-                : mealRequest
-                  ? { people: 2, budget: 50, wants: ['fish', 'greens'], dishIds: [] }
-                  : {
-                      categories: ['vegetables'],
+                : body.messages[1].content.includes('浴室拖鞋')
+                  ? {
+                      categories: ['home'],
                       min: null,
-                      max: 5,
+                      max: null,
                       productIds: [],
-                      leafy: true,
-                      sort: 'price',
+                      leafy: false,
+                      fish: false,
+                      sort: 'default',
                       relevant: true,
-                    },
+                    }
+                  : weekGenerator
+                    ? failWeekGenerator
+                      ? { meals: [] }
+                      : {
+                          meals: Array.from({ length: 21 }, (_, index) => {
+                            const day = Math.floor(index / 3) + 1;
+                            const meal = ['早餐', '午餐', '晚餐'][index % 3];
+                            const breakfast = meal === '早餐';
+                            const dishes = breakfast
+                              ? [
+                                  {
+                                    title: `全麦吐司第${day}天`,
+                                    kind: 'staple',
+                                    minutes: 5,
+                                    steps: ['加热吐司。'],
+                                    ingredients: [{ ingredient: '全麦面包', grams: 120 }],
+                                  },
+                                  {
+                                    title: `水煮蛋第${day}天`,
+                                    kind: 'protein',
+                                    minutes: 10,
+                                    steps: ['鸡蛋煮熟。'],
+                                    ingredients: [
+                                      { ingredient: '鸡蛋', pieces: 2 },
+                                      ...([1, 2].includes(day)
+                                        ? [{ ingredient: '食用油', milliliters: 8 }]
+                                        : []),
+                                    ],
+                                  },
+                                ]
+                              : [
+                                  {
+                                    title: '米饭',
+                                    kind: 'staple',
+                                    minutes: 35,
+                                    steps: ['蒸熟米饭。'],
+                                    ingredients: [{ ingredient: '大米', grams: 180 }],
+                                  },
+                                  {
+                                    title: `鸡胸肉第${day}天${meal}`,
+                                    kind: 'protein',
+                                    minutes: 20,
+                                    steps: ['鸡肉完全炒熟。'],
+                                    ingredients: [
+                                      {
+                                        ingredient: useNonFoodWeekIngredient ? '浴室拖鞋' : '鸡胸肉',
+                                        grams: 200,
+                                      },
+                                      { ingredient: '食用油', milliliters: 8 },
+                                      { ingredient: '食盐', grams: 2 },
+                                    ],
+                                  },
+                                  {
+                                    title: `清炒西兰花第${day}天${meal}`,
+                                    kind: 'vegetable',
+                                    minutes: 10,
+                                    steps: ['西兰花炒熟。'],
+                                    ingredients: [{ ingredient: '西兰花', grams: 150 }],
+                                  },
+                                ];
+                            return { day, meal, dishes };
+                          }),
+                        }
+                    : mealRequest
+                      ? { people: 2, budget: 50, wants: ['fish', 'greens'], dishIds: [] }
+                      : {
+                          categories: ['vegetables'],
+                          min: null,
+                          max: 5,
+                          productIds: [],
+                          leafy: true,
+                          sort: 'price',
+                          relevant: true,
+                        },
             ),
           },
         },
@@ -150,6 +228,108 @@ const stop = async (child) => {
 try {
   server = launch();
   await waitReady();
+  const initialProducts = await (await fetch(`${base}/api/products`)).json();
+  assert.equal(initialProducts.length, 45);
+  assert.deepEqual(initialProducts.find((product) => product.id === 'oil').packageSize, {
+    quantity: 1800,
+    unit: 'ml',
+  });
+  assert.deepEqual(initialProducts.find((product) => product.id === 'egg').packageSize, {
+    quantity: 6,
+    unit: 'piece',
+  });
+  const initialCategories = await (await fetch(`${base}/api/categories`)).json();
+  assert.ok(
+    initialCategories.some((category) => category.id === 'home' && category.kind === 'non_food'),
+  );
+  const customCategory = await request('/categories', {
+    id: 'api-home',
+    name: '测试家居',
+    sectionId: 'pantry',
+    kind: 'non_food',
+  });
+  assert.equal(customCategory.status, 201);
+  assert.equal(
+    (
+      await request(
+        '/categories/api-home',
+        { name: '自定义家居', sectionId: 'pantry', active: true, kind: 'non_food' },
+        'PATCH',
+      )
+    ).status,
+    200,
+  );
+  assert.ok(
+    (await (await fetch(`${base}/api/categories`)).json()).some(
+      (category) => category.name === '自定义家居',
+    ),
+  );
+  assert.equal(
+    (
+      await request(
+        '/categories/api-home',
+        { name: '自定义家居', sectionId: 'pantry', active: false, kind: 'non_food' },
+        'PATCH',
+      )
+    ).status,
+    200,
+  );
+  assert.equal(
+    (
+      await request('/products', {
+        name: '停用分类商品',
+        category: 'api-home',
+        price: 1,
+        unit: '1件',
+        stock: 1,
+        shelf: 'G-01',
+        source: 'manual',
+      })
+    ).status,
+    400,
+  );
+  const customSection = {
+    id: 'api-section',
+    name: 'API 位置测试区',
+    code: 'T1',
+    color: '#536488',
+    tint: '#e4e8f1',
+    location: { x: 28, y: 21 },
+    rect: { x: 29, y: 20, w: 2, h: 2 },
+  };
+  assert.equal((await request('/sections', customSection)).status, 201);
+  assert.equal(
+    (
+      await request(
+        '/sections/api-section',
+        { name: 'API 更新分区', active: true, location: { x: 27, y: 21 } },
+        'PATCH',
+      )
+    ).status,
+    200,
+  );
+  assert.equal(
+    (
+      await request('/shelves', {
+        id: 'api-shelf-01',
+        sectionId: 'api-section',
+        name: 'T1-01',
+        position: { x: 27, y: 21 },
+        reachable: true,
+      })
+    ).status,
+    201,
+  );
+  assert.equal(
+    (
+      await request(
+        '/shelves/api-shelf-01',
+        { sectionId: 'api-section', name: 'T1-02', position: { x: 26, y: 21 }, reachable: false },
+        'PATCH',
+      )
+    ).status,
+    200,
+  );
   await request('/pricing', { productId: 'spinach' });
   assert.equal(marketCalls, 0, 'opening pricing must not fetch external market data');
   const marketResponse = await request('/market-prices', { query: '菠菜' });
@@ -198,11 +378,12 @@ try {
     })
   ).json();
   assert.equal(meal.engine, 'model');
-  assert.equal(meal.mealPlan.total, 39);
+  assert.ok(meal.mealPlan.total > 50);
+  assert.equal(meal.mealPlan.preferences.homePantry.includes('oil'), true);
   assert.equal(meal.action, undefined);
   const confirmation = await (
     await request('/assistant', {
-      message: '油盐也有，确认清单',
+      message: '预算改为300元，油盐也有，确认清单',
       context: {
         cart: [],
         meal: meal.mealPlan.preferences,
@@ -212,6 +393,73 @@ try {
   ).json();
   assert.equal(confirmation.action.type, 'apply_plan');
   assert.equal(confirmation.mealPlan.canApply, true);
+  const weekPlan = await (
+    await request('/assistant', { message: '我想做一周两个人的减脂餐', context: { cart: [] } })
+  ).json();
+  assert.equal(weekPlan.engine, 'model');
+  assert.equal(weekPlan.mealPlan.preferences.people, 2);
+  assert.equal(weekPlan.mealPlan.preferences.days, 7);
+  assert.equal(weekPlan.mealPlan.preferences.mealsPerDay, 3);
+  assert.equal(new Set(weekPlan.mealPlan.recipes.map((recipe) => `${recipe.day}-${recipe.meal}`)).size, 21);
+  assert.ok(weekPlan.mealPlan.recipes.length > 21);
+  assert.ok(weekPlan.mealPlan.items.find((item) => item.product.id === 'chicken').recipeGrams > 0);
+  assert.ok(!weekPlan.mealPlan.items.some((item) => item.product.id === 'oil'));
+  const missingOilWeek = await (
+    await request('/assistant', {
+      message: '家里没有油',
+      context: {
+        cart: [],
+        meal: weekPlan.mealPlan.preferences,
+        recipeIds: weekPlan.mealPlan.recipes.map((recipe) => recipe.id),
+      },
+    })
+  ).json();
+  assert.equal(missingOilWeek.mealPlan.preferences.days, 7);
+  assert.deepEqual(
+    missingOilWeek.mealPlan.recipes.map((recipe) => recipe.title),
+    weekPlan.mealPlan.recipes.map((recipe) => recipe.title),
+  );
+  assert.equal(missingOilWeek.mealPlan.items.find((item) => item.product.id === 'oil').recipeAmount, '128mL');
+  assert.equal(missingOilWeek.mealPlan.items.find((item) => item.product.id === 'oil').quantity, 1);
+  const restoredOilWeek = await (
+    await request('/assistant', {
+      message: '油也有',
+      context: {
+        cart: [],
+        meal: missingOilWeek.mealPlan.preferences,
+        recipeIds: missingOilWeek.mealPlan.recipes.map((recipe) => recipe.id),
+      },
+    })
+  ).json();
+  assert.ok(restoredOilWeek.mealPlan.preferences.homePantry.includes('oil'));
+  assert.ok(!restoredOilWeek.mealPlan.items.some((item) => item.product.id === 'oil'));
+  assert.deepEqual(
+    restoredOilWeek.mealPlan.recipes.map((recipe) => recipe.title),
+    weekPlan.mealPlan.recipes.map((recipe) => recipe.title),
+  );
+  const weekConfirmation = await (
+    await request('/assistant', {
+      message: '确认清单',
+      context: {
+        cart: [],
+        meal: missingOilWeek.mealPlan.preferences,
+        recipeIds: missingOilWeek.mealPlan.recipes.map((recipe) => recipe.id),
+      },
+    })
+  ).json();
+  assert.equal(
+    weekConfirmation.action?.type,
+    'apply_plan',
+    JSON.stringify({ text: weekConfirmation.text, missing: weekConfirmation.mealPlan?.missing, unresolved: weekConfirmation.mealPlan?.unresolved }),
+  );
+  assert.equal(weekConfirmation.mealPlan.total, missingOilWeek.mealPlan.total);
+  failWeekGenerator = true;
+  const generationFallback = await (
+    await request('/assistant', { message: '我想做一周两个人的减脂餐', context: { cart: [] } })
+  ).json();
+  failWeekGenerator = false;
+  assert.equal(generationFallback.mealPlan.preferences.days, 1);
+  assert.match(generationFallback.text, /不是完整周计划/);
   assert.equal(
     (
       await request('/assistant', {
@@ -245,6 +493,11 @@ try {
   assert.equal(mealFallback.engine, 'rules');
   assert.ok(mealFallback.mealPlan);
   assert.ok(mealFallback.fallback);
+  const weekFallback = await (
+    await request('/assistant', { message: '我想做一周一个人的减脂餐', context: { cart: [] } })
+  ).json();
+  assert.equal(weekFallback.mealPlan.preferences.days, 1);
+  assert.match(weekFallback.text, /不是完整周计划/);
   const fallback = await (await request('/chat', { message: '五元以内的绿叶蔬菜' })).json();
   assert.equal(fallback.engine, 'rules');
   assert.ok(fallback.fallback);
@@ -269,12 +522,81 @@ try {
   assert.equal(updated.status, 200);
   assert.equal((await updated.json()).history.length, 2);
   assert.equal((await request('/products', { ...newProduct, price: -1 })).status, 400);
-  assert.equal((await request('/products', { ...newProduct, shelf: 'C-01' })).status, 400);
+  assert.equal(
+    (await request('/products', { ...newProduct, unit: '1件', saleMode: 'weight' })).status,
+    400,
+  );
+  assert.equal(
+    (await request('/products', { ...newProduct, shelf: 'C-01', shelfId: 'does-not-exist' }))
+      .status,
+    400,
+  );
+  const nonFood = await request('/products', {
+    ...newProduct,
+    name: '浴室拖鞋',
+    category: 'home',
+    unit: '1双',
+    shelf: 'G-01',
+    shelfId: 'pantry-shelf-01',
+    image: undefined,
+    reference: undefined,
+  });
+  assert.equal(nonFood.status, 201);
+  const nonFoodProduct = await nonFood.json();
+  nonFoodProductId = nonFoodProduct.id;
+  assert.equal(nonFoodProduct.category, 'home');
+  failModel = false;
+  useNonFoodWeekIngredient = true;
+  const rejectedNonFoodMenu = await (
+    await request('/assistant', {
+      message: '我想做一周一个人的减脂餐',
+      context: { cart: [] },
+    })
+  ).json();
+  useNonFoodWeekIngredient = false;
+  assert.equal(rejectedNonFoodMenu.mealPlan.preferences.days, 7);
+  assert.equal(rejectedNonFoodMenu.mealPlan.budgetComplete, false);
+  assert.ok(rejectedNonFoodMenu.mealPlan.unresolved.some((item) => item.status === 'not_in_store'));
+  failModel = false;
+  const homeQuery = await (await request('/chat', { message: '帮我找浴室拖鞋' })).json();
+  assert.ok(homeQuery.products.some((candidate) => candidate.id === nonFoodProduct.id));
+  assert.equal(homeQuery.engine, 'model');
+  const shelfNavigation = await (
+    await request('/assistant', { message: '带我去浴室拖鞋货架', context: { cart: [] } })
+  ).json();
+  assert.equal(shelfNavigation.action.productId, nonFoodProduct.id);
+  const seedOil = initialProducts.find((item) => item.id === 'oil');
+  assert.equal(
+    (
+      await request('/products/oil', { ...seedOil, price: 45, source: 'manual' }, 'PATCH')
+    ).status,
+    200,
+  );
+  failModel = true;
   await stop(server);
   server = launch();
   await waitReady();
   const products = await (await fetch(`${base}/api/products`)).json();
+  assert.equal(products.find((p) => p.id === 'oil').price, 45);
+  assert.deepEqual(products.find((p) => p.id === 'oil').packageSize, { quantity: 1800, unit: 'ml' });
   assert.equal(products.find((p) => p.id === product.id).price, 6.2);
+  assert.ok(products.find((p) => p.id === nonFoodProduct.id));
+  assert.ok(
+    (await (await fetch(`${base}/api/categories`)).json()).some(
+      (category) =>
+        category.id === 'api-home' && category.name === '自定义家居' && !category.active,
+    ),
+  );
+  assert.ok(
+    (await (await fetch(`${base}/api/sections`)).json()).some(
+      (section) => section.id === 'api-section' && section.name === 'API 更新分区',
+    ),
+  );
+  assert.ok(
+    (await (await fetch(`${base}/api/shelves`)).json()).some(
+      (shelf) => shelf.id === 'api-shelf-01' && shelf.name === 'T1-02' && !shelf.reachable,
+    ),
+  );
   const saved = products.find((p) => p.id === product.id);
   assert.equal(saved.marketReference.quote.origin, '河北');
   assert.equal(saved.marketReference.kind, 'wholesale');
@@ -288,7 +610,7 @@ try {
     400,
   );
   console.log(
-    'PASS: on-demand market requests, unit validation, wholesale pricing, reference persistence, model chat/vision, errors, CRUD and restart persistence.',
+    'PASS: on-demand market requests, unit validation, wholesale pricing, reference persistence, dynamic categories, non-food catalog query, model chat/vision, errors, CRUD and restart persistence.',
   );
 } finally {
   await stop(server);

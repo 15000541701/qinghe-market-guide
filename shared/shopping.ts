@@ -26,6 +26,23 @@ export function unitGrams(unit: string): number | null {
     +match[1] * (['kg', '千克', '公斤'].includes(match[2]) ? 1000 : match[2] === '斤' ? 500 : 1)
   );
 }
+export type MeasureUnit = 'g' | 'ml' | 'piece' | 'package';
+export function packageSize(product: Product): { quantity: number; unit: MeasureUnit } {
+  if (product.packageSize && product.packageSize.quantity > 0) return product.packageSize;
+  const text = product.unit.trim().toLowerCase();
+  const weight = unitGrams(text);
+  if (weight) return { quantity: weight, unit: 'g' };
+  const volume = text.match(/^(\d+(?:\.\d+)?)\s*(ml|毫升|l|升)$/i);
+  if (volume)
+    return {
+      quantity: +volume[1] * (/^(?:l|升)$/i.test(volume[2]) ? 1000 : 1),
+      unit: 'ml',
+    };
+  const pieces = text.match(/^(\d+(?:\.\d+)?)\s*(枚|个|只|颗|根|片|双)$/);
+  if (pieces) return { quantity: +pieces[1], unit: 'piece' };
+  if (/^(枚|个|只|颗|根|片|双)$/.test(text)) return { quantity: 1, unit: 'piece' };
+  return { quantity: 1, unit: 'package' };
+}
 export function isWeighed(product: Product) {
   return (
     !!unitGrams(product.unit) &&
@@ -39,11 +56,22 @@ export function quantityStep(product: Product) {
   return isWeighed(product) ? roundQuantity(100 / unitGrams(product.unit)!) : 1;
 }
 export function quantityForGrams(product: Product, grams: number) {
-  const unit = unitGrams(product.unit);
-  if (!unit) return 1;
+  const size = packageSize(product);
+  if (size.unit !== 'g') return 1;
   return isWeighed(product)
-    ? roundQuantity((Math.ceil(grams / 50) * 50) / unit)
-    : Math.ceil(grams / unit);
+    ? roundQuantity((Math.ceil(grams / 50) * 50) / size.quantity)
+    : Math.ceil(grams / size.quantity);
+}
+export function quantityForMeasure(
+  product: Product,
+  amount: number,
+  unit: 'g' | 'ml' | 'piece',
+): number | null {
+  const size = packageSize(product);
+  if (size.unit !== unit) return null;
+  if (unit === 'g' && isWeighed(product))
+    return roundQuantity((Math.ceil(amount / 50) * 50) / size.quantity);
+  return Math.ceil(amount / size.quantity);
 }
 export function amountLabel(product: Product, quantity: number) {
   return isWeighed(product)

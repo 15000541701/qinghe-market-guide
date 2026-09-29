@@ -13,7 +13,7 @@
     "test:mini": "npm run build:mini && node --import tsx --test tests/miniprogram.test.mjs",
     "test:mini:e2e": "node tests/miniprogram-e2e.mjs",
     "start": "tsx server/index.ts",
-    "test": "tsx --test tests/core.test.ts tests/market.test.ts tests/meal.test.ts",
+    "test": "node --import tsx --test tests/core.test.ts tests/market.test.ts tests/meal.test.ts",
     "test:e2e": "node tests/e2e.mjs",
     "test:market": "node tests/market-e2e.mjs",
     "test:meal": "node tests/meal-e2e.mjs",

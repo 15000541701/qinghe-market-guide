@@ -25,7 +25,8 @@ const capture = async (name) => {
 };
 await page.goto(base, { waitUntil: 'networkidle' });
 await page.locator('.product-card').first().waitFor();
-assert.equal(await page.locator('.product-card').count(), 24);
+const catalogCount = await page.evaluate(async () => (await (await fetch('/api/products')).json()).length);
+assert.equal(await page.locator('.product-card').count(), catalogCount);
 await capture('desktop');
 await page.getByRole('button', { name: '推荐 10 元以内的绿叶蔬菜', exact: true }).click();
 await page.waitForFunction(() => document.querySelectorAll('.chat-product').length === 3);

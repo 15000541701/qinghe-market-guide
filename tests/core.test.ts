@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { makeSeedProducts, zones, entrance } from '../shared/catalog';
 import { filterProducts, parseQuery, respondToQuery } from '../shared/guide';
-import { buildRoute, findPath, isWalkable } from '../shared/navigation';
+import { buildRoute, buildShelfRoute, findPath, isWalkable } from '../shared/navigation';
 import { recommendPrice } from '../shared/pricing';
 import { parseSpokenPrice } from '../src/lib';
 
@@ -83,6 +83,32 @@ test('购物清单路线去重并覆盖全部分区', () => {
   assert.equal(route.stops.length, 7);
   assert.equal(route.distance, (route.points.length - 1) * 2);
   assert.equal(findPath({ x: 3, y: 3 }, entrance).length, 0);
+});
+test('货架路线按不同货架终点区分，并明确标记不可达位置', () => {
+  const first = {
+    id: 'shelf-a',
+    sectionId: 'pantry',
+    name: 'G-01',
+    position: { x: 12, y: 10 },
+    reachable: true,
+  };
+  const second = {
+    id: 'shelf-b',
+    sectionId: 'pantry',
+    name: 'G-02',
+    position: { x: 19, y: 16 },
+    reachable: true,
+  };
+  const route = buildShelfRoute([first, first, second]);
+  assert.equal(new Set(route.shelfStops?.map((shelf) => shelf.id)).size, 2);
+  assert.equal(route.stops.length, 2);
+  assert.notDeepEqual(
+    buildShelfRoute([first]).points.at(-1),
+    buildShelfRoute([second]).points.at(-1),
+  );
+  const unavailable = buildShelfRoute([{ ...first, reachable: false }]);
+  assert.equal(unavailable.stops.length, 0);
+  assert.match(unavailable.unreachable?.[0] || '', /G-01/);
 });
 test('中文语音价格解析', () => {
   assert.equal(parseSpokenPrice('售价八块五'), 8.5);

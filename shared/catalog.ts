@@ -1,4 +1,5 @@
 import type { Category, Product, Zone } from './types';
+import { packageSize as inferPackageSize } from './shopping';
 
 export const zones: Zone[] = [
   {
@@ -351,6 +352,27 @@ const definitions: [
     ['食用油'],
     ['菜籽油', '食用油', '油', 'oil'],
   ],
+  ['salt', '加碘食用盐', 'pantry', 2.5, '400g', 'rice', '基础调味，按需少量使用', ['调味'], ['食盐', '盐']],
+  ['sugar', '白砂糖', 'pantry', 5.9, '400g', 'rice', '烹饪调味用糖', ['调味'], ['白糖', '糖']],
+  ['soy-sauce', '生抽', 'pantry', 8.9, '500ml', 'rice', '咸鲜调味，开封后按包装要求保存', ['调味'], ['酱油', '生抽']],
+  ['dark-soy', '老抽', 'pantry', 9.9, '500ml', 'rice', '上色调味，少量使用', ['调味'], ['老抽']],
+  ['vinegar', '米醋', 'pantry', 6.9, '500ml', 'rice', '酸味调料', ['调味'], ['醋', '米醋', '香醋']],
+  ['cooking-wine', '料酒', 'pantry', 8.9, '500ml', 'rice', '烹饪去腥调料', ['调味'], ['料酒']],
+  ['char-siu-sauce', '叉烧酱', 'pantry', 12.9, '250g', 'rice', '特色调味酱料', ['特色调味'], ['叉烧酱']],
+  ['red-fermented-tofu', '红腐乳', 'pantry', 7.9, '340g', 'rice', '特色发酵调味品', ['特色调味'], ['红腐乳', '腐乳']],
+  ['rose-wine', '玫瑰露酒', 'pantry', 18.9, '300ml', 'rice', '特色烹饪酒', ['特色调味'], ['玫瑰露酒']],
+  ['ginger', '生姜', 'vegetables', 3.9, '250g', 'bokchoy', '葱姜蒜等鲜料，按需购买', ['鲜料'], ['姜', '生姜']],
+  ['scallion', '小葱', 'vegetables', 2.9, '100g', 'bokchoy', '葱姜蒜等鲜料，按需购买', ['鲜料'], ['葱', '小葱', '大葱']],
+  ['garlic', '大蒜', 'vegetables', 3.5, '200g', 'bokchoy', '葱姜蒜等鲜料，按需购买', ['鲜料'], ['蒜', '大蒜']],
+  ['chili', '鲜辣椒', 'vegetables', 4.8, '200g', 'tomato', '鲜辣椒，按菜谱用量购买', ['鲜料'], ['辣椒', '小米辣', '青椒']],
+  ['onion', '洋葱', 'vegetables', 4.5, '500g', 'tomato', '可用于炒菜和炖菜', ['蔬菜'], ['洋葱']],
+  ['tofu', '北豆腐', 'dairy', 4.9, '400g', 'milk', '豆制品，冷藏保存', ['豆制品'], ['豆腐', '北豆腐', '豆制品']],
+  ['oats', '即食燕麦片', 'pantry', 12.9, '500g', 'rice', '早餐主食，可按包装说明冲泡', ['主食'], ['燕麦', '燕麦片']],
+  ['noodles', '挂面', 'pantry', 5.9, '500g', 'rice', '日常主食', ['主食'], ['面条', '挂面']],
+  ['black-pepper', '黑胡椒粉', 'pantry', 8.9, '30g', 'rice', '香料调味，按菜谱用量购买', ['香料'], ['黑胡椒', '胡椒粉']],
+  ['cumin', '孜然粉', 'pantry', 7.9, '30g', 'rice', '香料调味，按菜谱用量购买', ['香料'], ['孜然', '孜然粉']],
+  ['toilet-paper', '卷纸', 'home', 16.9, '10卷', 'market', '家庭日用品（演示商品）', ['日用'], ['卷纸', '卫生纸']],
+  ['laundry-detergent', '洗衣液', 'cleaning', 22.9, '1L', 'market', '日用清洁（演示商品）', ['清洁'], ['洗衣液']],
 ];
 
 export function makeSeedProducts(): Product[] {
@@ -368,7 +390,13 @@ export function makeSeedProducts(): Product[] {
       tags,
       aliases,
       stock: 32 + ((index * 13) % 88),
-      shelf: `${zones.find((z) => z.id === category)!.code}-${String((index % 3) + 1).padStart(2, '0')}`,
+      shelf: `${(zones.find((z) => z.id === category) || zones.find((z) => z.id === 'pantry')!).code}-${String((index % 3) + 1).padStart(2, '0')}`,
+      shelfId: `${(zones.find((z) => z.id === category) || zones.find((z) => z.id === 'pantry')!).id}-shelf-${String((index % 3) + 1).padStart(2, '0')}`,
+      saleMode:
+        ['spinach', 'bokchoy', 'lettuce', 'broccoli', 'tomato', 'carrot', 'apple', 'banana', 'orange', 'seabass', 'carp', 'shrimp', 'chicken', 'pork', 'ginger', 'scallion', 'garlic', 'onion', 'chili'].includes(id)
+          ? 'weight'
+          : 'pack',
+      packageSize: inferPackageSize({ unit } as Product),
       history: [0.94, 1.04, 0.98, 1.02, 1].map((factor, i) => ({
         price: Math.round(price * factor * 10) / 10,
         date: date(28 - i * 6),
