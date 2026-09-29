@@ -2,6 +2,7 @@ import { ArrowUpRight, Check, MapPin, Plus } from 'lucide-react';
 import { categoryLabels } from '../../shared/catalog';
 import type { Product } from '../../shared/types';
 import { money } from '../lib';
+import { productLocationLabel } from '../../shared/layout';
 
 export default function ProductCard({
   product,
@@ -39,7 +40,8 @@ export default function ProductCard({
       <div className="product-copy">
         <span className="product-location">
           <MapPin size={12} />
-          {categoryLabel || categoryLabels[product.category] || product.category} · {product.shelf}
+          {categoryLabel || categoryLabels[product.category] || product.category} ·{' '}
+          {productLocationLabel(product)}
         </span>
         <h3>{product.name}</h3>
         <p>{product.description}</p>

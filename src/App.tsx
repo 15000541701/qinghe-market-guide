@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { categoryLabels, entrance, zones } from '../shared/catalog';
 import { buildRoute, buildShelfRoute } from '../shared/navigation';
+import { fixtureKindLabels, productLocationLabel, productShelfTarget } from '../shared/layout';
 import type {
   Category,
   ListItem,
@@ -63,7 +64,13 @@ function loadHomePantry() {
   try {
     const stored = JSON.parse(localStorage.getItem('qinghe-home-pantry') || 'null');
     return Array.isArray(stored)
-      ? [...new Set(stored.filter((key): key is string => typeof key === 'string' && defaultHomePantry.includes(key)))]
+      ? [
+          ...new Set(
+            stored.filter(
+              (key): key is string => typeof key === 'string' && defaultHomePantry.includes(key),
+            ),
+          ),
+        ]
       : [...defaultHomePantry];
   } catch {
     return [...defaultHomePantry];
@@ -265,7 +272,7 @@ export default function App() {
     } else
       setRoute(
         destinations.length
-          ? buildShelfRoute(destinations, currentPoint, storeSections)
+          ? buildShelfRoute(destinations, currentPoint, storeSections, shelves)
           : buildShelfRoute(
               [
                 {
@@ -278,6 +285,7 @@ export default function App() {
               ],
               currentPoint,
               storeSections,
+              shelves,
             ),
       );
     if (switchTab) setTab('map');
@@ -285,15 +293,23 @@ export default function App() {
       setTab('map');
     }
   };
+  const navigateShelf = (shelf: Shelf) => {
+    const next = buildShelfRoute([shelf], currentPoint, storeSections, shelves);
+    setSelected(shelf.sectionId);
+    setRoute(next);
+    setTab('map');
+    notify(
+      next.shelfStops?.length
+        ? `已规划前往 ${shelf.name} 的模拟路线。`
+        : `${shelf.name} 暂不可达，请在超市端配置通道位置。`,
+    );
+  };
   const navigateProduct = (product: Product) => {
     const shelf =
       shelves.find((item) => item.id === product.shelfId) ||
       shelves.find((item) => item.name === product.shelf);
     if (shelf) {
-      setSelected(shelf.sectionId);
-      setRoute(buildShelfRoute([shelf], currentPoint, storeSections));
-      setTab('map');
-      notify(`已规划前往货架 ${shelf.name} 的模拟路线。`);
+      navigateShelf(productShelfTarget(product, shelf));
     } else {
       setRoute({
         points: [currentPoint],
@@ -315,14 +331,12 @@ export default function App() {
     const remaining = route.shelfStops?.slice(1);
     setRoute(
       remaining?.length
-        ? buildShelfRoute(remaining, reachedPoint, storeSections)
+        ? buildShelfRoute(remaining, reachedPoint, storeSections, shelves)
         : route.stops.length > 1
           ? buildRoute(route.stops.slice(1), positionFor(stop))
           : null,
     );
-    notify(
-      `模拟到达${route.shelfStops?.[0]?.name || categoryName(stop)}，可以挑选商品了。`,
-    );
+    notify(`模拟到达${route.shelfStops?.[0]?.name || categoryName(stop)}，可以挑选商品了。`);
   };
   const changePosition = (id: Category | 'entrance') => {
     setCurrent(id);
@@ -331,18 +345,19 @@ export default function App() {
     if (route)
       setRoute(
         route.shelfStops
-          ? buildShelfRoute(route.shelfStops, point, storeSections)
+          ? buildShelfRoute(route.shelfStops, point, storeSections, shelves)
           : buildRoute(route.stops, point),
       );
   };
   const planList = () => {
     const pendingItems = availableList.filter((item) => !item.checked && item.product.stock > 0);
     const targets = pendingItems
-      .map(
-        (item) =>
+      .map((item) => {
+        const shelf =
           shelves.find((shelf) => shelf.id === item.product.shelfId) ||
-          shelves.find((shelf) => shelf.name === item.product.shelf),
-      )
+          shelves.find((shelf) => shelf.name === item.product.shelf);
+        return shelf ? productShelfTarget(item.product, shelf) : undefined;
+      })
       .filter((target): target is Shelf => !!target);
     if (!pendingItems.length) {
       notify('清单里没有待购买的在售商品。');
@@ -356,7 +371,7 @@ export default function App() {
           ),
       )
       .map((item) => item.product.name);
-    const nextRoute = buildShelfRoute(targets, currentPoint, storeSections);
+    const nextRoute = buildShelfRoute(targets, currentPoint, storeSections, shelves);
     if (missing.length)
       nextRoute.unreachable = [
         ...(nextRoute.unreachable || []),
@@ -380,7 +395,7 @@ export default function App() {
         const product = products.find((item) => item.id === action.productId);
         if (product) {
           navigateProduct(product);
-          return `正在模拟前往货架 ${product.shelf}。`;
+          return `正在模拟前往 ${productLocationLabel(product)}。`;
         }
       }
       if (action.category) {
@@ -395,13 +410,13 @@ export default function App() {
             product &&
             (shelves.find((s) => s.id === product.shelfId) ||
               shelves.find((s) => s.name === product.shelf));
-          return shelf ? [shelf] : [];
+          return shelf && product ? [productShelfTarget(product, shelf)] : [];
         });
       if (!pending.length) return '清单里没有待购的在售商品。请先确认采购方案或加入商品。';
-      const nextRoute = buildShelfRoute(pending, currentPoint, storeSections);
+      const nextRoute = buildShelfRoute(pending, currentPoint, storeSections, shelves);
       setRoute(nextRoute);
       setTab('map');
-      return `已按待购清单规划 ${nextRoute.stops.length} 个分区的路线，约 ${nextRoute.distance} 米。到达后可说“去下一站”推进模拟行程。`;
+      return `已按待购清单规划 ${nextRoute.shelfStops?.length || 0} 个取货点的路线，约 ${nextRoute.distance} 米。到达后可说“去下一站”推进模拟行程。`;
     }
     if (action.type === 'next') {
       if (!route?.stops.length) return '当前没有正在进行的路线。可以先说“按清单规划路线”。';
@@ -447,6 +462,9 @@ export default function App() {
     current,
     currentPoint,
     sections: storeSections,
+    shelves,
+    products,
+    onShelfSelect: navigateShelf,
     selected,
     onSelect: (id: Category) => {
       const matchingCategories = storeCategories.filter(
@@ -700,7 +718,9 @@ export default function App() {
                       <ProductCard
                         key={product.id}
                         product={product}
-                        categoryLabel={storeCategories.find((item) => item.id === product.category)?.name}
+                        categoryLabel={
+                          storeCategories.find((item) => item.id === product.category)?.name
+                        }
                         onAdd={add}
                         onNavigate={navigateProduct}
                         added={list.some((item) => item.productId === product.id)}
@@ -730,39 +750,72 @@ export default function App() {
             {tab === 'map' && (
               <div className="map-page">
                 <aside className="zone-directory">
-                  <h2>想去哪个分区？</h2>
-                  <p>点击分区，查看步行路线。</p>
+                  <h2>卖场区域与陈列</h2>
+                  <p>展开区域选择取货点，点击地图设施查看商品侧面与层位。</p>
                   {storeSections
                     .filter((section) => section.active)
                     .map((zone) => (
-                      <button
-                        key={zone.id}
-                        className={selected === zone.id ? 'active' : ''}
-                        onClick={() => navigateTo(zone.id)}
-                      >
-                        <span
-                          className="zone-letter"
-                          style={{ color: zone.color, background: zone.tint }}
+                      <div key={zone.id}>
+                        <button
+                          className={selected === zone.id ? 'active' : ''}
+                          aria-expanded={selected === zone.id}
+                          onClick={() => setSelected(selected === zone.id ? undefined : zone.id)}
                         >
-                          {zone.code}
-                        </span>
-                        <span>
-                          <strong>{zone.name}</strong>
-                          <small>
-                            {
-                              products.filter(
-                                (p) =>
-                                  (p.shelfId
-                                    ? shelves.find((s) => s.id === p.shelfId)?.sectionId
-                                    : shelves.find((s) => s.name === p.shelf)?.sectionId) ===
-                                    zone.id && p.stock > 0,
-                              ).length
-                            }{' '}
-                            件在售商品
-                          </small>
-                        </span>
-                        <ChevronRight size={16} />
-                      </button>
+                          <span
+                            className="zone-letter"
+                            style={{ color: zone.color, background: zone.tint }}
+                          >
+                            {zone.code}
+                          </span>
+                          <span>
+                            <strong>{zone.name}</strong>
+                            <small>
+                              {
+                                products.filter(
+                                  (p) =>
+                                    (p.shelfId
+                                      ? shelves.find((s) => s.id === p.shelfId)?.sectionId
+                                      : shelves.find((s) => s.name === p.shelf)?.sectionId) ===
+                                      zone.id && p.stock > 0,
+                                ).length
+                              }{' '}
+                              件在售商品
+                            </small>
+                          </span>
+                          <ChevronRight size={16} />
+                        </button>
+                        {selected === zone.id && (
+                          <div style={{ padding: '4px 8px 12px' }}>
+                            {shelves
+                              .filter((shelf) => shelf.sectionId === zone.id)
+                              .map((shelf) => (
+                                <button
+                                  key={shelf.id}
+                                  onClick={() => navigateShelf(shelf)}
+                                  className={
+                                    route?.shelfStops?.[0]?.id.split('@')[0] === shelf.id
+                                      ? 'active'
+                                      : ''
+                                  }
+                                >
+                                  <MapPin size={15} />
+                                  <span>
+                                    <strong>{shelf.name}</strong>
+                                    <small>
+                                      {shelf.reachable && shelf.position
+                                        ? fixtureKindLabels[shelf.kind || 'gondola']
+                                        : '未配置可达位置'}
+                                    </small>
+                                  </span>
+                                  <ChevronRight size={14} />
+                                </button>
+                              ))}
+                            {!shelves.some((shelf) => shelf.sectionId === zone.id) && (
+                              <p className="field-note">此区域尚无陈列设施，请在超市端新增。</p>
+                            )}
+                          </div>
+                        )}
+                      </div>
                     ))}
                   <button
                     className="button primary plan-list"
@@ -843,7 +896,7 @@ export default function App() {
                             <strong>{item.product.name}</strong>
                             <span>
                               {categoryName(item.product.category)} ·{' '}
-                              {item.product.shelf} · {item.product.unit}
+                              {productLocationLabel(item.product)} · {item.product.unit}
                               {!item.product.stock ? ' · 已售罄' : ''}
                             </span>
                             <span>{amountLabel(item.product, item.quantity)}</span>

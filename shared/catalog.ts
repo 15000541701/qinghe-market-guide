@@ -391,7 +391,7 @@ export function makeSeedProducts(): Product[] {
       aliases,
       stock: 32 + ((index * 13) % 88),
       shelf: `${(zones.find((z) => z.id === category) || zones.find((z) => z.id === 'pantry')!).code}-${String((index % 3) + 1).padStart(2, '0')}`,
-      shelfId: `${(zones.find((z) => z.id === category) || zones.find((z) => z.id === 'pantry')!).id}-shelf-01`,
+      shelfId: `${(zones.find((z) => z.id === category) || zones.find((z) => z.id === 'pantry')!).id}-shelf-${String((index % 3) + 1).padStart(2, '0')}`,
       saleMode:
         ['spinach', 'bokchoy', 'lettuce', 'broccoli', 'tomato', 'carrot', 'apple', 'banana', 'orange', 'seabass', 'carp', 'shrimp', 'chicken', 'pork', 'ginger', 'scallion', 'garlic', 'onion', 'chili'].includes(id)
           ? 'weight'

@@ -22,6 +22,11 @@ export type Shelf = {
   name: string;
   position: Point | null;
   reachable: boolean;
+  kind?:
+    'gondola' | 'produce-table' | 'display-table' | 'service-counter' | 'seafood-tank' | 'chiller';
+  footprint?: { x: number; y: number; w: number; h: number };
+  levels?: number;
+  accessPoints?: Partial<Record<'left' | 'right' | 'front' | 'back', Point>>;
 };
 export type Point = { x: number; y: number };
 export type Zone = {
@@ -52,6 +57,8 @@ export type Product = {
   stock: number;
   shelf: string;
   shelfId?: string;
+  shelfSide?: 'left' | 'right' | 'front' | 'back';
+  shelfLevel?: number;
   history: PriceRecord[];
   marketPrice?: number;
   marketDate?: string;

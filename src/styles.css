@@ -1826,6 +1826,169 @@ img {
 .inventory > .section-heading {
   margin-bottom: 19px;
 }
+.area-add-shortcut {
+  margin-left: auto;
+  white-space: nowrap;
+}
+.area-create-panel {
+  margin-top: 18px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: #fbfcf8;
+}
+.area-create-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.area-create-heading h3 {
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+.area-create-heading p,
+.area-create-panel .field-note {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+.area-ready,
+.area-needs-adjustment {
+  padding: 5px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+  font-size: 11px;
+}
+.area-ready {
+  color: #315443;
+  background: #e7eddf;
+}
+.area-needs-adjustment {
+  color: #8a4d32;
+  background: #fff0e6;
+}
+.area-create-layout {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.85fr) minmax(300px, 1.15fr);
+  gap: 20px;
+  align-items: start;
+}
+.area-create-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  align-items: end;
+}
+.area-coordinates {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-column: 1 / -1;
+  gap: 9px;
+  min-width: 0;
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.area-coordinates:nth-of-type(2) {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.area-coordinates legend {
+  padding: 0 5px;
+  color: #536650;
+  font-size: 11px;
+}
+.area-coordinates .field {
+  min-width: 0;
+}
+.area-create-fields > .field,
+.area-create-fields > button,
+.area-create-fields > .inline-error {
+  grid-column: 1 / -1;
+}
+.area-create-fields .button {
+  justify-self: start;
+}
+.area-map-preview-wrap {
+  min-width: 0;
+}
+.area-map-preview {
+  display: block;
+  width: 100%;
+  max-width: 520px;
+  aspect-ratio: 31 / 23;
+  border: 1px solid #d9dfd1;
+  border-radius: 8px;
+  background: #f1f4ed;
+  cursor: crosshair;
+  touch-action: manipulation;
+}
+.area-map-background {
+  fill: #f1f4ed;
+  stroke: #d9dfd1;
+  stroke-width: 0.08;
+}
+.area-map-fixed-obstacle {
+  fill: #bdc3b7;
+  stroke: #9da697;
+  stroke-width: 0.08;
+}
+.area-map-draft {
+  fill: #8e9ebd;
+  fill-opacity: 0.76;
+  stroke: #536488;
+  stroke-width: 0.18;
+}
+.area-map-draft-invalid {
+  fill: #dc9c82;
+  stroke: #a15b38;
+}
+.area-map-entrance {
+  fill: #315443;
+  stroke: white;
+  stroke-width: 0.13;
+}
+.area-map-access {
+  fill: #e5a945;
+  stroke: #fff;
+  stroke-width: 0.14;
+}
+.area-map-access-invalid {
+  fill: #bd5748;
+}
+.area-map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 13px;
+  margin-top: 9px;
+  color: var(--muted);
+  font-size: 10px;
+}
+.area-map-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.area-map-legend i {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+}
+.area-map-legend .legend-area {
+  background: #bdc3b7;
+}
+.area-map-legend .legend-draft {
+  background: #8e9ebd;
+}
+.area-map-legend .legend-access {
+  background: #e5a945;
+  border-radius: 50%;
+}
+.shelf-form-error {
+  grid-column: 1 / -1;
+}
 .inventory-tools {
   display: flex;
   gap: 10px;
@@ -1989,6 +2152,15 @@ td {
   }
 }
 @media (max-width: 800px) {
+  .area-create-layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .area-map-preview {
+    max-width: none;
+  }
+  .area-add-shortcut {
+    margin-left: 0;
+  }
   .site-header {
     height: 122px;
   }
@@ -2951,6 +3123,25 @@ td {
   color: var(--green) !important;
 }
 @media (max-width: 480px) {
+  .area-create-panel {
+    padding: 12px;
+  }
+  .area-create-heading {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+  .area-create-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .area-coordinates {
+    padding: 8px;
+    gap: 7px;
+  }
+  .area-create-fields > .field,
+  .area-create-fields > button,
+  .area-create-fields > .inline-error {
+    grid-column: 1;
+  }
   .meal-content {
     padding: 17px;
   }

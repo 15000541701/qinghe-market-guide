@@ -12,6 +12,7 @@ import {
 import type { MealPlan, PlannedRecipe } from '../../shared/types';
 import { ingredientNames, defaultHomePantry } from '../../shared/recipes';
 import { categoryLabels } from '../../shared/catalog';
+import { productLocationLabel } from '../../shared/layout';
 import { money } from '../lib';
 import { amountLabel, isWeighed, packageSize } from '../../shared/shopping';
 
@@ -240,8 +241,7 @@ export default function MealPanel({
                     {categoryNames[item.product.category] ||
                       categoryLabels[item.product.category] ||
                       item.product.category}{' '}
-                    ·{' '}
-                    {item.product.shelf}
+                    · {productLocationLabel(item.product)}
                   </span>
                 </div>
               </details>

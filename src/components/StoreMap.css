@@ -1,0 +1,186 @@
+.supermarket-map {
+  min-width: 0;
+  overflow: hidden;
+}
+.store-map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  padding: 0 20px 14px;
+  font-size: 11px;
+  color: #737b6f;
+}
+.store-map-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.store-map-legend i {
+  width: 12px;
+  height: 8px;
+  border-radius: 2px;
+}
+.store-floor-scroll {
+  overflow: auto;
+  max-height: 78vh;
+  background: #f6f5ef;
+}
+.store-floor-svg {
+  display: block;
+  height: auto;
+}
+.floor-department {
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.6px;
+  cursor: pointer;
+}
+.floor-label {
+  font-size: 11px;
+  fill: #5c695c;
+  text-anchor: middle;
+}
+.floor-micro {
+  font-size: 8px;
+  fill: #839083;
+}
+.floor-aisle-label {
+  font-size: 10px;
+  fill: #a59e8e;
+  letter-spacing: 2px;
+}
+.floor-fixture-name {
+  font-size: 9px;
+  fill: #fff;
+  text-anchor: middle;
+}
+.store-map-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 18px;
+  border-bottom: 1px solid #e8e8df;
+}
+.store-map-toolbar label,
+.store-map-toolbar > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.store-map-toolbar select,
+.store-fixture-picker select {
+  min-width: 0;
+  max-width: 100%;
+  padding: 6px 9px;
+  border: 1px solid #dce0d5;
+  border-radius: 6px;
+  background: #fff;
+}
+.store-fixture-picker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 18px;
+  font-size: 12px;
+}
+.fixture-detail {
+  margin: 0 16px 16px;
+  padding: 16px;
+  border: 1px solid #dce3d5;
+  border-radius: 10px;
+  background: #f9faf5;
+}
+.fixture-detail-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+}
+.fixture-detail-heading h3 {
+  margin: 5px 0 12px;
+  font-size: 17px;
+}
+.fixture-detail-heading small {
+  color: #87907f;
+}
+.fixture-side-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.fixture-side-tabs button {
+  border: 1px solid #d7decf;
+  background: #fff;
+  padding: 6px 12px;
+  border-radius: 5px;
+  font-size: 12px;
+}
+.fixture-side-tabs button.active {
+  background: #315443;
+  color: #fff;
+}
+.fixture-elevation {
+  margin: 14px 0;
+  border-left: 5px solid #a0a792;
+  border-right: 5px solid #a0a792;
+}
+.fixture-level {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  align-items: end;
+  border-bottom: 5px solid #a0a792;
+  min-height: 65px;
+}
+.fixture-level > span {
+  font-size: 10px;
+  padding: 8px 4px;
+  color: #858c7c;
+}
+.fixture-level > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 8px;
+  min-width: 0;
+}
+.fixture-level button {
+  border: 1px solid #d7d8c9;
+  border-radius: 4px 4px 0 0;
+  background: #fffdf5;
+  padding: 8px;
+  text-align: left;
+  max-width: 100%;
+}
+.fixture-level button strong {
+  display: block;
+  font-size: 12px;
+}
+.fixture-level button small {
+  font-size: 10px;
+  color: #7b826c;
+}
+.fixture-empty {
+  font-size: 11px;
+  color: #a3aa9a;
+  padding: 6px 0;
+}
+.store-map-footnote {
+  padding: 0 18px 12px;
+  font-size: 10px;
+  color: #909887;
+}
+@media (max-width: 600px) {
+  .fixture-detail {
+    margin: 0 8px 12px;
+    padding: 12px;
+  }
+  .store-floor-scroll {
+    max-height: 60vh;
+  }
+  .store-map-legend {
+    gap: 6px 10px;
+    padding: 0 12px 10px;
+  }
+}

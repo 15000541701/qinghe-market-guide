@@ -1,7 +1,8 @@
 import { entrance, extraObstacles, zones } from './catalog';
 import type { Category, Point, Route, Shelf, StoreSection } from './types';
+import { fixedFixtures } from './layout';
 
-export function isWalkable(p: Point, sections: StoreSection[] = []) {
+export function isWalkable(p: Point, sections: StoreSection[] = [], fixtures?: Shelf[]) {
   return (
     Number.isInteger(p.x) &&
     Number.isInteger(p.y) &&
@@ -9,15 +10,37 @@ export function isWalkable(p: Point, sections: StoreSection[] = []) {
     p.x <= 31 &&
     p.y >= 1 &&
     p.y <= 23 &&
-    ![
-      ...zones.map((z) => z.rect),
-      ...sections.filter((section) => section.active).map((section) => section.rect),
-      ...extraObstacles,
-    ].some((r) => p.x >= r.x && p.x < r.x + r.w && p.y >= r.y && p.y < r.y + r.h)
+    !(
+      fixtures
+        ? [
+            ...fixtures.flatMap((fixture) =>
+              fixture.footprint
+                ? [
+                    fixture.footprint,
+                    ...(fixture.kind === 'service-counter'
+                      ? [{ ...fixture.footprint, y: fixture.footprint.y - 1, h: 1 }]
+                      : []),
+                  ]
+                : [],
+            ),
+            ...fixedFixtures.map((fixture) => fixture.rect),
+          ]
+        : [
+            ...(sections.length ? sections.filter((section) => section.active) : zones).map(
+              (section) => section.rect,
+            ),
+            ...extraObstacles,
+          ]
+    ).some((r) => p.x >= r.x && p.x < r.x + r.w && p.y >= r.y && p.y < r.y + r.h)
   );
 }
-export function findPath(start: Point, end: Point, sections: StoreSection[] = []): Point[] {
-  if (!isWalkable(start, sections) || !isWalkable(end, sections)) return [];
+export function findPath(
+  start: Point,
+  end: Point,
+  sections: StoreSection[] = [],
+  fixtures?: Shelf[],
+): Point[] {
+  if (!isWalkable(start, sections, fixtures) || !isWalkable(end, sections, fixtures)) return [];
   const key = (p: Point) => `${p.x},${p.y}`;
   const queue = [start];
   const previous = new Map<string, Point | null>([[key(start), null]]);
@@ -38,7 +61,7 @@ export function findPath(start: Point, end: Point, sections: StoreSection[] = []
       { x: p.x, y: p.y + 1 },
       { x: p.x, y: p.y - 1 },
     ]) {
-      if (isWalkable(next, sections) && !previous.has(key(next))) {
+      if (isWalkable(next, sections, fixtures) && !previous.has(key(next))) {
         previous.set(key(next), p);
         queue.push(next);
       }
@@ -71,22 +94,26 @@ export function buildShelfRoute(
   targets: Shelf[],
   start = entrance,
   sections: StoreSection[] = [],
+  fixtures: Shelf[] = targets,
 ): Route {
   const unique = [...new Map(targets.map((shelf) => [shelf.id, shelf])).values()];
   const stops: Category[] = [];
   const shelfStops: Shelf[] = [];
   const unreachable = unique
-    .filter((shelf) => !shelf.reachable || !shelf.position || !isWalkable(shelf.position, sections))
+    .filter(
+      (shelf) =>
+        !shelf.reachable || !shelf.position || !isWalkable(shelf.position, sections, fixtures),
+    )
     .map((shelf) => `${shelf.name}（未配置可达通道点）`);
   const pending = unique.filter(
-    (shelf) => shelf.reachable && shelf.position && isWalkable(shelf.position, sections),
+    (shelf) => shelf.reachable && shelf.position && isWalkable(shelf.position, sections, fixtures),
   );
   const points = [start];
   while (pending.length) {
     const paths = pending
       .flatMap((shelf) => {
         if (!shelf.position) return [];
-        const path = findPath(points.at(-1)!, shelf.position, sections);
+        const path = findPath(points.at(-1)!, shelf.position, sections, fixtures);
         return path.length ? [{ shelf, path }] : [];
       })
       .sort((a, b) => a.path.length - b.path.length);
@@ -94,7 +121,8 @@ export function buildShelfRoute(
       unreachable.push(
         ...pending
           .filter(
-            (shelf) => shelf.reachable && shelf.position && isWalkable(shelf.position, sections),
+            (shelf) =>
+              shelf.reachable && shelf.position && isWalkable(shelf.position, sections, fixtures),
           )
           .map((shelf) => `${shelf.name}（当前地图不可达）`),
       );

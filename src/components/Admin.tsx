@@ -15,7 +15,9 @@ import {
   Upload,
   X,
 } from 'lucide-react';
-import { categoryLabels } from '../../shared/catalog';
+import { categoryLabels, entrance, zones } from '../../shared/catalog';
+import { findPath, isWalkable } from '../../shared/navigation';
+import { fixedFixtures, mainAisles } from '../../shared/layout';
 import type {
   Category,
   MarketReference,
@@ -26,11 +28,13 @@ import type {
   StoreCategory,
   Shelf,
   StoreSection,
+  Point,
 } from '../../shared/types';
 import { ApiError, api, money, parseSpokenPrice, post, useSpeech } from '../lib';
 import MarketLookup from './MarketLookup';
 import { marketToday } from '../../shared/market';
 import { isWeighed } from '../../shared/shopping';
+import FacilityEditor from './FacilityEditor';
 
 interface Props {
   products: Product[];
@@ -39,6 +43,105 @@ interface Props {
   ai: boolean;
 }
 const today = marketToday;
+type MapRect = { x: number; y: number; w: number; h: number };
+type ShelfSide = NonNullable<Product['shelfSide']>;
+const shelfSideNames: Record<ShelfSide, string> = {
+  left: '左侧',
+  right: '右侧',
+  front: '前侧',
+  back: '后侧',
+};
+function shelfAccessSides(shelf?: Shelf): ShelfSide[] {
+  if (!shelf) return [];
+  const points = shelf.accessPoints || (shelf.position ? { front: shelf.position } : {});
+  return Object.keys(points).filter((side): side is ShelfSide => side in shelfSideNames);
+}
+function overlaps(a: MapRect, b: MapRect) {
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+function rectInBounds(rect: MapRect) {
+  return (
+    Number.isInteger(rect.x) &&
+    Number.isInteger(rect.y) &&
+    Number.isInteger(rect.w) &&
+    Number.isInteger(rect.h) &&
+    rect.x >= 1 &&
+    rect.y >= 1 &&
+    rect.w >= 2 &&
+    rect.h >= 2 &&
+    rect.w <= 12 &&
+    rect.h <= 10 &&
+    rect.x + rect.w <= 32 &&
+    rect.y + rect.h <= 24
+  );
+}
+function rectPointDistance(point: Point, rect: MapRect) {
+  const nearestX = Math.max(rect.x, Math.min(point.x, rect.x + rect.w - 1));
+  const nearestY = Math.max(rect.y, Math.min(point.y, rect.y + rect.h - 1));
+  return Math.abs(point.x - nearestX) + Math.abs(point.y - nearestY);
+}
+function nextSectionCode(sections: StoreSection[]) {
+  const used = new Set(sections.map((section) => section.code.toUpperCase()));
+  for (let index = 1; index <= 99; index++) {
+    const code = `S${index}`;
+    if (!used.has(code)) return code;
+  }
+  return `S${Date.now().toString(36).slice(-5).toUpperCase()}`;
+}
+function findOpenArea(sections: StoreSection[], shelves: Shelf[]) {
+  const active = sections.filter((section) => section.active);
+  const baseRects = active.length
+    ? active.map((section) => section.rect)
+    : zones.map((zone) => zone.rect);
+  const fixtureRects = [
+    ...fixedFixtures.map((fixture) => fixture.rect),
+    ...mainAisles,
+    ...shelves.flatMap((shelf) => (shelf.footprint ? [shelf.footprint] : [])),
+  ];
+  const candidateW = 2;
+  const candidateH = 2;
+  for (let y = 1; y <= 24 - candidateH; y++)
+    for (let x = 1; x <= 32 - candidateW; x++) {
+      const rect = { x, y, w: candidateW, h: candidateH };
+      if (
+        !rectInBounds(rect) ||
+        baseRects.some((other) => overlaps(rect, other)) ||
+        fixtureRects.some((other) => overlaps(rect, other))
+      )
+        continue;
+      const candidate: StoreSection = {
+        id: '__new-area-preview__',
+        name: '新区域',
+        code: 'NEW',
+        color: '#536488',
+        tint: '#e4e8f1',
+        rect,
+        location: { x, y },
+        active: true,
+      };
+      const routeSections = [...active, candidate];
+      const approaches = [
+        ...Array.from({ length: candidateH }, (_, offset) => ({ x: x - 1, y: y + offset })),
+        ...Array.from({ length: candidateH }, (_, offset) => ({
+          x: x + candidateW,
+          y: y + offset,
+        })),
+        ...Array.from({ length: candidateW }, (_, offset) => ({ x: x + offset, y: y - 1 })),
+        ...Array.from({ length: candidateW }, (_, offset) => ({
+          x: x + offset,
+          y: y + candidateH,
+        })),
+      ];
+      const location = approaches.find(
+        (point) =>
+          rectPointDistance(point, rect) > 0 &&
+          isWalkable(point, routeSections, shelves) &&
+          findPath(entrance, point, routeSections, shelves).length > 0,
+      );
+      if (location) return { rect, location };
+    }
+  return { rect: { x: 11, y: 8, w: 2, h: 2 }, location: { x: 13, y: 8 } };
+}
 export default function Admin({ products, onRefresh, onToast, ai }: Props) {
   const [categories, setCategories] = useState<StoreCategory[]>([]);
   const [sections, setSections] = useState<StoreSection[]>([]);
@@ -46,10 +149,14 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
   const [newCategory, setNewCategory] = useState('');
   const [newCategoryKind, setNewCategoryKind] = useState<'food' | 'non_food'>('food');
   const [newSection, setNewSection] = useState('pantry');
-  const [newShelfName, setNewShelfName] = useState('');
-  const [newShelfPosition, setNewShelfPosition] = useState('12,14');
   const [newSectionName, setNewSectionName] = useState('');
-  const [newSectionPosition, setNewSectionPosition] = useState('16,10');
+  const [newSectionCode, setNewSectionCode] = useState('');
+  const [newSectionRect, setNewSectionRect] = useState<MapRect>({ x: 1, y: 1, w: 2, h: 2 });
+  const [newSectionLocation, setNewSectionLocation] = useState<Point>({ x: 1, y: 1 });
+  const [sectionPickMode, setSectionPickMode] = useState<'rect' | 'access'>('rect');
+  const [sectionDraftTouched, setSectionDraftTouched] = useState(false);
+  const [sectionSaving, setSectionSaving] = useState(false);
+  const [sectionError, setSectionError] = useState('');
   const [editing, setEditing] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [category, setCategory] = useState<Category>('vegetables');
@@ -58,6 +165,8 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
   const [stock, setStock] = useState('50');
   const [shelf, setShelf] = useState('A-01');
   const [shelfId, setShelfId] = useState('');
+  const [shelfSide, setShelfSide] = useState<ShelfSide>('front');
+  const [shelfLevel, setShelfLevel] = useState('1');
   const [price, setPrice] = useState('');
   const [image, setImage] = useState('');
   const [preview, setPreview] = useState('');
@@ -91,6 +200,12 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
     setCategories(categoryData);
     setSections(sectionData);
     setShelves(shelfData);
+    if (!sectionDraftTouched) {
+      const placement = findOpenArea(sectionData, shelfData);
+      setNewSectionRect(placement.rect);
+      setNewSectionLocation(placement.location);
+    }
+    if (!newSectionCode) setNewSectionCode(nextSectionCode(sectionData));
     if (!shelfId) {
       const sectionId = categoryData.find((item) => item.id === category)?.sectionId;
       const first = shelfData.find((item) => item.sectionId === sectionId && item.reachable);
@@ -179,6 +294,8 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
     setStock('50');
     setShelf(firstShelf?.name || '');
     setShelfId(firstShelf?.id || '');
+    setShelfSide(shelfAccessSides(firstShelf)[0] || 'front');
+    setShelfLevel('1');
     setPrice('');
     setImage('');
     setPreview('');
@@ -193,10 +310,14 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
   const changeCategory = (id: Category) => {
     setCategory(id);
     setSaleMode(['vegetables', 'fruit', 'seafood', 'meat'].includes(id) ? 'weight' : 'pack');
-    const sectionId = categories.find((item) => item.id === id)?.sectionId;
-    const firstShelf = shelves.find((item) => item.sectionId === sectionId && item.reachable);
-    setShelf(firstShelf?.name || '');
-    setShelfId(firstShelf?.id || '');
+    const selectedShelf =
+      shelves.find((item) => item.id === shelfId && item.reachable) ||
+      shelves.find((item) => item.reachable);
+    setShelf(selectedShelf?.name || '');
+    setShelfId(selectedShelf?.id || '');
+    const sides = shelfAccessSides(selectedShelf);
+    setShelfSide(sides.includes(shelfSide) ? shelfSide : sides[0] || 'front');
+    setShelfLevel((current) => String(Math.min(Number(current) || 1, selectedShelf?.levels || 1)));
   };
   const applyCandidate = (candidate: VisionCandidate) => {
     setName(candidate.name);
@@ -250,6 +371,14 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
     setStock(String(product.stock));
     setShelf(product.shelf);
     setShelfId(product.shelfId || shelves.find((item) => item.name === product.shelf)?.id || '');
+    const selectedShelf = shelves.find((item) => item.id === (product.shelfId || ''));
+    const sides = shelfAccessSides(selectedShelf);
+    setShelfSide(
+      product.shelfSide && sides.includes(product.shelfSide)
+        ? product.shelfSide
+        : sides[0] || 'front',
+    );
+    setShelfLevel(String(Math.min(product.shelfLevel || 1, selectedShelf?.levels || 1)));
     setPrice(String(product.price));
     setImage(product.image);
     setPreview(product.image);
@@ -298,6 +427,8 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
           stock: Number(stock),
           shelf,
           shelfId: shelfId || undefined,
+          shelfSide,
+          shelfLevel: Number(shelfLevel),
           image: image || undefined,
           source: advice?.price === Number(price) ? 'suggested' : 'manual',
           reference,
@@ -315,6 +446,52 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
   const filtered = products.filter(
     (p) => (filter === 'all' || p.category === filter) && `${p.name}${p.shelf}`.includes(search),
   );
+  const sectionMapSections =
+    sections.filter((section) => section.active).length > 0
+      ? sections.filter((section) => section.active)
+      : zones.map((zone) => ({ ...zone, active: true }));
+  const areaPreview: StoreSection = {
+    id: '__new-area-preview__',
+    name: newSectionName || '新区域',
+    code: newSectionCode || 'NEW',
+    color: '#536488',
+    tint: '#e4e8f1',
+    rect: newSectionRect,
+    location: newSectionLocation,
+    active: true,
+  };
+  const areaPreviewSections = [...sectionMapSections, areaPreview];
+  const sectionRectOverlaps =
+    sectionMapSections.some((section) => overlaps(newSectionRect, section.rect)) ||
+    fixedFixtures.some((fixture) => overlaps(newSectionRect, fixture.rect)) ||
+    mainAisles.some((aisle) => overlaps(newSectionRect, aisle)) ||
+    shelves.some((shelf) => shelf.footprint && overlaps(newSectionRect, shelf.footprint));
+  const sectionAccessReachable =
+    isWalkable(newSectionLocation, areaPreviewSections, shelves) &&
+    findPath(entrance, newSectionLocation, areaPreviewSections, shelves).length > 0;
+  const sectionDraftReady =
+    rectInBounds(newSectionRect) && !sectionRectOverlaps && sectionAccessReachable;
+  const selectedProductShelf = shelves.find((item) => item.id === shelfId);
+  const selectedShelfSides = shelfAccessSides(selectedProductShelf);
+  const selectedShelfLevels =
+    selectedProductShelf && ['gondola', 'chiller'].includes(selectedProductShelf.kind || 'gondola')
+      ? selectedProductShelf.levels || 1
+      : 1;
+  const pickAreaMapPoint = (event: React.MouseEvent<SVGSVGElement>) => {
+    const bounds = event.currentTarget.getBoundingClientRect();
+    const x = Math.max(
+      1,
+      Math.min(31, Math.floor(((event.clientX - bounds.left) / bounds.width) * 31) + 1),
+    );
+    const y = Math.max(
+      1,
+      Math.min(23, Math.floor(((event.clientY - bounds.top) / bounds.height) * 23) + 1),
+    );
+    setSectionDraftTouched(true);
+    setSectionError('');
+    if (sectionPickMode === 'rect') setNewSectionRect((rect) => ({ ...rect, x, y }));
+    else setNewSectionLocation({ x, y });
+  };
   return (
     <main className="main-container admin-main">
       <div className="page-heading">
@@ -331,6 +508,9 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
         <div className="section-heading">
           <h2>分类与门店位置</h2>
           <span className="muted compact">商品分类与物理分区分别管理</span>
+          <a className="button secondary area-add-shortcut" href="#section-create-form">
+            新增门店分区
+          </a>
         </div>
         <form
           className="form-grid"
@@ -472,54 +652,245 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
           ))}
         </div>
         <form
-          className="form-grid"
-          style={{ marginTop: 16 }}
+          className="area-create-panel"
+          id="section-create-form"
           onSubmit={async (event) => {
             event.preventDefault();
-            const [x, y] = newSectionPosition.split(',').map(Number);
+            setSectionError('');
+            if (!sectionDraftReady) {
+              setSectionError('请调整区域矩形或通道到达点，直到预览显示可导航。');
+              return;
+            }
+            setSectionSaving(true);
             try {
-              await api('/sections', {
+              const created = await api<StoreSection>('/sections', {
                 method: 'POST',
                 body: JSON.stringify({
                   id: `section-${Date.now().toString(36)}`,
                   name: newSectionName,
-                  code: `S${sections.length + 1}`,
+                  code: newSectionCode,
                   color: '#536488',
                   tint: '#e4e8f1',
-                  location: { x, y },
-                  rect: { x: x < 29 ? x + 1 : x - 3, y: Math.max(1, y - 1), w: 2, h: 2 },
+                  location: newSectionLocation,
+                  rect: newSectionRect,
                 }),
               });
               setNewSectionName('');
+              const updatedSections = await api<StoreSection[]>('/sections');
+              const placement = findOpenArea(updatedSections, shelves);
+              setNewSectionCode(nextSectionCode(updatedSections));
+              setNewSectionRect(placement.rect);
+              setNewSectionLocation(placement.location);
+              setSectionDraftTouched(false);
               await refreshLocations();
-              onToast('门店分区已新增。');
+              if (created) onToast(`区域“${created.name}”已新增，可继续添加货架。`);
             } catch (e) {
-              setError((e as Error).message);
+              setSectionError((e as Error).message);
+            } finally {
+              setSectionSaving(false);
             }
           }}
         >
-          <label className="field">
-            新增物理分区
-            <input
-              value={newSectionName}
-              onChange={(e) => setNewSectionName(e.target.value)}
-              maxLength={40}
-              required
-              placeholder="例如：服饰陈列区"
-            />
-          </label>
-          <label className="field">
-            地图通道点 x,y
-            <input
-              value={newSectionPosition}
-              onChange={(e) => setNewSectionPosition(e.target.value)}
-              pattern="[0-9]+,[0-9]+"
-              required
-            />
-          </label>
-          <button className="button secondary" type="submit">
-            新增门店分区
-          </button>
+          <div className="area-create-heading">
+            <div>
+              <h3>新增门店分区</h3>
+              <p>设置地图上的占用矩形和入口通道点，预览会标出已有区域与障碍。</p>
+            </div>
+            <span className={sectionDraftReady ? 'area-ready' : 'area-needs-adjustment'}>
+              {sectionDraftReady ? '通道可到达' : '需要调整位置'}
+            </span>
+          </div>
+          <div className="area-create-layout">
+            <div className="area-create-fields">
+              <label className="field">
+                区域名称
+                <input
+                  value={newSectionName}
+                  onChange={(e) => {
+                    setNewSectionName(e.target.value);
+                    setSectionError('');
+                  }}
+                  maxLength={40}
+                  required
+                  placeholder="例如：宠物用品区"
+                />
+              </label>
+              <label className="field">
+                区域编号
+                <input
+                  value={newSectionCode}
+                  onChange={(e) => {
+                    setNewSectionCode(e.target.value.toUpperCase());
+                    setSectionError('');
+                  }}
+                  maxLength={8}
+                  pattern="[A-Za-z0-9-]+"
+                  required
+                  placeholder="例如：H"
+                />
+              </label>
+              <fieldset className="area-coordinates">
+                <legend>地图矩形（左上角与宽高）</legend>
+                {(['x', 'y', 'w', 'h'] as const).map((key) => (
+                  <label className="field" key={key}>
+                    {key.toUpperCase()}
+                    <input
+                      type="number"
+                      min={key === 'x' || key === 'y' ? 1 : 2}
+                      max={key === 'x' ? 31 : key === 'y' ? 23 : key === 'w' ? 12 : 10}
+                      value={newSectionRect[key]}
+                      onChange={(e) => {
+                        const value = Number(e.target.value);
+                        setNewSectionRect((rect) => ({ ...rect, [key]: value }));
+                        setSectionDraftTouched(true);
+                        setSectionError('');
+                      }}
+                      required
+                    />
+                  </label>
+                ))}
+              </fieldset>
+              <fieldset className="area-coordinates">
+                <legend>通道到达点</legend>
+                {(['x', 'y'] as const).map((key) => (
+                  <label className="field" key={key}>
+                    {key.toUpperCase()}
+                    <input
+                      type="number"
+                      min={1}
+                      max={key === 'x' ? 31 : 23}
+                      value={newSectionLocation[key]}
+                      onChange={(e) => {
+                        setNewSectionLocation((point) => ({
+                          ...point,
+                          [key]: Number(e.target.value),
+                        }));
+                        setSectionDraftTouched(true);
+                        setSectionError('');
+                      }}
+                      required
+                    />
+                  </label>
+                ))}
+              </fieldset>
+              <label className="field">
+                地图点选
+                <select
+                  value={sectionPickMode}
+                  onChange={(e) => setSectionPickMode(e.target.value as 'rect' | 'access')}
+                >
+                  <option value="rect">点击地图设置矩形左上角</option>
+                  <option value="access">点击地图设置通道到达点</option>
+                </select>
+              </label>
+              {sectionError && (
+                <p className="inline-error" role="alert">
+                  {sectionError}
+                </p>
+              )}
+              <button
+                className="button primary"
+                type="submit"
+                disabled={sectionSaving || !sectionDraftReady}
+              >
+                {sectionSaving ? <LoaderCircle className="spin" size={16} /> : <Plus size={16} />}
+                {sectionSaving ? '保存中…' : '保存新区域'}
+              </button>
+            </div>
+            <div className="area-map-preview-wrap">
+              <svg
+                className="area-map-preview"
+                viewBox="0 0 31 23"
+                role="img"
+                aria-label="分区地图预览，可按所选模式点选区域或通道点"
+                onClick={pickAreaMapPoint}
+              >
+                <rect x="0" y="0" width="31" height="23" className="area-map-background" />
+                {sectionMapSections.map((section) => (
+                  <rect
+                    key={section.id}
+                    x={section.rect.x - 1}
+                    y={section.rect.y - 1}
+                    width={section.rect.w}
+                    height={section.rect.h}
+                    fill={section.tint}
+                    stroke={section.color}
+                    strokeWidth="0.12"
+                  />
+                ))}
+                {fixedFixtures.map((fixture) => (
+                  <rect
+                    key={fixture.id}
+                    x={fixture.rect.x - 1}
+                    y={fixture.rect.y - 1}
+                    width={fixture.rect.w}
+                    height={fixture.rect.h}
+                    className="area-map-fixed-fixture"
+                  />
+                ))}
+                {shelves
+                  .filter((shelf) => shelf.footprint)
+                  .map((shelf) => (
+                    <rect
+                      key={shelf.id}
+                      x={shelf.footprint!.x - 1}
+                      y={shelf.footprint!.y - 1}
+                      width={shelf.footprint!.w}
+                      height={shelf.footprint!.h}
+                      className="area-map-existing-fixture"
+                    />
+                  ))}
+                <rect
+                  x={newSectionRect.x - 1}
+                  y={newSectionRect.y - 1}
+                  width={Math.max(0.1, newSectionRect.w)}
+                  height={Math.max(0.1, newSectionRect.h)}
+                  className={
+                    sectionRectOverlaps ? 'area-map-draft area-map-draft-invalid' : 'area-map-draft'
+                  }
+                />
+                <circle
+                  cx={entrance.x - 0.5}
+                  cy={entrance.y - 0.5}
+                  r="0.28"
+                  className="area-map-entrance"
+                />
+                <circle
+                  cx={newSectionLocation.x - 0.5}
+                  cy={newSectionLocation.y - 0.5}
+                  r="0.34"
+                  className={
+                    sectionAccessReachable
+                      ? 'area-map-access'
+                      : 'area-map-access area-map-access-invalid'
+                  }
+                />
+                <rect x="0" y="0" width="31" height="23" fill="transparent" />
+              </svg>
+              <div className="area-map-legend">
+                <span>
+                  <i className="legend-area" />
+                  现有区域
+                </span>
+                <span>
+                  <i className="legend-draft" />
+                  新区域
+                </span>
+                <span>
+                  <i className="legend-access" />
+                  通道到达点
+                </span>
+                <span>入口 E</span>
+              </div>
+              <p className="field-note">
+                {sectionDraftReady
+                  ? `新区域 ${newSectionRect.w}×${newSectionRect.h} 格，到达点 ${newSectionLocation.x},${newSectionLocation.y} 可从入口到达。`
+                  : sectionRectOverlaps
+                    ? '矩形与现有区域或固定障碍重叠，请点击空地或调整坐标。'
+                    : '区域表示可行走地面；到达点不能落在设施占地上，且需能从入口沿通道到达。'}
+              </p>
+            </div>
+          </div>
         </form>
         <div className="inventory-tools" style={{ flexWrap: 'wrap', marginTop: 10 }}>
           {sections.map((item) => (
@@ -596,134 +967,12 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
             </div>
           ))}
         </div>
-        <form
-          className="form-grid"
-          style={{ marginTop: 16 }}
-          onSubmit={async (event) => {
-            event.preventDefault();
-            const section = sections.find((value) => value.id === newSection);
-            if (!section) {
-              setError('新增货架前请选择门店分区。');
-              return;
-            }
-            const [x, y] = newShelfPosition.split(',').map(Number);
-            try {
-              await api('/shelves', {
-                method: 'POST',
-                body: JSON.stringify({
-                  id: `shelf-${Date.now().toString(36)}`,
-                  sectionId: section.id,
-                  name: newShelfName,
-                  position: { x, y },
-                  reachable: true,
-                }),
-              });
-              setNewShelfName('');
-              await refreshLocations();
-              onToast('货架位置已新增。');
-            } catch (e) {
-              setError((e as Error).message);
-            }
-          }}
-        >
-          <label className="field">
-            新增货架
-            <input
-              value={newShelfName}
-              onChange={(e) => setNewShelfName(e.target.value)}
-              maxLength={30}
-              required
-              placeholder="例如：G-02"
-            />
-          </label>
-          <label className="field">
-            通道点 x,y
-            <input
-              value={newShelfPosition}
-              onChange={(e) => setNewShelfPosition(e.target.value)}
-              pattern="[0-9]+,[0-9]+"
-              required
-            />
-          </label>
-          <button className="button secondary" type="submit">
-            新增货架
-          </button>
-        </form>
-        <div className="inventory-tools" style={{ flexWrap: 'wrap', marginTop: 10 }}>
-          {shelves.map((item) => (
-            <div key={item.id} className="candidate-pills">
-              <input
-                aria-label={`${item.name}货架名称`}
-                value={item.name}
-                maxLength={30}
-                onChange={(e) =>
-                  setShelves((all) =>
-                    all.map((s) => (s.id === item.id ? { ...s, name: e.target.value } : s)),
-                  )
-                }
-                onBlur={() => {
-                  const next = shelves.find((s) => s.id === item.id);
-                  if (next)
-                    void api(`/shelves/${item.id}`, {
-                      method: 'PATCH',
-                      body: JSON.stringify(next),
-                    }).catch((e) => setError(e.message));
-                }}
-              />
-              <select
-                aria-label={`${item.name}所属分区`}
-                value={item.sectionId}
-                onChange={(e) => {
-                  const next = { ...item, sectionId: e.target.value };
-                  void api(`/shelves/${item.id}`, { method: 'PATCH', body: JSON.stringify(next) })
-                    .then(refreshLocations)
-                    .catch((err) => setError(err.message));
-                }}
-              >
-                <option value="">选择分区</option>
-                {sections
-                  .filter((s) => s.active)
-                  .map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-              </select>
-              <input
-                aria-label={`${item.name}地图通道点`}
-                value={item.position ? `${item.position.x},${item.position.y}` : ''}
-                pattern="[0-9]+,[0-9]+"
-                onChange={(e) => {
-                  const [x, y] = e.target.value.split(',').map(Number);
-                  if (Number.isInteger(x) && Number.isInteger(y))
-                    setShelves((all) =>
-                      all.map((s) => (s.id === item.id ? { ...s, position: { x, y } } : s)),
-                    );
-                }}
-                onBlur={() => {
-                  const next = shelves.find((s) => s.id === item.id);
-                  if (next)
-                    void api(`/shelves/${item.id}`, {
-                      method: 'PATCH',
-                      body: JSON.stringify(next),
-                    }).catch((e) => setError(e.message));
-                }}
-              />
-              <button
-                type="button"
-                className="text-button"
-                onClick={() => {
-                  const next = { ...item, reachable: !item.reachable };
-                  void api(`/shelves/${item.id}`, { method: 'PATCH', body: JSON.stringify(next) })
-                    .then(refreshLocations)
-                    .catch((e) => setError(e.message));
-                }}
-              >
-                {item.reachable ? '设为不可达' : '设为可达'}
-              </button>
-            </div>
-          ))}
-        </div>
+        <FacilityEditor
+          sections={sections}
+          shelves={shelves}
+          onRefresh={refreshLocations}
+          onToast={onToast}
+        />
       </section>
       <form className="admin-workspace" onSubmit={save} ref={formRef}>
         <section className="intake-panel">
@@ -837,23 +1086,60 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
                 value={shelfId}
                 onChange={(event) => {
                   setShelfId(event.target.value);
-                  setShelf(shelves.find((item) => item.id === event.target.value)?.name || '');
+                  const selected = shelves.find((item) => item.id === event.target.value);
+                  setShelf(selected?.name || '');
+                  const sides = shelfAccessSides(selected);
+                  setShelfSide(sides.includes(shelfSide) ? shelfSide : sides[0] || 'front');
+                  setShelfLevel('1');
                 }}
               >
                 <option value="">选择货架</option>
-                {shelves
-                  .filter(
-                    (item) =>
-                      item.sectionId ===
-                      categories.find((value) => value.id === category)?.sectionId,
+                {sections.map((section) => {
+                  const sectionShelves = shelves.filter((item) => item.sectionId === section.id);
+                  if (
+                    !sectionShelves.length ||
+                    (!section.active && !sectionShelves.some((item) => item.id === shelfId))
                   )
-                  .map((item) => (
-                    <option key={item.id} value={item.id} disabled={!item.reachable}>
-                      {item.name}
-                      {item.reachable ? '' : ' · 不可达'}
-                    </option>
-                  ))}
+                    return null;
+                  return (
+                    <optgroup key={section.id} label={section.name}>
+                      {sectionShelves.map((item) => (
+                        <option key={item.id} value={item.id} disabled={!item.reachable}>
+                          {item.name}
+                          {item.reachable ? '' : ' · 不可达'}
+                        </option>
+                      ))}
+                    </optgroup>
+                  );
+                })}
               </select>
+            </label>
+            <label className="field">
+              货架侧面
+              <select
+                required
+                value={shelfSide}
+                disabled={!selectedProductShelf || !selectedShelfSides.length}
+                onChange={(event) => setShelfSide(event.target.value as ShelfSide)}
+              >
+                {selectedShelfSides.map((side) => (
+                  <option key={side} value={side}>
+                    {shelfSideNames[side]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              货架层位（从下往上）
+              <input
+                type="number"
+                min={1}
+                max={selectedShelfLevels}
+                value={shelfLevel}
+                disabled={!selectedProductShelf || selectedShelfLevels <= 1}
+                required
+                onChange={(event) => setShelfLevel(event.target.value)}
+              />
             </label>
             <label className="field">
               计价单位
