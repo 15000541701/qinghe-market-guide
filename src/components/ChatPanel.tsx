@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight,
   ArrowUp,
@@ -19,10 +19,12 @@ import type {
   QueryFilters,
   ShoppingAction,
   ShoppingContext,
+  StoreCategory,
   VisionResponse,
 } from '../../shared/types';
 import { categoryLabels } from '../../shared/catalog';
 import { api, money, post, useSpeech } from '../lib';
+import { buildMealPlan } from '../../shared/meal-planner';
 
 type Message = {
   id: number;
@@ -43,6 +45,7 @@ const welcome: Message = {
 };
 interface Props {
   products: Product[];
+  storeCategories: StoreCategory[];
   onResults: (products: Product[], label: string) => void;
   onNavigate: (p: Product) => void;
   onAdd: (p: Product) => void;
@@ -58,6 +61,7 @@ interface Props {
 }
 export default function ChatPanel({
   products,
+  storeCategories,
   onResults,
   onNavigate,
   onAdd,
@@ -75,11 +79,20 @@ export default function ChatPanel({
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [filters, setFilters] = useState<QueryFilters>({ categories: [] });
+  const categoryName = (id: string) =>
+    storeCategories.find((category) => category.id === id)?.name || categoryLabels[id] || id;
   const uploadRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const sequence = useRef(1);
   const busyRef = useRef(false);
   const { listening, toggle } = useSpeech((text) => setInput(text), onToast);
+  const livePlan = useMemo(
+    () =>
+      context.meal
+        ? buildMealPlan(context.meal, products, context.cart, context.recipeIds, storeCategories)
+        : null,
+    [context.meal, context.cart, context.recipeIds, products, storeCategories],
+  );
   useEffect(() => {
     onBusy(busy);
   }, [busy]);
@@ -124,9 +137,15 @@ export default function ChatPanel({
           text: responseText,
           products: result.mealPlan || result.action ? [] : result.products,
           warning: result.fallback,
-          trace: result.action && !actionSucceeded ? ['核对最新商品数据', '操作未完成，原清单保留'] : result.trace,
+          trace:
+            result.action && !actionSucceeded
+              ? ['核对最新商品数据', '操作未完成，原清单保留']
+              : result.trace,
           meal: !!result.mealPlan,
-          receipt: actionSucceeded && !!result.action && ['add', 'remove', 'apply_plan'].includes(result.action.type),
+          receipt:
+            actionSucceeded &&
+            !!result.action &&
+            ['add', 'remove', 'apply_plan'].includes(result.action.type),
         },
       ]);
       if (!result.action || result.mealPlan)
@@ -204,7 +223,7 @@ export default function ChatPanel({
         id: sequence.current++,
         role: 'assistant',
         text: matches.length
-          ? `可以到${categoryLabels[candidate.category]}看看。${candidate.productId ? '这里是匹配的商品。' : '本店暂无完全同名的商品，下面是这个分区可选的商品。'}`
+          ? `可以到${categoryName(candidate.category)}看看。${candidate.productId ? '这里是匹配的商品。' : '本店暂无完全同名的商品，下面是这个分区可选的商品。'}`
           : '该分区暂时没有在售商品，换个商品再试试吧。',
         products: matches.slice(0, 3),
       },
@@ -301,7 +320,8 @@ export default function ChatPanel({
                       <span>
                         <strong>{candidate.name}</strong>
                         <small>
-                          {categoryLabels[candidate.category]} · {i === 0 ? '首选匹配' : '其他可能'}
+                          {categoryName(candidate.category)} ·{' '}
+                          {i === 0 ? '首选匹配' : '其他可能'}
                         </small>
                       </span>
                       <ArrowRight size={16} />
@@ -366,6 +386,16 @@ export default function ChatPanel({
             <span />
             <span />
             <span className="sr-only">小禾正在查找商品</span>
+          </div>
+        )}
+        {livePlan && (
+          <div className="chat-live-plan" role="status" aria-live="polite">
+            <strong>当前计划 · 按现价和清单重算</strong>
+            <span>
+              {livePlan.budgetComplete === false
+                ? `本店可购部分 ¥${money(livePlan.total)} · 未计价 ${livePlan.unpriced?.length || 0} 项 · 缺货 ${livePlan.unresolved?.filter((item) => item.status === 'out_of_stock').length || 0} 项`
+                : `计划新增 ¥${money(livePlan.newlyAddedCost ?? livePlan.addedCost)} · 原清单 ¥${money(livePlan.existingCost)} · 合并 ¥${money(livePlan.total)}`}
+            </span>
           </div>
         )}
       </div>

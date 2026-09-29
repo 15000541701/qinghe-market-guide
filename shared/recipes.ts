@@ -1,6 +1,14 @@
 import type { MealWant } from './types';
 
-export type RecipeIngredient = { key: string; grams?: number; units?: number; pantry?: boolean };
+export type RecipeIngredient = {
+  key: string;
+  grams?: number;
+  milliliters?: number;
+  pieces?: number;
+  units?: number;
+  pantry?: boolean;
+  pantryType?: 'basic' | 'specialty';
+};
 export type Recipe = {
   id: string;
   title: string;
@@ -19,24 +27,51 @@ export const ingredientNames: Record<string, string> = {
   broccoli: '西兰花',
   tomato: '番茄',
   chicken: '鸡胸肉',
+  beef: '牛肉',
+  pork: '猪肉',
   shrimp: '虾',
   egg: '鸡蛋',
   bread: '面包',
   milk: '牛奶',
   rice: '米',
+  oats: '燕麦片',
+  noodles: '挂面',
   oil: '食用油',
   salt: '盐',
+  sugar: '糖',
+  'soy-sauce': '生抽',
+  'dark-soy': '老抽',
+  vinegar: '醋',
+  'cooking-wine': '料酒',
+  'char-siu-sauce': '叉烧酱',
+  'red-fermented-tofu': '红腐乳',
+  'rose-wine': '玫瑰露酒',
   ginger: '姜',
   scallion: '葱',
   garlic: '蒜',
+  onion: '洋葱',
+  tofu: '豆腐',
+  chili: '辣椒',
+  'black-pepper': '黑胡椒',
+  cumin: '孜然',
 };
 export const ingredientAliases: Record<string, string[]> = {
-  oil: ['食用油', '油'],
+  oil: ['食用油', '植物油', '菜籽油', '油'],
   salt: ['食盐', '盐'],
+  sugar: ['白砂糖', '白糖', '糖'],
+  'soy-sauce': ['生抽', '酱油'],
+  'dark-soy': ['老抽'],
+  vinegar: ['米醋', '香醋', '醋'],
+  'cooking-wine': ['料酒'],
+  'char-siu-sauce': ['叉烧酱'],
+  'red-fermented-tofu': ['红腐乳', '腐乳'],
+  'rose-wine': ['玫瑰露酒'],
   ginger: ['生姜', '姜'],
   scallion: ['小葱', '大葱', '葱'],
   garlic: ['大蒜', '蒜'],
   rice: ['大米', '米', '主食'],
+  oats: ['燕麦', '燕麦片'],
+  noodles: ['面条', '挂面'],
   egg: ['鸡蛋'],
   tomato: ['番茄', '西红柿'],
   spinach: ['菠菜'],
@@ -44,13 +79,36 @@ export const ingredientAliases: Record<string, string[]> = {
   lettuce: ['生菜'],
   broccoli: ['西兰花', '西蓝花'],
   chicken: ['鸡胸肉', '鸡肉'],
+  beef: ['牛肉', '牛排', '牛腩'],
+  pork: ['猪肉', '猪里脊', '里脊', '五花肉'],
   shrimp: ['虾', '虾仁'],
   seabass: ['鲈鱼'],
   carp: ['草鱼'],
   salmon: ['三文鱼'],
-  bread: ['面包', '吐司'],
+  bread: ['面包', '吐司', '全麦面包', '全麦吐司'],
   milk: ['牛奶'],
+  onion: ['洋葱'],
+  tofu: ['豆腐', '北豆腐', '豆制品'],
+  chili: ['辣椒', '小米辣', '青椒'],
+  'black-pepper': ['黑胡椒', '胡椒粉'],
+  cumin: ['孜然', '孜然粉'],
 };
+export const defaultHomePantry = [
+  'oil',
+  'salt',
+  'sugar',
+  'soy-sauce',
+  'dark-soy',
+  'vinegar',
+  'cooking-wine',
+];
+export function ingredientKey(name: string) {
+  const normalized = name.trim().toLowerCase().replace(/[\s·、，,]/g, '');
+  const found = Object.entries(ingredientAliases).find(([, aliases]) =>
+    aliases.some((alias) => alias.toLowerCase().replace(/[\s·、，,]/g, '') === normalized),
+  );
+  return found?.[0];
+}
 export const recipes: Recipe[] = [
   {
     id: 'steamed-bass',
@@ -59,9 +117,9 @@ export const recipes: Recipe[] = [
     minutes: 20,
     ingredients: [
       { key: 'seabass', grams: 750 },
-      { key: 'ginger', pantry: true },
-      { key: 'scallion', pantry: true },
-      { key: 'salt', pantry: true },
+      { key: 'ginger', grams: 10 },
+      { key: 'scallion', grams: 20 },
+      { key: 'salt', grams: 2, pantryType: 'basic' },
     ],
     steps: [
       '鲈鱼处理干净，放入姜片和少量盐。',
@@ -76,10 +134,10 @@ export const recipes: Recipe[] = [
     minutes: 25,
     ingredients: [
       { key: 'carp', grams: 750 },
-      { key: 'ginger', pantry: true },
-      { key: 'scallion', pantry: true },
-      { key: 'oil', pantry: true },
-      { key: 'salt', pantry: true },
+      { key: 'ginger', grams: 10 },
+      { key: 'scallion', grams: 20 },
+      { key: 'oil', milliliters: 10, pantryType: 'basic' },
+      { key: 'salt', grams: 2, pantryType: 'basic' },
     ],
     steps: [
       '草鱼切段，姜切片，葱切段。',
@@ -94,8 +152,8 @@ export const recipes: Recipe[] = [
     minutes: 15,
     ingredients: [
       { key: 'salmon', grams: 400 },
-      { key: 'oil', pantry: true },
-      { key: 'salt', pantry: true },
+      { key: 'oil', milliliters: 8, pantryType: 'basic' },
+      { key: 'salt', grams: 2, pantryType: 'basic' },
     ],
     steps: ['三文鱼擦干，撒少量盐。', '锅中放少量油，两面煎制，确认中心熟透后出锅。'],
   },
@@ -106,8 +164,8 @@ export const recipes: Recipe[] = [
     minutes: 10,
     ingredients: [
       { key: 'spinach', grams: 500 },
-      { key: 'oil', pantry: true },
-      { key: 'salt', pantry: true },
+      { key: 'oil', milliliters: 8, pantryType: 'basic' },
+      { key: 'salt', grams: 2, pantryType: 'basic' },
     ],
     steps: ['菠菜洗净，切去老根。', '热锅少量油，放菠菜翻炒至熟，最后加少量盐。'],
   },
@@ -118,8 +176,8 @@ export const recipes: Recipe[] = [
     minutes: 10,
     ingredients: [
       { key: 'bokchoy', grams: 500 },
-      { key: 'oil', pantry: true },
-      { key: 'salt', pantry: true },
+      { key: 'oil', milliliters: 8, pantryType: 'basic' },
+      { key: 'salt', grams: 2, pantryType: 'basic' },
     ],
     steps: ['上海青掰开洗净，菜梗和菜叶分开。', '少量油先炒菜梗，再放菜叶，炒熟后加盐。'],
   },
@@ -130,8 +188,8 @@ export const recipes: Recipe[] = [
     minutes: 8,
     ingredients: [
       { key: 'lettuce', grams: 500 },
-      { key: 'oil', pantry: true },
-      { key: 'salt', pantry: true },
+      { key: 'oil', milliliters: 8, pantryType: 'basic' },
+      { key: 'salt', grams: 2, pantryType: 'basic' },
     ],
     steps: ['生菜洗净并沥水。', '热锅放少量油，快速翻炒生菜至熟，加盐调味。'],
   },
@@ -142,12 +200,12 @@ export const recipes: Recipe[] = [
     minutes: 15,
     ingredients: [
       { key: 'tomato', grams: 400 },
-      { key: 'egg', units: 1 },
-      { key: 'oil', pantry: true },
-      { key: 'salt', pantry: true },
+      { key: 'egg', pieces: 3 },
+      { key: 'oil', milliliters: 10, pantryType: 'basic' },
+      { key: 'salt', grams: 2, pantryType: 'basic' },
     ],
     steps: [
-      '番茄切块，按每 2 人约 3 枚鸡蛋打散；其余鸡蛋可留作下一餐。',
+      '番茄切块，鸡蛋打散。',
       '少量油炒熟鸡蛋盛出，再炒番茄。',
       '合炒并加盐，确认鸡蛋熟透。',
     ],
@@ -160,8 +218,8 @@ export const recipes: Recipe[] = [
     ingredients: [
       { key: 'chicken', grams: 400 },
       { key: 'broccoli', grams: 400 },
-      { key: 'oil', pantry: true },
-      { key: 'salt', pantry: true },
+      { key: 'oil', milliliters: 10, pantryType: 'basic' },
+      { key: 'salt', grams: 2, pantryType: 'basic' },
     ],
     steps: [
       '鸡胸肉切块，西兰花切小朵洗净。',
@@ -176,9 +234,9 @@ export const recipes: Recipe[] = [
     minutes: 15,
     ingredients: [
       { key: 'shrimp', grams: 500 },
-      { key: 'ginger', pantry: true },
-      { key: 'scallion', pantry: true },
-      { key: 'salt', pantry: true },
+      { key: 'ginger', grams: 10 },
+      { key: 'scallion', grams: 20 },
+      { key: 'salt', grams: 2, pantryType: 'basic' },
     ],
     steps: ['虾洗净，挑去虾线。', '水中放葱姜和少量盐，煮开后放虾。', '煮至虾肉熟透即可。'],
   },
@@ -188,11 +246,69 @@ export const recipes: Recipe[] = [
     wants: ['breakfast', 'egg'],
     minutes: 15,
     ingredients: [
-      { key: 'bread', units: 1 },
-      { key: 'egg', units: 1 },
-      { key: 'milk', units: 1 },
+      { key: 'bread', grams: 120 },
+      { key: 'egg', pieces: 2 },
+      { key: 'milk', milliliters: 250 },
     ],
     steps: ['鸡蛋煮至熟透，吐司按喜好加热。', '每人搭配吐司、鸡蛋和牛奶；整包剩余食材妥善保存。'],
+  },
+  {
+    id: 'steamed-rice',
+    title: '米饭',
+    wants: ['vegetables'],
+    minutes: 35,
+    ingredients: [{ key: 'rice', grams: 180 }],
+    steps: ['大米淘洗后加适量水。', '按电饭锅说明蒸煮至熟，焖几分钟后盛出。'],
+  },
+  {
+    id: 'tofu-broccoli',
+    title: '西兰花烧豆腐',
+    wants: ['vegetables'],
+    minutes: 20,
+    ingredients: [
+      { key: 'tofu', grams: 300 },
+      { key: 'broccoli', grams: 250 },
+      { key: 'oil', milliliters: 8, pantryType: 'basic' },
+      { key: 'soy-sauce', milliliters: 8, pantryType: 'basic' },
+    ],
+    steps: ['豆腐切块，西兰花洗净切小朵。', '少量油煎香豆腐，加水和生抽焖煮。', '放入西兰花烧熟即可。'],
+  },
+  {
+    id: 'onion-pork',
+    title: '洋葱炒猪肉',
+    wants: ['meat'],
+    minutes: 18,
+    ingredients: [
+      { key: 'pork', grams: 250 },
+      { key: 'onion', grams: 180 },
+      { key: 'oil', milliliters: 8, pantryType: 'basic' },
+      { key: 'soy-sauce', milliliters: 8, pantryType: 'basic' },
+    ],
+    steps: ['猪肉切薄片，洋葱切丝。', '少量油炒熟猪肉，加入洋葱炒软。', '以生抽调味并确认猪肉完全熟透。'],
+  },
+  {
+    id: 'oat-egg-breakfast',
+    title: '燕麦牛奶配水煮蛋',
+    wants: ['breakfast', 'egg'],
+    minutes: 12,
+    ingredients: [
+      { key: 'oats', grams: 80 },
+      { key: 'milk', milliliters: 300 },
+      { key: 'egg', pieces: 2 },
+    ],
+    steps: ['鸡蛋煮至熟透。', '燕麦按包装说明用牛奶冲泡或煮熟。'],
+  },
+  {
+    id: 'special-char-siu',
+    title: '叉烧风味烤鸡腿',
+    wants: ['meat'],
+    minutes: 35,
+    ingredients: [
+      { key: 'chicken', grams: 350 },
+      { key: 'char-siu-sauce', grams: 25 },
+      { key: 'cooking-wine', milliliters: 10, pantryType: 'basic' },
+    ],
+    steps: ['鸡肉与料酒、叉烧酱拌匀腌制片刻。', '烤至中心熟透，按设备功率调整时间。'],
   },
 ];
 

@@ -8,13 +8,26 @@ import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
 import { aiConfigured, AiError, guide, identifyImage } from './ai';
-import { getProduct, getProducts, saveProduct } from './db';
+import { modelOptions } from '../shared/model-options';
+import { getModelSettings, saveModelSettings } from './model-settings';
+import {
+  getCategories,
+  getProduct,
+  getProducts,
+  getSections,
+  getShelves,
+  saveCategory,
+  saveProduct,
+  saveSection,
+  saveShelf,
+} from './db';
 import { recommendPrice } from '../shared/pricing';
 import { zones } from '../shared/catalog';
 import type { Product } from '../shared/types';
 import { lookupMarket, MarketError } from './market';
 import { shoppingAgent, shoppingContextSchema } from './shopping-agent';
 import { convertMarketPrice, isValidMarketDate, XINFADI_SOURCE_URL } from '../shared/market';
+import { unitGrams } from '../shared/shopping';
 
 const app = express();
 const uploads = path.resolve(process.env.DATA_DIR || 'data', 'uploads');
@@ -25,19 +38,167 @@ app.use((_req, res, next) => {
   res.setHeader('Referrer-Policy', 'same-origin');
   next();
 });
-app.use(express.json({ limit: '64kb' }));
+app.use(express.json({ limit: '512kb' }));
 app.use('/uploads', express.static(uploads));
+app.get('/api/model-settings', (_req, res) => res.json(getModelSettings()));
+app.put('/api/model-settings', (req, res) => {
+  const model = z.string().refine((id) => modelOptions.some((option) => option.id === id), '请选择支持的模型');
+  const settings = z.object({ model }).strict().parse(req.body);
+  res.json(saveModelSettings(settings));
+});
 app.get('/api/status', (_req, res) =>
   res.json({ ai: aiConfigured(), mode: aiConfigured() ? '大模型导购' : '规则导购', demo: true }),
 );
 app.get('/api/products', (_req, res) => res.json(getProducts()));
+app.get('/api/categories', (_req, res) => res.json(getCategories()));
+app.get('/api/sections', (_req, res) => res.json(getSections()));
+app.get('/api/shelves', (_req, res) => res.json(getShelves()));
+app.post('/api/categories', (req, res) => {
+  const input = z
+    .object({
+      id: z
+        .string()
+        .trim()
+        .min(2)
+        .max(40)
+        .regex(/^[a-z0-9-]+$/),
+      name: z.string().trim().min(1).max(40),
+      sectionId: z.string().nullable().optional(),
+      kind: z.enum(['food', 'non_food']),
+    })
+    .parse(req.body);
+  if (getCategories().some((item) => item.id === input.id))
+    return res.status(409).json({ error: '分类编号已存在。' });
+  if (
+    input.sectionId &&
+    !getSections().some((section) => section.id === input.sectionId && section.active)
+  )
+    return res.status(400).json({ error: '所选分区不存在或已停用。' });
+  res
+    .status(201)
+    .json(saveCategory({ ...input, sectionId: input.sectionId || null, active: true }));
+});
+app.patch('/api/categories/:id', (req, res) => {
+  const existing = getCategories().find((item) => item.id === req.params.id);
+  if (!existing) return res.status(404).json({ error: '分类不存在。' });
+  const input = z
+    .object({
+      name: z.string().trim().min(1).max(40),
+      sectionId: z.string().nullable(),
+      active: z.boolean(),
+      kind: z.enum(['food', 'non_food']),
+    })
+    .parse(req.body);
+  if (
+    input.sectionId &&
+    !getSections().some((section) => section.id === input.sectionId && section.active)
+  )
+    return res.status(400).json({ error: '所选分区不存在或已停用。' });
+  res.json(saveCategory({ ...existing, ...input }));
+});
+app.post('/api/sections', (req, res) => {
+  const input = z
+    .object({
+      id: z
+        .string()
+        .trim()
+        .min(2)
+        .max(40)
+        .regex(/^[a-z0-9-]+$/),
+      name: z.string().trim().min(1).max(40),
+      code: z.string().trim().min(1).max(8),
+      color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+      tint: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+      location: z.object({
+        x: z.number().int().min(1).max(31),
+        y: z.number().int().min(1).max(23),
+      }),
+      rect: z.object({
+        x: z.number().int(),
+        y: z.number().int(),
+        w: z.number().int().positive(),
+        h: z.number().int().positive(),
+      }),
+    })
+    .parse(req.body);
+  if (getSections().some((section) => section.id === input.id))
+    return res.status(409).json({ error: '分区编号已存在。' });
+  res.status(201).json(saveSection({ ...input, active: true }));
+});
+app.patch('/api/sections/:id', (req, res) => {
+  const existing = getSections().find((item) => item.id === req.params.id);
+  if (!existing) return res.status(404).json({ error: '门店分区不存在。' });
+  const input = z
+    .object({
+      name: z.string().trim().min(1).max(40),
+      active: z.boolean(),
+      location: z.object({
+        x: z.number().int().min(1).max(31),
+        y: z.number().int().min(1).max(23),
+      }),
+    })
+    .parse(req.body);
+  const rect = {
+    ...existing.rect,
+    x: existing.rect.x + input.location.x - existing.location.x,
+    y: existing.rect.y + input.location.y - existing.location.y,
+  };
+  if (rect.x < 1 || rect.y < 1 || rect.x + rect.w > 32 || rect.y + rect.h > 24)
+    return res.status(400).json({ error: '分区移动后会超出地图边界。' });
+  res.json(saveSection({ ...existing, ...input, rect }));
+});
+app.post('/api/shelves', (req, res) => {
+  const input = z
+    .object({
+      id: z
+        .string()
+        .trim()
+        .min(2)
+        .max(60)
+        .regex(/^[a-z0-9-]+$/),
+      sectionId: z.string(),
+      name: z.string().trim().min(1).max(30),
+      position: z
+        .object({ x: z.number().int().min(1).max(31), y: z.number().int().min(1).max(23) })
+        .nullable(),
+      reachable: z.boolean(),
+    })
+    .parse(req.body);
+  if (getShelves().some((shelf) => shelf.id === input.id))
+    return res.status(409).json({ error: '货架编号已存在。' });
+  if (!getSections().some((section) => section.id === input.sectionId && section.active))
+    return res.status(400).json({ error: '所选分区不存在或已停用。' });
+  res.status(201).json(saveShelf(input));
+});
+app.patch('/api/shelves/:id', (req, res) => {
+  const existing = getShelves().find((item) => item.id === req.params.id);
+  if (!existing) return res.status(404).json({ error: '货架不存在。' });
+  const input = z
+    .object({
+      sectionId: z.string(),
+      name: z.string().trim().min(1).max(30),
+      position: z
+        .object({ x: z.number().int().min(1).max(31), y: z.number().int().min(1).max(23) })
+        .nullable(),
+      reachable: z.boolean(),
+    })
+    .parse(req.body);
+  if (!getSections().some((section) => section.id === input.sectionId))
+    return res.status(400).json({ error: '所选分区不存在。' });
+  res.json(saveShelf({ ...existing, ...input }));
+});
 
-const categories = z.enum(['vegetables', 'fruit', 'seafood', 'meat', 'dairy', 'bakery', 'pantry']);
+const categories = z
+  .string()
+  .refine(
+    (id) => getCategories().some((category) => category.id === id && category.active),
+    '请选择有效在用分类',
+  );
 const querySchema = z.object({
   message: z.string().trim().min(1).max(800),
   previous: z
     .object({
-      categories: z.array(categories).max(7),
+      categories: z.array(z.string().max(80)).max(100),
       min: z.number().nonnegative().optional(),
       max: z.number().nonnegative().optional(),
       term: z.string().max(200).optional(),
@@ -47,11 +208,19 @@ const querySchema = z.object({
 });
 app.post('/api/chat', async (req, res) => {
   const input = querySchema.parse(req.body);
-  res.json(await guide(input.message, getProducts(), input.previous));
+  res.json(await guide(input.message, getProducts(), input.previous, getCategories()));
 });
 app.post('/api/assistant', async (req, res) => {
   const input = querySchema.extend({ context: shoppingContextSchema }).parse(req.body);
-  res.json(await shoppingAgent(input.message, getProducts(), input.context, input.previous));
+  res.json(
+    await shoppingAgent(
+      input.message,
+      getProducts(),
+      input.context,
+      input.previous,
+      getCategories(),
+    ),
+  );
 });
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -79,7 +248,7 @@ app.post('/api/vision', upload.single('image'), async (req, res) => {
   await writeFile(path.join(uploads, filename), bytes);
   const image = `/uploads/${filename}`;
   try {
-    const result = await identifyImage(bytes, getProducts());
+    const result = await identifyImage(bytes, getProducts(), getCategories());
     res.json({
       ...result,
       image,
@@ -169,7 +338,9 @@ const productSchema = z
     price: z.number().positive().max(100000),
     unit: z.string().trim().min(1).max(20),
     stock: z.number().int().min(0).max(1000000),
-    shelf: z.string().trim().min(1).max(20),
+    shelf: z.string().trim().min(1).max(30),
+    shelfId: z.string().max(60).optional(),
+    saleMode: z.enum(['weight', 'pack']).optional(),
     image: z
       .string()
       .max(200)
@@ -182,13 +353,19 @@ const productSchema = z
   .refine(
     (input) => !input.reference?.unit || input.reference.unit === input.unit,
     '商品与参考价的计价单位不一致',
+  )
+  .refine(
+    (input) => input.saleMode !== 'weight' || !!unitGrams(input.unit),
+    '称重商品需要明确的质量计价单位，例如 500g 或 1kg。',
   );
 app.post('/api/products', (req, res) => {
   const input = productSchema.parse(req.body);
   const now = new Date().toISOString();
-  const zone = zones.find((z) => z.id === input.category)!;
-  if (!input.shelf.startsWith(`${zone.code}-`)) {
-    res.status(400).json({ error: `该分区货架编号应以 ${zone.code}- 开头。` });
+  const shelf = input.shelfId
+    ? getShelves().find((item) => item.id === input.shelfId)
+    : getShelves().find((item) => item.name === input.shelf);
+  if (input.shelfId && (!shelf || !shelf.reachable)) {
+    res.status(400).json({ error: '请为商品选择有效且可达的货架。' });
     return;
   }
   const product: Product = {
@@ -199,9 +376,15 @@ app.post('/api/products', (req, res) => {
     unit: input.unit,
     image:
       input.image ||
-      `/images/${input.category === 'vegetables' ? 'spinach' : input.category === 'seafood' ? 'fish' : input.category === 'fruit' ? 'apple' : input.category === 'meat' ? 'beef' : input.category === 'dairy' ? 'milk' : input.category === 'bakery' ? 'bread' : 'rice'}.jpg`,
+      `/images/${input.category === 'vegetables' ? 'spinach' : input.category === 'seafood' ? 'fish' : input.category === 'fruit' ? 'apple' : input.category === 'meat' ? 'beef' : input.category === 'dairy' ? 'milk' : input.category === 'bakery' ? 'bread' : input.category === 'pantry' ? 'rice' : 'market'}.jpg`,
     stock: input.stock,
     shelf: input.shelf,
+    shelfId: shelf?.id,
+    saleMode:
+      input.saleMode ||
+      (['vegetables', 'fruit', 'seafood', 'meat'].includes(input.category) && unitGrams(input.unit)
+        ? 'weight'
+        : 'pack'),
     description: input.description || '门店新上架商品',
     tags: [],
     aliases: [input.name],
@@ -228,9 +411,11 @@ app.patch('/api/products/:id', (req, res) => {
     res.status(404).json({ error: '商品不存在，请刷新后重试。' });
     return;
   }
-  const zone = zones.find((z) => z.id === input.category)!;
-  if (!input.shelf.startsWith(`${zone.code}-`)) {
-    res.status(400).json({ error: `该分区货架编号应以 ${zone.code}- 开头。` });
+  const shelf = input.shelfId
+    ? getShelves().find((item) => item.id === input.shelfId)
+    : getShelves().find((item) => item.name === input.shelf);
+  if (input.shelfId && (!shelf || !shelf.reachable)) {
+    res.status(400).json({ error: '请为商品选择有效且可达的货架。' });
     return;
   }
   const unitChanged = previous.unit !== input.unit;
@@ -251,6 +436,8 @@ app.patch('/api/products/:id', (req, res) => {
     saveProduct({
       ...previous,
       ...fields,
+      shelfId: shelf?.id,
+      saleMode: input.saleMode || previous.saleMode,
       price: Math.round(input.price * 100) / 100,
       history,
       ...(reference

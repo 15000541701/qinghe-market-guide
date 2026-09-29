@@ -5,11 +5,13 @@ import { money } from '../lib';
 
 export default function ProductCard({
   product,
+  categoryLabel,
   onAdd,
   onNavigate,
   added,
 }: {
   product: Product;
+  categoryLabel?: string;
   onAdd: (p: Product) => void;
   onNavigate: (p: Product) => void;
   added?: boolean;
@@ -37,7 +39,7 @@ export default function ProductCard({
       <div className="product-copy">
         <span className="product-location">
           <MapPin size={12} />
-          {categoryLabels[product.category]} · {product.shelf}
+          {categoryLabel || categoryLabels[product.category] || product.category} · {product.shelf}
         </span>
         <h3>{product.name}</h3>
         <p>{product.description}</p>

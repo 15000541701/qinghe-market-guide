@@ -15,7 +15,7 @@ import {
   Upload,
   X,
 } from 'lucide-react';
-import { categoryLabels, zones } from '../../shared/catalog';
+import { categoryLabels } from '../../shared/catalog';
 import type {
   Category,
   MarketReference,
@@ -23,10 +23,14 @@ import type {
   Product,
   VisionCandidate,
   VisionResponse,
+  StoreCategory,
+  Shelf,
+  StoreSection,
 } from '../../shared/types';
 import { ApiError, api, money, parseSpokenPrice, post, useSpeech } from '../lib';
 import MarketLookup from './MarketLookup';
 import { marketToday } from '../../shared/market';
+import { isWeighed } from '../../shared/shopping';
 
 interface Props {
   products: Product[];
@@ -36,12 +40,24 @@ interface Props {
 }
 const today = marketToday;
 export default function Admin({ products, onRefresh, onToast, ai }: Props) {
+  const [categories, setCategories] = useState<StoreCategory[]>([]);
+  const [sections, setSections] = useState<StoreSection[]>([]);
+  const [shelves, setShelves] = useState<Shelf[]>([]);
+  const [newCategory, setNewCategory] = useState('');
+  const [newCategoryKind, setNewCategoryKind] = useState<'food' | 'non_food'>('food');
+  const [newSection, setNewSection] = useState('pantry');
+  const [newShelfName, setNewShelfName] = useState('');
+  const [newShelfPosition, setNewShelfPosition] = useState('12,14');
+  const [newSectionName, setNewSectionName] = useState('');
+  const [newSectionPosition, setNewSectionPosition] = useState('16,10');
   const [editing, setEditing] = useState<string | null>(null);
   const [name, setName] = useState('');
   const [category, setCategory] = useState<Category>('vegetables');
   const [unit, setUnit] = useState('500g');
+  const [saleMode, setSaleMode] = useState<'weight' | 'pack'>('weight');
   const [stock, setStock] = useState('50');
   const [shelf, setShelf] = useState('A-01');
+  const [shelfId, setShelfId] = useState('');
   const [price, setPrice] = useState('');
   const [image, setImage] = useState('');
   const [preview, setPreview] = useState('');
@@ -66,6 +82,27 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const busyRef = useRef(false);
+  const refreshLocations = async () => {
+    const [categoryData, sectionData, shelfData] = await Promise.all([
+      api<StoreCategory[]>('/categories'),
+      api<StoreSection[]>('/sections'),
+      api<Shelf[]>('/shelves'),
+    ]);
+    setCategories(categoryData);
+    setSections(sectionData);
+    setShelves(shelfData);
+    if (!shelfId) {
+      const sectionId = categoryData.find((item) => item.id === category)?.sectionId;
+      const first = shelfData.find((item) => item.sectionId === sectionId && item.reachable);
+      if (first) {
+        setShelfId(first.id);
+        setShelf(first.name);
+      }
+    }
+  };
+  useEffect(() => {
+    void refreshLocations().catch((e) => setError(e.message));
+  }, []);
   const referenceContext = [editing, name, unit, baseline].join('|');
   const baselineProduct = products.find((product) => product.id === baseline);
   const reference = useMemo<MarketReference | undefined>(() => {
@@ -125,12 +162,23 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
   }, [referenceContext]);
 
   const reset = () => {
+    const firstCategory =
+      categories.find((item) => item.id === 'vegetables') || categories.find((item) => item.active);
+    const firstShelf = shelves.find(
+      (item) => item.sectionId === firstCategory?.sectionId && item.reachable,
+    );
     setEditing(null);
     setName('');
-    setCategory('vegetables');
+    setCategory(firstCategory?.id || 'vegetables');
     setUnit('500g');
+    setSaleMode(
+      firstCategory && ['vegetables', 'fruit', 'seafood', 'meat'].includes(firstCategory.id)
+        ? 'weight'
+        : 'pack',
+    );
     setStock('50');
-    setShelf('A-01');
+    setShelf(firstShelf?.name || '');
+    setShelfId(firstShelf?.id || '');
     setPrice('');
     setImage('');
     setPreview('');
@@ -144,7 +192,11 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
   };
   const changeCategory = (id: Category) => {
     setCategory(id);
-    setShelf(`${zones.find((z) => z.id === id)!.code}-01`);
+    setSaleMode(['vegetables', 'fruit', 'seafood', 'meat'].includes(id) ? 'weight' : 'pack');
+    const sectionId = categories.find((item) => item.id === id)?.sectionId;
+    const firstShelf = shelves.find((item) => item.sectionId === sectionId && item.reachable);
+    setShelf(firstShelf?.name || '');
+    setShelfId(firstShelf?.id || '');
   };
   const applyCandidate = (candidate: VisionCandidate) => {
     setName(candidate.name);
@@ -153,6 +205,7 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
     setBaseline(existing?.id || '');
     if (existing) {
       setUnit(existing.unit);
+      setSaleMode(existing.saleMode || (isWeighed(existing) ? 'weight' : 'pack'));
       setName(existing.name);
     }
   };
@@ -193,8 +246,10 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
     setName(product.name);
     setCategory(product.category);
     setUnit(product.unit);
+    setSaleMode(product.saleMode || (isWeighed(product) ? 'weight' : 'pack'));
     setStock(String(product.stock));
     setShelf(product.shelf);
+    setShelfId(product.shelfId || shelves.find((item) => item.name === product.shelf)?.id || '');
     setPrice(String(product.price));
     setImage(product.image);
     setPreview(product.image);
@@ -239,8 +294,10 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
           category,
           price: Number(price),
           unit,
+          saleMode,
           stock: Number(stock),
           shelf,
+          shelfId: shelfId || undefined,
           image: image || undefined,
           source: advice?.price === Number(price) ? 'suggested' : 'manual',
           reference,
@@ -270,6 +327,404 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
           {products.length} 件商品 · 示例门店
         </span>
       </div>
+      <section className="inventory" aria-label="分类与货架管理">
+        <div className="section-heading">
+          <h2>分类与门店位置</h2>
+          <span className="muted compact">商品分类与物理分区分别管理</span>
+        </div>
+        <form
+          className="form-grid"
+          onSubmit={async (event) => {
+            event.preventDefault();
+            try {
+              const id = `custom-${Date.now().toString(36)}`;
+              await api('/categories', {
+                method: 'POST',
+                body: JSON.stringify({
+                  id,
+                  name: newCategory,
+                  sectionId: newSection || null,
+                  kind: newCategoryKind,
+                }),
+              });
+              setNewCategory('');
+              await refreshLocations();
+              onToast('分类已新增。');
+            } catch (e) {
+              setError((e as Error).message);
+            }
+          }}
+        >
+          <label className="field">
+            新增商品分类
+            <input
+              value={newCategory}
+              onChange={(e) => setNewCategory(e.target.value)}
+              maxLength={40}
+              required
+              placeholder="例如：宠物用品"
+            />
+          </label>
+          <label className="field">
+            默认门店分区
+            <select value={newSection} onChange={(e) => setNewSection(e.target.value)}>
+              <option value="">暂不指定</option>
+              {sections
+                .filter((s) => s.active)
+                .map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+            </select>
+          </label>
+          <label className="field">
+            分类类型
+            <select
+              value={newCategoryKind}
+              onChange={(e) => setNewCategoryKind(e.target.value as 'food' | 'non_food')}
+            >
+              <option value="food">食品</option>
+              <option value="non_food">非食品</option>
+            </select>
+          </label>
+          <button className="button secondary" type="submit">
+            新增分类
+          </button>
+        </form>
+        <div className="inventory-tools" style={{ flexWrap: 'wrap', marginTop: 12 }}>
+          {categories.map((item) => (
+            <div key={item.id} className="candidate-pills">
+              <input
+                aria-label={`${item.name}分类名称`}
+                value={item.name}
+                maxLength={40}
+                onChange={(e) =>
+                  setCategories((all) =>
+                    all.map((c) => (c.id === item.id ? { ...c, name: e.target.value } : c)),
+                  )
+                }
+                onBlur={() => {
+                  const updated = categories.find((c) => c.id === item.id);
+                  if (updated)
+                    void api(`/categories/${item.id}`, {
+                      method: 'PATCH',
+                      body: JSON.stringify(updated),
+                    })
+                      .then(refreshLocations)
+                      .catch((e) => setError(e.message));
+                }}
+              />
+              <select
+                aria-label={`${item.name}所属分区`}
+                value={item.sectionId || ''}
+                onChange={(e) => {
+                  const next = { ...item, sectionId: e.target.value || null };
+                  setCategories((all) => all.map((c) => (c.id === item.id ? next : c)));
+                  void api(`/categories/${item.id}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify(next),
+                  })
+                    .then(refreshLocations)
+                    .catch((err) => setError(err.message));
+                }}
+              >
+                <option value="">不关联分区</option>
+                {sections
+                  .filter((s) => s.active)
+                  .map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+              </select>
+              <select
+                aria-label={`${item.name}分类类型`}
+                value={item.kind}
+                onChange={(e) => {
+                  const next = { ...item, kind: e.target.value as 'food' | 'non_food' };
+                  setCategories((all) => all.map((c) => (c.id === item.id ? next : c)));
+                  void api(`/categories/${item.id}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify(next),
+                  }).catch((err) => setError(err.message));
+                }}
+              >
+                <option value="food">食品</option>
+                <option value="non_food">非食品</option>
+              </select>
+              <button
+                className="text-button"
+                type="button"
+                onClick={() => {
+                  const next = { ...item, active: !item.active };
+                  void api(`/categories/${item.id}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify(next),
+                  })
+                    .then(refreshLocations)
+                    .catch((e) => setError(e.message));
+                }}
+              >
+                {item.active ? '停用' : '启用'}
+              </button>
+            </div>
+          ))}
+        </div>
+        <form
+          className="form-grid"
+          style={{ marginTop: 16 }}
+          onSubmit={async (event) => {
+            event.preventDefault();
+            const [x, y] = newSectionPosition.split(',').map(Number);
+            try {
+              await api('/sections', {
+                method: 'POST',
+                body: JSON.stringify({
+                  id: `section-${Date.now().toString(36)}`,
+                  name: newSectionName,
+                  code: `S${sections.length + 1}`,
+                  color: '#536488',
+                  tint: '#e4e8f1',
+                  location: { x, y },
+                  rect: { x: x < 29 ? x + 1 : x - 3, y: Math.max(1, y - 1), w: 2, h: 2 },
+                }),
+              });
+              setNewSectionName('');
+              await refreshLocations();
+              onToast('门店分区已新增。');
+            } catch (e) {
+              setError((e as Error).message);
+            }
+          }}
+        >
+          <label className="field">
+            新增物理分区
+            <input
+              value={newSectionName}
+              onChange={(e) => setNewSectionName(e.target.value)}
+              maxLength={40}
+              required
+              placeholder="例如：服饰陈列区"
+            />
+          </label>
+          <label className="field">
+            地图通道点 x,y
+            <input
+              value={newSectionPosition}
+              onChange={(e) => setNewSectionPosition(e.target.value)}
+              pattern="[0-9]+,[0-9]+"
+              required
+            />
+          </label>
+          <button className="button secondary" type="submit">
+            新增门店分区
+          </button>
+        </form>
+        <div className="inventory-tools" style={{ flexWrap: 'wrap', marginTop: 10 }}>
+          {sections.map((item) => (
+            <div key={item.id} className="candidate-pills">
+              <input
+                aria-label={`${item.name}分区名称`}
+                value={item.name}
+                maxLength={40}
+                onChange={(e) =>
+                  setSections((all) =>
+                    all.map((s) => (s.id === item.id ? { ...s, name: e.target.value } : s)),
+                  )
+                }
+                onBlur={() => {
+                  const next = sections.find((s) => s.id === item.id);
+                  if (next)
+                    void api(`/sections/${item.id}`, {
+                      method: 'PATCH',
+                      body: JSON.stringify({
+                        name: next.name,
+                        active: next.active,
+                        location: next.location,
+                      }),
+                    })
+                      .then(refreshLocations)
+                      .catch((e) => setError(e.message));
+                }}
+              />
+              <input
+                aria-label={`${item.name}通道点`}
+                value={`${item.location.x},${item.location.y}`}
+                pattern="[0-9]+,[0-9]+"
+                onChange={(e) => {
+                  const [x, y] = e.target.value.split(',').map(Number);
+                  if (Number.isInteger(x) && Number.isInteger(y))
+                    setSections((all) =>
+                      all.map((s) => (s.id === item.id ? { ...s, location: { x, y } } : s)),
+                    );
+                }}
+                onBlur={() => {
+                  const next = sections.find((s) => s.id === item.id);
+                  if (next)
+                    void api(`/sections/${item.id}`, {
+                      method: 'PATCH',
+                      body: JSON.stringify({
+                        name: next.name,
+                        active: next.active,
+                        location: next.location,
+                      }),
+                    })
+                      .then(refreshLocations)
+                      .catch((e) => setError(e.message));
+                }}
+              />
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => {
+                  const next = { ...item, active: !item.active };
+                  void api(`/sections/${item.id}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({
+                      name: next.name,
+                      active: next.active,
+                      location: next.location,
+                    }),
+                  })
+                    .then(refreshLocations)
+                    .catch((e) => setError(e.message));
+                }}
+              >
+                {item.active ? '停用' : '启用'}
+              </button>
+            </div>
+          ))}
+        </div>
+        <form
+          className="form-grid"
+          style={{ marginTop: 16 }}
+          onSubmit={async (event) => {
+            event.preventDefault();
+            const section = sections.find((value) => value.id === newSection);
+            if (!section) {
+              setError('新增货架前请选择门店分区。');
+              return;
+            }
+            const [x, y] = newShelfPosition.split(',').map(Number);
+            try {
+              await api('/shelves', {
+                method: 'POST',
+                body: JSON.stringify({
+                  id: `shelf-${Date.now().toString(36)}`,
+                  sectionId: section.id,
+                  name: newShelfName,
+                  position: { x, y },
+                  reachable: true,
+                }),
+              });
+              setNewShelfName('');
+              await refreshLocations();
+              onToast('货架位置已新增。');
+            } catch (e) {
+              setError((e as Error).message);
+            }
+          }}
+        >
+          <label className="field">
+            新增货架
+            <input
+              value={newShelfName}
+              onChange={(e) => setNewShelfName(e.target.value)}
+              maxLength={30}
+              required
+              placeholder="例如：G-02"
+            />
+          </label>
+          <label className="field">
+            通道点 x,y
+            <input
+              value={newShelfPosition}
+              onChange={(e) => setNewShelfPosition(e.target.value)}
+              pattern="[0-9]+,[0-9]+"
+              required
+            />
+          </label>
+          <button className="button secondary" type="submit">
+            新增货架
+          </button>
+        </form>
+        <div className="inventory-tools" style={{ flexWrap: 'wrap', marginTop: 10 }}>
+          {shelves.map((item) => (
+            <div key={item.id} className="candidate-pills">
+              <input
+                aria-label={`${item.name}货架名称`}
+                value={item.name}
+                maxLength={30}
+                onChange={(e) =>
+                  setShelves((all) =>
+                    all.map((s) => (s.id === item.id ? { ...s, name: e.target.value } : s)),
+                  )
+                }
+                onBlur={() => {
+                  const next = shelves.find((s) => s.id === item.id);
+                  if (next)
+                    void api(`/shelves/${item.id}`, {
+                      method: 'PATCH',
+                      body: JSON.stringify(next),
+                    }).catch((e) => setError(e.message));
+                }}
+              />
+              <select
+                aria-label={`${item.name}所属分区`}
+                value={item.sectionId}
+                onChange={(e) => {
+                  const next = { ...item, sectionId: e.target.value };
+                  void api(`/shelves/${item.id}`, { method: 'PATCH', body: JSON.stringify(next) })
+                    .then(refreshLocations)
+                    .catch((err) => setError(err.message));
+                }}
+              >
+                <option value="">选择分区</option>
+                {sections
+                  .filter((s) => s.active)
+                  .map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.name}
+                    </option>
+                  ))}
+              </select>
+              <input
+                aria-label={`${item.name}地图通道点`}
+                value={item.position ? `${item.position.x},${item.position.y}` : ''}
+                pattern="[0-9]+,[0-9]+"
+                onChange={(e) => {
+                  const [x, y] = e.target.value.split(',').map(Number);
+                  if (Number.isInteger(x) && Number.isInteger(y))
+                    setShelves((all) =>
+                      all.map((s) => (s.id === item.id ? { ...s, position: { x, y } } : s)),
+                    );
+                }}
+                onBlur={() => {
+                  const next = shelves.find((s) => s.id === item.id);
+                  if (next)
+                    void api(`/shelves/${item.id}`, {
+                      method: 'PATCH',
+                      body: JSON.stringify(next),
+                    }).catch((e) => setError(e.message));
+                }}
+              />
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => {
+                  const next = { ...item, reachable: !item.reachable };
+                  void api(`/shelves/${item.id}`, { method: 'PATCH', body: JSON.stringify(next) })
+                    .then(refreshLocations)
+                    .catch((e) => setError(e.message));
+                }}
+              >
+                {item.reachable ? '设为不可达' : '设为可达'}
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
       <form className="admin-workspace" onSubmit={save} ref={formRef}>
         <section className="intake-panel">
           <div className="section-heading">
@@ -340,7 +795,11 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
                   className={name.includes(candidate.name) ? 'selected' : ''}
                 >
                   {candidate.name}
-                  <span>{categoryLabels[candidate.category]}</span>
+                  <span>
+                    {categories.find((item) => item.id === candidate.category)?.name ||
+                      categoryLabels[candidate.category] ||
+                      candidate.category}
+                  </span>
                 </button>
               ))}
             </div>
@@ -362,21 +821,39 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
                 value={category}
                 onChange={(event) => changeCategory(event.target.value as Category)}
               >
-                {zones.map((z) => (
-                  <option key={z.id} value={z.id}>
-                    {z.code} · {z.name}
-                  </option>
-                ))}
+                {categories
+                  .filter((item) => item.active || item.id === category)
+                  .map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
               </select>
             </label>
             <label className="field">
               货架编号
-              <input
+              <select
                 required
-                value={shelf}
-                maxLength={20}
-                onChange={(event) => setShelf(event.target.value)}
-              />
+                value={shelfId}
+                onChange={(event) => {
+                  setShelfId(event.target.value);
+                  setShelf(shelves.find((item) => item.id === event.target.value)?.name || '');
+                }}
+              >
+                <option value="">选择货架</option>
+                {shelves
+                  .filter(
+                    (item) =>
+                      item.sectionId ===
+                      categories.find((value) => value.id === category)?.sectionId,
+                  )
+                  .map((item) => (
+                    <option key={item.id} value={item.id} disabled={!item.reachable}>
+                      {item.name}
+                      {item.reachable ? '' : ' · 不可达'}
+                    </option>
+                  ))}
+              </select>
             </label>
             <label className="field">
               计价单位
@@ -387,6 +864,16 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
                 onChange={(event) => setUnit(event.target.value)}
                 placeholder="500g"
               />
+            </label>
+            <label className="field">
+              售卖方式
+              <select
+                value={saleMode}
+                onChange={(event) => setSaleMode(event.target.value as 'weight' | 'pack')}
+              >
+                <option value="weight">称重商品</option>
+                <option value="pack">整包 / 整件</option>
+              </select>
             </label>
             <label className="field">
               库存数量
@@ -662,9 +1149,9 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
               aria-label="筛选库存分区"
             >
               <option value="all">全部分区</option>
-              {zones.map((z) => (
-                <option key={z.id} value={z.id}>
-                  {z.name}
+              {categories.map((item) => (
+                <option key={item.id} value={item.id}>
+                  {item.name}
                 </option>
               ))}
             </select>
@@ -696,7 +1183,9 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
                     </div>
                   </td>
                   <td>
-                    {categoryLabels[product.category]}
+                    {categories.find((item) => item.id === product.category)?.name ||
+                      categoryLabels[product.category] ||
+                      product.category}
                     <small className="table-sub">{product.shelf}</small>
                   </td>
                   <td className="table-price">¥{money(product.price)}</td>

@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { entrance, zones } from '../../shared/catalog';
 import { routeInstructions } from '../../shared/navigation';
-import type { Category, Point, Route } from '../../shared/types';
+import type { Category, Point, Route, StoreSection } from '../../shared/types';
 
 interface Props {
   route: Route | null;
@@ -23,6 +23,8 @@ interface Props {
   onPosition: (id: Category | 'entrance') => void;
   onArrive: () => void;
   expanded?: boolean;
+  sections?: StoreSection[];
+  currentPoint?: Point;
 }
 const scale = (n: number) => n * 28 + 14;
 export default function StoreMap({
@@ -33,10 +35,19 @@ export default function StoreMap({
   onPosition,
   onArrive,
   expanded,
+  sections = [],
+  currentPoint,
 }: Props) {
   const [zoom, setZoom] = useState(1);
+  const mapZones = sections.filter((section) => section.active);
+  const areas = mapZones.length ? mapZones : zones;
   const position: Point =
-    current === 'entrance' ? entrance : zones.find((z) => z.id === current)!.location;
+    currentPoint ||
+    (current === 'entrance'
+      ? entrance
+      : areas.find((z) => z.id === current)?.location ||
+        zones.find((z) => z.id === current)?.location ||
+        entrance);
   const target = route?.stops[0];
   return (
     <section className={`map-panel ${expanded ? 'map-expanded' : ''}`} aria-label="虚拟超市地图">
@@ -64,7 +75,7 @@ export default function StoreMap({
             className="floorplan"
             viewBox="0 0 924 700"
             role="group"
-            aria-label="七个商品分区及步行路线"
+            aria-label={`${areas.length} 个门店分区及步行路线`}
             style={{
               width: `${zoom * 100}%`,
               minWidth: `${zoom * 100}%`,
@@ -100,7 +111,7 @@ export default function StoreMap({
             <text x="450" y="52" textAnchor="middle" className="map-caption">
               挑点新鲜，慢慢逛
             </text>
-            {zones.map((zone) => {
+            {areas.map((zone) => {
               const { x, y, w, h } = zone.rect;
               const active = selected === zone.id || route?.stops.includes(zone.id);
               return (
@@ -251,9 +262,13 @@ export default function StoreMap({
               </>
             )}
             {route?.stops.map((id, index) => {
-              const p = zones.find((z) => z.id === id)!.location;
+              const p =
+                route.shelfStops?.[index]?.position ||
+                areas.find((z) => z.id === id)?.location ||
+                zones.find((z) => z.id === id)?.location;
+              if (!p) return null;
               return (
-                <g key={id}>
+                <g key={`${id}-${index}`}>
                   <circle
                     cx={scale(p.x)}
                     cy={scale(p.y)}
@@ -330,7 +345,7 @@ export default function StoreMap({
             onChange={(event) => onPosition(event.target.value as Category | 'entrance')}
           >
             <option value="entrance">超市入口</option>
-            {zones.map((z) => (
+            {areas.map((z) => (
               <option key={z.id} value={z.id}>
                 {z.name}
               </option>
@@ -350,7 +365,13 @@ export default function StoreMap({
               <Navigation size={20} />
             </span>
             <div>
-              <strong>前往 {zones.find((z) => z.id === target)!.name}</strong>
+              <strong>
+                前往{' '}
+                {route.shelfStops?.[0]?.name ||
+                  areas.find((z) => z.id === target)?.name ||
+                  zones.find((z) => z.id === target)?.name ||
+                  target}
+              </strong>
               <p>
                 约 {route.distance} 米 · {route.minutes} 分钟
                 {route.stops.length > 1 ? ` · ${route.stops.length} 个分区` : ''}
@@ -369,14 +390,33 @@ export default function StoreMap({
                 <li key={i}>{step}</li>
               ))}
               <li>
-                到达{route.stops.map((id) => zones.find((z) => z.id === id)!.name).join(' → ')}
+                到达
+                {route.shelfStops?.map((shelf) => shelf.name).join(' → ') ||
+                  route.stops
+                    .map(
+                      (id) =>
+                        areas.find((z) => z.id === id)?.name ||
+                        zones.find((z) => z.id === id)?.name ||
+                        id,
+                    )
+                    .join(' → ')}
               </li>
             </ol>
             <p className="muted compact">
               路线按虚拟平面图估算，多站按就近顺序；实际位置由你设置。
             </p>
           </details>
+          {!!route.unreachable?.length && (
+            <p className="inline-error" role="status">
+              以下商品无法导航：{route.unreachable.join('、')}。
+            </p>
+          )}
         </div>
+      )}
+      {route?.unreachable?.length && !target && (
+        <p className="inline-error" role="status">
+          无法规划路线：{route.unreachable.join('、')}。
+        </p>
       )}
       {!route && (
         <div className="map-hint">
