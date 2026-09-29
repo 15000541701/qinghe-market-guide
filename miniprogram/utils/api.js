@@ -9,21 +9,42 @@ function setBase(value) {
   wx.setStorageSync('qinghe-api-base', normalized);
   return normalized;
 }
-function failure(error) {
-  const msg = (error && error.errMsg) || '';
+function failure(error, address) {
+  const msg = String((error && error.errMsg) || '').slice(0, 160);
+  const raw = msg ? '（微信返回：' + msg + '）' : '';
+  if (/domain|域名/.test(msg))
+    return new Error(
+      '请求域名未通过校验。开发者工具请检查本地调试设置；手机请在右上角“…”中打开开发调试后重新进入。' +
+        raw,
+    );
+  if (/time[d]?[_ ]?out|超时|unreachable|disconnected|断开/i.test(msg))
+    return new Error(
+      '连接不到门店服务 ' +
+        address +
+        '：等待超时或网络不通。手机与电脑需在同一网络，且网络允许设备互访（校园网常见限制）。可先用手机浏览器打开该地址确认。' +
+        raw,
+    );
+  if (/refused|未能连接|拒绝/i.test(msg))
+    return new Error(
+      '连接不到门店服务 ' +
+        address +
+        '：连接被拒绝。请确认电脑上的后端已启动，端口填写正确。' +
+        raw,
+    );
   return new Error(
-    /domain|域名/.test(msg)
-      ? '请求域名未通过校验。请检查开发者工具的本地调试设置或配置合法 HTTPS 域名。'
-      : '连接不到门店服务，请确认后端已启动，并在连接设置填写正确地址。',
+    '连接不到门店服务 ' +
+      address +
+      '。请确认后端已启动、地址正确，可先用手机浏览器打开该地址确认。' +
+      raw,
   );
 }
-function request(endpoint, data, method) {
+function request(endpoint, data, method, options) {
   return new Promise((resolve, reject) =>
     wx.request({
       url: base() + '/api' + endpoint,
       method: method || (data ? 'POST' : 'GET'),
       data,
-      timeout: 55000,
+      timeout: (options && options.timeout) || 55000,
       header: { 'Content-Type': 'application/json' },
       success(res) {
         if (res.statusCode >= 200 && res.statusCode < 300) resolve(res.data);
@@ -34,7 +55,7 @@ function request(endpoint, data, method) {
         }
       },
       fail(error) {
-        reject(failure(error));
+        reject(failure(error, base()));
       },
     }),
   );
@@ -93,7 +114,7 @@ function upload(filePath) {
         }
       },
       fail(error) {
-        reject(failure(error));
+        reject(failure(error, base()));
       },
     }),
   );

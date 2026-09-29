@@ -95,12 +95,15 @@ App({
     else wx.removeTabBarBadge({ index: 3, fail() {} });
     for (const listener of this.listeners) listener();
   },
-  refresh() {
+  refresh(options) {
     if (this.refreshing) return this.refreshing;
     this.globalData.loading = true;
     this.globalData.error = '';
     this.notify();
-    this.refreshing = Promise.all([api.request('/products'), api.request('/status')])
+    this.refreshing = Promise.all([
+      api.request('/products', undefined, undefined, options),
+      api.request('/status', undefined, undefined, options),
+    ])
       .then(([products, status]) => {
         if (!Array.isArray(products)) throw new Error('商品数据格式异常，请检查后端地址。');
         this.globalData.products = products;

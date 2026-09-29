@@ -8,12 +8,12 @@ const require=createRequire(import.meta.url);
 const domain=require('../miniprogram/lib/domain.js');
 
 async function runtime(options={}) {
-  const storage=new Map(options.storage||[]);const products=makeSeedProducts();let app;
+  const storage=new Map(options.storage||[]);const products=makeSeedProducts();const requests=[];let app;
   globalThis.App=definition=>{app=definition;};
   globalThis.wx={getStorageSync:key=>storage.get(key),setStorageSync:(key,value)=>storage.set(key,JSON.parse(JSON.stringify(value))),setTabBarBadge(){},removeTabBarBadge(){},
     request(request){queueMicrotask(()=>{
-      const endpoint=new URL(request.url).pathname;
-      if(options.fail){request.fail({errMsg:'request:fail network'});return;}
+      const endpoint=new URL(request.url).pathname;requests.push({endpoint,timeout:request.timeout});
+      if(options.fail){request.fail({errMsg:options.errMsg||'request:fail network'});return;}
       if(endpoint==='/api/status')request.success({statusCode:200,data:{ai:true}});
       else if(endpoint==='/api/products')request.success({statusCode:200,data:options.products||products});
       else if(endpoint==='/api/assistant')request.success({statusCode:200,data:options.answer||{text:'已查询',products:[products[0]],filters:{categories:['vegetables']},engine:'model'}});
@@ -22,7 +22,7 @@ async function runtime(options={}) {
   };
   delete require.cache[require.resolve('../miniprogram/app.js')];require('../miniprogram/app.js');app.onLaunch();
   try{await app.refresh();}catch{}
-  return {app,products,storage};
+  return {app,products,storage,requests};
 }
 
 test('小程序 AppID、打包目录及七个原生页面完整',async()=>{
@@ -55,4 +55,23 @@ test('小程序导航可以规划路线并模拟到达',async()=>{
 });
 test('服务未启动时显示可恢复的连接错误',async()=>{
   const {app}=await runtime({fail:true});assert.equal(app.globalData.connected,false);assert.equal(app.globalData.loading,false);assert.match(app.globalData.error,/连接不到/);
+});
+test('连接错误区分超时、拒绝和域名校验，并附微信原始信息',async()=>{
+  const cases=[['request:fail timeout',/超时.*设备互访.*request:fail timeout/],['request:fail errcode:-102 cronet_error_code:-102 error_msg:net::ERR_CONNECTION_REFUSED',/被拒绝.*后端已启动/],['request:fail url not in domain list',/域名未通过校验.*开发调试/]];
+  for(const [errMsg,pattern] of cases){const {app}=await runtime({fail:true,errMsg});assert.match(app.globalData.error,pattern);assert.match(app.globalData.error,errMsg.includes('domain')?/微信返回/:/http:\/\/127\.0\.0\.1:3001/);}
+});
+test('连接设置用短超时测试，普通请求保持长超时',async()=>{
+  const {app,requests}=await runtime();assert.ok(requests.every(r=>r.timeout===55000));
+  requests.length=0;await app.refresh({timeout:6000});assert.equal(requests.length,2);assert.ok(requests.every(r=>r.timeout===6000));
+});
+test('扫码填写门店地址后自动连接，非地址二维码给出提示',async()=>{
+  const {app,storage,requests}=await runtime();let page;const alerts=[];let scanned='http://192.168.173.166:3001/';
+  globalThis.getApp=()=>app;globalThis.Page=definition=>{page=definition;};
+  Object.assign(globalThis.wx,{scanCode:o=>o.success({result:scanned}),showModal:o=>alerts.push(o.content),showToast(){}});
+  delete require.cache[require.resolve('../miniprogram/pages/settings/index.js')];require('../miniprogram/pages/settings/index.js');
+  const ctx={...page,data:{...page.data},setData(d){Object.assign(this.data,d);}};
+  requests.length=0;ctx.scan();await new Promise(resolve=>setTimeout(resolve,20));
+  assert.equal(storage.get('qinghe-api-base'),'http://192.168.173.166:3001');assert.equal(ctx.data.base,'http://192.168.173.166:3001');
+  assert.ok(requests.length===2&&requests.every(r=>r.timeout===6000));assert.equal(alerts.length,0);
+  scanned='WIFI:S:Redmi;;';ctx.scan();assert.match(alerts[0],/不是门店地址/);assert.equal(storage.get('qinghe-api-base'),'http://192.168.173.166:3001');
 });

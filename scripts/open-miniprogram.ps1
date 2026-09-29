@@ -23,5 +23,7 @@ if (-not (Test-QingheServer)) {
     if (-not (Test-QingheServer)) { throw '后端未能启动，请查看 data/server-error.log。' }
 }
 Write-Output ('后端已启动：http://127.0.0.1:' + $serverPort)
-Get-NetIPConfiguration | Where-Object { $_.IPv4DefaultGateway } | ForEach-Object { Write-Output ('同网段手机连接地址：http://' + $_.IPv4Address.IPAddress + ':' + $serverPort) }
+$phoneAddresses = @(Get-NetIPConfiguration | Where-Object { $_.IPv4DefaultGateway -and $_.NetAdapter.Status -eq 'Up' } | ForEach-Object { 'http://' + $_.IPv4Address.IPAddress + ':' + $serverPort })
+$phoneAddresses | ForEach-Object { Write-Output ('同网段手机连接地址：' + $_) }
+& node (Join-Path $projectRoot 'scripts\show-connect-qr.mjs') @phoneAddresses
 & $wechatCli open --project $projectRoot --lang zh

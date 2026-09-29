@@ -17,12 +17,30 @@ Page({
   input(e) {
     this.setData({ base: e.detail.value });
   },
+  scan() {
+    if (this.data.busy) return;
+    wx.scanCode({
+      onlyFromCamera: false,
+      scanType: ['qrCode'],
+      success: (result) => {
+        const text = String(result.result || '').trim();
+        if (!/^https?:\/\//.test(text))
+          return view.alert('二维码不是门店地址。请扫描电脑启动窗口里显示的二维码。');
+        this.setData({ base: text.replace(/\/+$/, '') });
+        this.connect();
+      },
+      fail: (error) => {
+        if (!/cancel/.test(error.errMsg || ''))
+          view.alert('无法扫码，请检查相机权限，或手动输入地址。');
+      },
+    });
+  },
   async connect() {
     if (this.data.busy || getApp().globalData.busy) return;
     this.setData({ busy: true });
     try {
       api.setBase(this.data.base);
-      await getApp().refresh();
+      await getApp().refresh({ timeout: 6000 });
       view.toast('门店连接成功');
     } catch (error) {
       view.alert(error);
