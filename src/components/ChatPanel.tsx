@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import type {
   GuideResponse,
+  Currency,
   MealPlan,
   Product,
   QueryFilters,
@@ -25,6 +26,7 @@ import type {
 import { categoryLabels } from '../../shared/catalog';
 import { api, money, post, useSpeech } from '../lib';
 import { buildMealPlan } from '../../shared/meal-planner';
+import { currencySymbol } from '../../shared/currency';
 
 type Message = {
   id: number;
@@ -44,6 +46,7 @@ const welcome: Message = {
   text: '你好呀，我是小禾。\n想吃点什么，或准备做什么菜？告诉我你的预算，我来帮你挑，还能带你找到货架。',
 };
 interface Props {
+  currency: Currency;
   products: Product[];
   storeCategories: StoreCategory[];
   onResults: (products: Product[], label: string) => void;
@@ -60,6 +63,7 @@ interface Props {
   visible: boolean;
 }
 export default function ChatPanel({
+  currency,
   products,
   storeCategories,
   onResults,
@@ -115,7 +119,7 @@ export default function ChatPanel({
     try {
       const result = await api<GuideResponse>(
         '/assistant',
-        post({ message: text, previous: filters, context }),
+        post({ message: text, previous: filters, context, currency }),
       );
       let responseText = result.text;
       let actionSucceeded = false;
@@ -183,6 +187,7 @@ export default function ChatPanel({
     ]);
     const data = new FormData();
     data.append('image', file);
+    data.append('currency', currency);
     try {
       const result = await api<VisionResponse>('/vision', { method: 'POST', body: data });
       setMessages((previous) => [
@@ -213,7 +218,7 @@ export default function ChatPanel({
   const chooseCandidate = (candidate: VisionResponse['candidates'][number]) => {
     const matches = products.filter(
       (p) =>
-        p.stock > 0 &&
+        p.status !== 'archived' && (p.inventoryMode === 'untracked' || p.stock > 0) &&
         (candidate.productId ? p.id === candidate.productId : p.category === candidate.category),
     );
     onResults(matches, `${candidate.name} · 图片找货`);
@@ -337,7 +342,7 @@ export default function ChatPanel({
                       <div>
                         <strong>{product.name}</strong>
                         <span>
-                          ¥{money(product.price)} / {product.unit}
+                          {currencySymbol(currency)}{money(product.price)} / {product.unit}
                         </span>
                       </div>
                       <button
@@ -368,11 +373,10 @@ export default function ChatPanel({
         {messages.length === 1 && (
           <div className="starter-questions">
             <p>不知道怎么问？试试这些</p>
-            {[
-              '两个人吃，预算50元，想吃鱼和绿叶菜，家里有葱姜',
-              '推荐 10 元以内的绿叶蔬菜',
-              '想买 20 到 40 元的鱼',
-            ].map((text) => (
+            {(currency === 'USD'
+              ? ['两个人吃，预算 50 USD，想吃鱼和绿叶菜，家里有葱姜', '推荐 $10 以内的零食', '想买 $20 到 $40 的鱼']
+              : ['两个人吃，预算 50 元，想吃鱼和绿叶菜，家里有葱姜', '推荐 10 元以内的蔬菜', '想买 20 到 40 元的鱼']
+            ).map((text) => (
               <button key={text} onClick={() => void send(text)}>
                 <span>{text}</span>
                 <ArrowUp size={14} />
@@ -393,8 +397,8 @@ export default function ChatPanel({
             <strong>当前计划 · 按现价和清单重算</strong>
             <span>
               {livePlan.budgetComplete === false
-                ? `本店可购部分 ¥${money(livePlan.total)} · 未计价 ${livePlan.unpriced?.length || 0} 项 · 缺货 ${livePlan.unresolved?.filter((item) => item.status === 'out_of_stock').length || 0} 项`
-                : `计划新增 ¥${money(livePlan.newlyAddedCost ?? livePlan.addedCost)} · 原清单 ¥${money(livePlan.existingCost)} · 合并 ¥${money(livePlan.total)}`}
+                ? `本店可购部分 ${currencySymbol(livePlan.currency || currency)}${money(livePlan.total)} · 未计价 ${livePlan.unpriced?.length || 0} 项 · 缺货 ${livePlan.unresolved?.filter((item) => item.status === 'out_of_stock').length || 0} 项`
+                : `计划新增 ${currencySymbol(livePlan.currency || currency)}${money(livePlan.newlyAddedCost ?? livePlan.addedCost)} · 原清单 ${currencySymbol(livePlan.currency || currency)}${money(livePlan.existingCost)} · 合并 ${currencySymbol(livePlan.currency || currency)}${money(livePlan.total)}`}
             </span>
           </div>
         )}

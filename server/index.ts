@@ -1,3 +1,4 @@
+import { mapBounds } from '../shared/map-config';
 import 'dotenv/config';
 import express from 'express';
 import multer from 'multer';
@@ -24,7 +25,8 @@ import {
 import { recommendPrice } from '../shared/pricing';
 import { entrance, zones } from '../shared/catalog';
 import { findPath, isWalkable } from '../shared/navigation';
-import type { Point, Product, StoreSection, Shelf } from '../shared/types';
+import { DEFAULT_CAPACITY_PER_SLOT, MAX_CAPACITY_PER_SLOT, shelfSlotPlacementError } from '../shared/shelf-capacity';
+import type { Currency, GuideResponse, Point, Product, StoreSection, Shelf } from '../shared/types';
 import {
   defaultFixture,
   fixtureAccessPoints,
@@ -36,8 +38,15 @@ import { lookupMarket, MarketError } from './market';
 import { shoppingAgent, shoppingContextSchema } from './shopping-agent';
 import { convertMarketPrice, isValidMarketDate, XINFADI_SOURCE_URL } from '../shared/market';
 import { unitGrams } from '../shared/shopping';
+import { importSkus } from './sku-import';
+import { productToSkuRow, writeSkuCsv } from '../shared/sku-file';
+import { availableForSale } from '../shared/catalog-status';
+import { validProductImage } from '../shared/product-image';
+import { currencyMismatchMessage, productCurrency } from '../shared/currency';
+import { registerProductImageCacheRoute } from './product-image-cache';
 
 const app = express();
+registerProductImageCacheRoute(app);
 const uploads = path.resolve(process.env.DATA_DIR || 'data', 'uploads');
 mkdirSync(uploads, { recursive: true });
 app.disable('x-powered-by');
@@ -46,7 +55,7 @@ app.use((_req, res, next) => {
   res.setHeader('Referrer-Policy', 'same-origin');
   next();
 });
-app.use(express.json({ limit: '512kb' }));
+app.use(express.json({ limit: '5mb' }));
 app.use('/uploads', express.static(uploads));
 app.get('/api/model-settings', (_req, res) => res.json(getModelSettings()));
 app.put('/api/model-settings', (req, res) => {
@@ -63,6 +72,72 @@ app.get('/api/products', (_req, res) => res.json(getProducts()));
 app.get('/api/categories', (_req, res) => res.json(getCategories()));
 app.get('/api/sections', (_req, res) => res.json(getSections()));
 app.get('/api/shelves', (_req, res) => res.json(getShelves()));
+app.get('/api/sku/export', (req, res) => {
+  const scope = req.query.scope || 'current';
+  const products = getProducts().filter((p) => scope === 'all' || p.status !== 'archived');
+  const rows = products.map(productToSkuRow);
+  if (req.query.format === 'csv') {
+    res.setHeader('Content-Disposition', 'attachment; filename="qinghe-skus.csv"');
+    res.type('text/csv; charset=utf-8').send(writeSkuCsv(rows));
+  } else {
+    res.setHeader('Content-Disposition', 'attachment; filename="qinghe-skus.json"');
+    res.json({ version: 1, exportedAt: new Date().toISOString(), rows });
+  }
+});
+app.post('/api/sku/import', (req, res) => {
+  const input = z
+    .object({
+      rows: z
+        .array(z.record(z.string(), z.union([z.string(), z.number()])))
+        .min(1)
+        .max(2000),
+      mode: z.enum(['create', 'upsert']),
+      apply: z.boolean().default(false),
+    })
+    .strict()
+    .parse(req.body);
+  const result = importSkus(input.rows, input.mode, input.apply);
+  res.status(input.apply && result.errors.length ? 422 : 200).json(result);
+});
+app.patch('/api/products/:id/placement', (req, res) => {
+  const input = z
+    .object({
+      shelfId: z.string().min(1).max(80),
+      shelfSide: z.enum(['left', 'right', 'front', 'back']),
+      shelfLevel: z.number().int().min(1).max(8),
+      expected: z
+        .object({
+          shelfId: z.string().optional(),
+          shelfSide: z.string().optional(),
+          shelfLevel: z.number().optional(),
+        })
+        .optional(),
+    })
+    .strict()
+    .parse(req.body);
+  const product = getProduct(req.params.id);
+  if (!product) return res.status(404).json({ error: '商品不存在，请刷新。' });
+  if (
+    input.expected &&
+    (input.expected.shelfId !== product.shelfId ||
+      input.expected.shelfSide !== product.shelfSide ||
+      input.expected.shelfLevel !== product.shelfLevel)
+  )
+    return res.status(409).json({ error: '商品陈列位置已被其他操作更新，请刷新后重试。' });
+  const shelf = getShelves().find((s) => s.id === input.shelfId);
+  if (!shelf) return res.status(400).json({ error: '目标设施不存在。' });
+  const position = resolveProductShelfPosition(shelf, input.shelfSide, input.shelfLevel);
+  if ('error' in position) return res.status(400).json({ error: position.error });
+  const capacityError = shelfSlotPlacementError(
+    shelf,
+    product,
+    getProducts(),
+    input.shelfSide,
+    input.shelfLevel,
+  );
+  if (capacityError) return res.status(409).json({ error: capacityError });
+  res.json(saveProduct({ ...product, shelfId: shelf.id, shelf: shelf.name, ...position }));
+});
 function rectsOverlap(
   first: { x: number; y: number; w: number; h: number },
   second: { x: number; y: number; w: number; h: number },
@@ -83,8 +158,8 @@ function sectionPlacementError(section: StoreSection, current: StoreSection[] = 
     rect.h < 2 ||
     rect.w > 12 ||
     rect.h > 10 ||
-    rect.x + rect.w > 32 ||
-    rect.y + rect.h > 24
+    rect.x + rect.w > mapBounds.maxX + 1 ||
+    rect.y + rect.h > mapBounds.maxY + 1
   )
     return '区域矩形超出地图边界，或面积需至少 2×2 格、最多 12×10 格。';
   if (fixedFixtures.some((fixture) => rectsOverlap(rect, fixture.rect)))
@@ -119,6 +194,8 @@ const fixtureKinds = [
   'service-counter',
   'seafood-tank',
   'chiller',
+  'freezer',
+  'hanging-rack',
 ] as const;
 function shelfSideMatches(point: Point, side: AccessSide, rect: NonNullable<Shelf['footprint']>) {
   if (side === 'left')
@@ -149,8 +226,8 @@ function fixturePlacementError(input: Shelf, currentShelves = getShelves(), igno
     footprint.y < 1 ||
     footprint.w < 1 ||
     footprint.h < 1 ||
-    footprint.x + footprint.w > 32 ||
-    footprint.y + footprint.h > 24
+    footprint.x + footprint.w > mapBounds.maxX + 1 ||
+    footprint.y + footprint.h > mapBounds.maxY + 1
   )
     return '设施占地超出地图边界。';
   if (
@@ -188,13 +265,14 @@ function fixturePlacementError(input: Shelf, currentShelves = getShelves(), igno
 }
 function productsInvalidatedByFixture(shelfId: string, next: Shelf) {
   const invalid = getProducts().filter((product) => {
-    if (product.shelfId !== shelfId) return false;
+    if (product.status === 'archived' || product.shelfId !== shelfId) return false;
     const side = product.shelfSide;
     const level = product.shelfLevel || 1;
     return (
       (side !== undefined && !next.accessPoints?.[side]) ||
       level > (next.levels || 1) ||
-      (!['gondola', 'chiller'].includes(next.kind || 'gondola') && level !== 1)
+      (!['gondola', 'chiller'].includes(next.kind || 'gondola') && level !== 1) ||
+      (!!side && !!shelfSlotPlacementError(next, product, getProducts(), side, level))
     );
   });
   return invalid;
@@ -220,12 +298,12 @@ function resolveProductShelfPosition(shelf: Shelf, side?: AccessSide, level?: nu
   return { shelfSide: selectedSide, shelfLevel: selectedLevel };
 }
 const mapPointSchema = z.object({
-  x: z.number().int().min(1).max(31),
-  y: z.number().int().min(1).max(23),
+  x: z.number().int().min(1).max(mapBounds.maxX),
+  y: z.number().int().min(1).max(mapBounds.maxY),
 });
 const shelfFootprintSchema = z.object({
-  x: z.number().int().min(1).max(31),
-  y: z.number().int().min(1).max(23),
+  x: z.number().int().min(1).max(mapBounds.maxX),
+  y: z.number().int().min(1).max(mapBounds.maxY),
   w: z.number().int().min(1).max(16),
   h: z.number().int().min(1).max(16),
 });
@@ -250,6 +328,12 @@ const shelfFixtureInputSchema = z.object({
   kind: z.enum(fixtureKinds).optional(),
   footprint: shelfFootprintSchema.optional(),
   levels: z.number().int().min(1).max(8).optional(),
+  capacityPerSlot: z.number().int().min(1).max(MAX_CAPACITY_PER_SLOT).optional(),
+  allowedDisplayGroups: z
+    .array(z.string().trim().min(1).max(80))
+    .max(30)
+    .refine((groups) => new Set(groups).size === groups.length, '陈列分组不能重复。')
+    .optional(),
   accessPoints: shelfAccessSchema.optional(),
   position: mapPointSchema.nullable().optional(),
   reachable: z.boolean().default(true),
@@ -286,6 +370,8 @@ function normalizeShelfInput(
     kind,
     footprint,
     levels,
+    capacityPerSlot: input.capacityPerSlot ?? DEFAULT_CAPACITY_PER_SLOT,
+    allowedDisplayGroups: input.allowedDisplayGroups ?? [],
     accessPoints,
     position: primary,
     reachable: input.reachable && !!primary,
@@ -353,12 +439,12 @@ app.post('/api/sections', (req, res) => {
       color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
       tint: z.string().regex(/^#[0-9a-fA-F]{6}$/),
       location: z.object({
-        x: z.number().int().min(1).max(31),
-        y: z.number().int().min(1).max(23),
+        x: z.number().int().min(1).max(mapBounds.maxX),
+        y: z.number().int().min(1).max(mapBounds.maxY),
       }),
       rect: z.object({
-        x: z.number().int().min(1).max(31),
-        y: z.number().int().min(1).max(23),
+        x: z.number().int().min(1).max(mapBounds.maxX),
+        y: z.number().int().min(1).max(mapBounds.maxY),
         w: z.number().int().min(2).max(12),
         h: z.number().int().min(2).max(10),
       }),
@@ -388,8 +474,8 @@ app.patch('/api/sections/:id', (req, res) => {
       name: z.string().trim().min(1).max(40),
       active: z.boolean(),
       location: z.object({
-        x: z.number().int().min(1).max(31),
-        y: z.number().int().min(1).max(23),
+        x: z.number().int().min(1).max(mapBounds.maxX),
+        y: z.number().int().min(1).max(mapBounds.maxY),
       }),
     })
     .parse(req.body);
@@ -450,6 +536,7 @@ const categories = z
   );
 const querySchema = z.object({
   message: z.string().trim().min(1).max(800),
+  currency: z.enum(['USD', 'CNY']).optional(),
   previous: z
     .object({
       categories: z.array(z.string().max(80)).max(100),
@@ -462,14 +549,29 @@ const querySchema = z.object({
 });
 app.post('/api/chat', async (req, res) => {
   const input = querySchema.parse(req.body);
-  res.json(await guide(input.message, getProducts(), input.previous, getCategories()));
+  const currency = input.currency || 'CNY';
+  const mismatch = currencyMismatchMessage(input.message, currency);
+  if (mismatch)
+    return res.json({ text: mismatch, products: [], filters: input.previous || { categories: [] }, engine: 'rules' } satisfies GuideResponse);
+  res.json(
+    await guide(
+      input.message,
+      getProducts().filter((product) => availableForSale(product) && productCurrency(product) === currency),
+      input.previous,
+      getCategories(),
+    ),
+  );
 });
 app.post('/api/assistant', async (req, res) => {
   const input = querySchema.extend({ context: shoppingContextSchema }).parse(req.body);
+  const currency = input.currency || 'CNY';
+  const mismatch = currencyMismatchMessage(input.message, currency);
+  if (mismatch)
+    return res.json({ text: mismatch, products: [], filters: input.previous || { categories: [] }, engine: 'rules' } satisfies GuideResponse);
   res.json(
     await shoppingAgent(
       input.message,
-      getProducts(),
+      getProducts().filter((product) => availableForSale(product) && productCurrency(product) === currency),
       input.context,
       input.previous,
       getCategories(),
@@ -502,7 +604,12 @@ app.post('/api/vision', upload.single('image'), async (req, res) => {
   await writeFile(path.join(uploads, filename), bytes);
   const image = `/uploads/${filename}`;
   try {
-    const result = await identifyImage(bytes, getProducts(), getCategories());
+    const currency: Currency = req.body.currency === 'USD' ? 'USD' : 'CNY';
+    const result = await identifyImage(
+      bytes,
+      getProducts().filter((product) => product.status !== 'archived' && productCurrency(product) === currency),
+      getCategories(),
+    );
     res.json({
       ...result,
       image,
@@ -592,6 +699,7 @@ const productSchema = z
     price: z.number().positive().max(100000),
     unit: z.string().trim().min(1).max(20),
     stock: z.number().int().min(0).max(1000000),
+    inventoryMode: z.enum(['tracked', 'untracked']).optional(),
     shelf: z.string().trim().min(1).max(30),
     shelfId: z.string().max(60).optional(),
     shelfSide: z.enum(['left', 'right', 'front', 'back']).optional(),
@@ -600,7 +708,7 @@ const productSchema = z
     image: z
       .string()
       .max(200)
-      .regex(/^\/(?:images\/[a-z0-9-]+\.jpg|uploads\/[a-f0-9-]+\.jpg)$/)
+      .refine(validProductImage, '图片需为本地图片、Open Food Facts 或京东商品图地址')
       .optional(),
     description: z.string().max(200).optional(),
     source: z.enum(['manual', 'suggested']),
@@ -626,8 +734,20 @@ app.post('/api/products', (req, res) => {
   }
   const shelfPosition = resolveProductShelfPosition(shelf, input.shelfSide, input.shelfLevel);
   if ('error' in shelfPosition) return res.status(400).json({ error: shelfPosition.error });
+  const capacityError = shelfSlotPlacementError(
+    shelf,
+    { id: '', name: input.name },
+    getProducts(),
+    shelfPosition.shelfSide,
+    shelfPosition.shelfLevel,
+  );
+  if (capacityError) return res.status(409).json({ error: capacityError });
   const product: Product = {
     id: randomUUID(),
+    sku: `QH-${randomUUID().slice(0, 8).toUpperCase()}`,
+    catalogOrigin: 'manual',
+    currency: 'CNY',
+    status: 'active',
     name: input.name,
     category: input.category,
     price: Math.round(input.price * 100) / 100,
@@ -636,6 +756,8 @@ app.post('/api/products', (req, res) => {
       input.image ||
       `/images/${input.category === 'vegetables' ? 'spinach' : input.category === 'seafood' ? 'fish' : input.category === 'fruit' ? 'apple' : input.category === 'meat' ? 'beef' : input.category === 'dairy' ? 'milk' : input.category === 'bakery' ? 'bread' : input.category === 'pantry' ? 'rice' : 'market'}.jpg`,
     stock: input.stock,
+    inventoryMode: input.inventoryMode || 'tracked',
+    priceOrigin: 'manual',
     shelf: shelf.name,
     shelfId: shelf?.id,
     shelfSide: shelfPosition.shelfSide,
@@ -655,6 +777,7 @@ app.post('/api/products', (req, res) => {
         date: now.slice(0, 10),
         source: input.source,
         unit: input.unit,
+        currency: 'CNY',
       },
     ],
     marketPrice: input.reference?.price,
@@ -685,6 +808,14 @@ app.patch('/api/products/:id', (req, res) => {
     input.shelfLevel ?? (sameShelf ? previous.shelfLevel : undefined),
   );
   if ('error' in shelfPosition) return res.status(400).json({ error: shelfPosition.error });
+  const capacityError = shelfSlotPlacementError(
+    shelf,
+    previous,
+    getProducts(),
+    shelfPosition.shelfSide,
+    shelfPosition.shelfLevel,
+  );
+  if (capacityError) return res.status(409).json({ error: capacityError });
   const unitChanged = previous.unit !== input.unit;
   const changed = previous.price !== input.price || unitChanged;
   const history = changed
@@ -695,6 +826,7 @@ app.patch('/api/products/:id', (req, res) => {
           date: new Date().toISOString().slice(0, 10),
           source: input.source,
           unit: input.unit,
+          currency: previous.currency || 'CNY',
         },
       ].slice(-120)
     : previous.history;
@@ -703,6 +835,11 @@ app.patch('/api/products/:id', (req, res) => {
     saveProduct({
       ...previous,
       ...fields,
+      inventoryMode: input.inventoryMode || previous.inventoryMode || 'tracked',
+      priceOrigin: changed ? 'manual' : previous.priceOrigin,
+      status: 'active',
+      catalogOrigin:
+        previous.catalogOrigin === 'legacy-demo' ? 'manual' : previous.catalogOrigin || 'manual',
       shelf: shelf.name,
       shelfId: shelf?.id,
       shelfSide: shelfPosition.shelfSide,

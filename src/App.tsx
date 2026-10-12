@@ -4,13 +4,11 @@ import {
   ArrowUpRight,
   Check,
   CheckCheck,
-  ChevronRight,
   CircleHelp,
   Compass,
   Fish,
   LayoutGrid,
   Leaf,
-  Map as MapIcon,
   MapPin,
   Minus,
   Navigation,
@@ -27,9 +25,11 @@ import {
 } from 'lucide-react';
 import { categoryLabels, entrance, zones } from '../shared/catalog';
 import { buildRoute, buildShelfRoute } from '../shared/navigation';
-import { fixtureKindLabels, productLocationLabel, productShelfTarget } from '../shared/layout';
+import { availableForSale, purchaseLimit } from '../shared/catalog-status';
+import { productLocationLabel, productShelfTarget } from '../shared/layout';
 import type {
   Category,
+  Currency,
   ListItem,
   MealPlan,
   Product,
@@ -49,6 +49,14 @@ import StoreMap from './components/StoreMap';
 import MealPanel from './components/MealPanel';
 import { buildMealPlan } from '../shared/meal-planner';
 import { defaultHomePantry } from '../shared/recipes';
+import { currencySymbol, productCurrency } from '../shared/currency';
+import {
+  merchandisingFamilyLabel,
+  productCategoryLabel,
+  productHasNavigableShelf,
+  productMerchandisingSummary,
+  productPlacementStatus,
+} from '../shared/merchandising-display';
 import {
   amountLabel,
   cartTotal,
@@ -59,7 +67,7 @@ import {
   roundQuantity,
 } from '../shared/shopping';
 
-type Tab = 'guide' | 'map' | 'list';
+type Tab = 'guide' | 'list';
 function loadHomePantry() {
   try {
     const stored = JSON.parse(localStorage.getItem('qinghe-home-pantry') || 'null');
@@ -100,6 +108,8 @@ function loadList(): ListItem[] {
 export default function App() {
   const [role, setRole] = useState<'customer' | 'store'>('customer');
   const [tab, setTab] = useState<Tab>('guide');
+  const displayTab: Tab = (tab as string) === 'map' ? 'guide' : tab;
+  const [mapScrollRequest, setMapScrollRequest] = useState(0);
   const [products, setProducts] = useState<Product[]>([]);
   const [storeCategories, setStoreCategories] = useState<StoreCategory[]>([]);
   const [storeSections, setStoreSections] = useState<StoreSection[]>([]);
@@ -108,13 +118,16 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [category, setCategory] = useState<Category | 'all'>('all');
+  const [currencyMode, setCurrencyMode] = useState<Currency>('USD');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState('featured');
+  const [shownLimit, setShownLimit] = useState(48);
   const [recommendations, setRecommendations] = useState<Product[] | null>(null);
   const [resultTitle, setResultTitle] = useState('');
   const [current, setCurrent] = useState<Category | 'entrance'>('entrance');
   const [currentPoint, setCurrentPoint] = useState<Point>(entrance);
   const [route, setRoute] = useState<Route | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState('');
   const [selected, setSelected] = useState<Category | undefined>();
   const [list, setListState] = useState<ListItem[]>(loadList);
   const listRef = useRef(list);
@@ -132,26 +145,73 @@ export default function App() {
     listRef.current = next;
     setListState(next);
   };
+  const currencyProducts = useMemo(
+    () => products.filter((product) => productCurrency(product) === currencyMode),
+    [products, currencyMode],
+  );
+  const currencyProductIds = useMemo(
+    () => new Set(currencyProducts.map((product) => product.id)),
+    [currencyProducts],
+  );
+  const currencyList = useMemo(
+    () => list.filter((item) => currencyProductIds.has(item.productId)),
+    [list, currencyProductIds],
+  );
+  const otherCurrencyListCount = list.length - currencyList.length;
   const displayedPlan = useMemo(
     () =>
       mealPlan
         ? buildMealPlan(
             mealPlan.preferences,
-            products,
-            list,
+            currencyProducts,
+            currencyList,
             mealPlan.recipes.map((recipe) => recipe.id),
             storeCategories,
           )
         : null,
-    [mealPlan, products, list, storeCategories],
+    [mealPlan, currencyProducts, currencyList, storeCategories],
   );
   const askAgent = (text: string) => {
     setTab('guide');
     setChatRequest({ id: ++requestNumber.current, text });
   };
   const [toast, setToast] = useState('');
-  const categoryName = (id?: string) =>
-    storeCategories.find((item) => item.id === id)?.name || (id ? categoryLabels[id] || id : '');
+  const categoryName = (id?: string) => {
+    if (!id) return '';
+    return (
+      storeCategories.find((item) => item.id === id)?.name ||
+      merchandisingFamilyLabel(id, categoryLabels[id] || id)
+    );
+  };
+  const shelfForProduct = (product: Product) => {
+    if (!productHasNavigableShelf(product)) return undefined;
+    if (product.catalogOrigin === 'open-prices') {
+      const shelf = shelves.find((item) => item.id === product.shelfId);
+      if (!shelf?.reachable || !shelf.position) return undefined;
+      const target = productShelfTarget(product, shelf);
+      return target.reachable && target.position ? shelf : undefined;
+    }
+    return (
+      shelves.find((item) => item.id === product.shelfId) ||
+      shelves.find((item) => item.name === product.shelf)
+    );
+  };
+  const productLocationOrStatus = (product: Product) =>
+    shelfForProduct(product)
+      ? productLocationLabel(product)
+      : productPlacementStatus(product) || '待安排陈列';
+  const revealHomeMap = () => {
+    setTab('guide');
+    setMapScrollRequest((request) => request + 1);
+  };
+  useEffect(() => {
+    if (!mapScrollRequest) return;
+    requestAnimationFrame(() =>
+      document
+        .getElementById('store-floor-viewport')
+        ?.scrollIntoView({ block: 'center', behavior: 'smooth' }),
+    );
+  }, [mapScrollRequest]);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const notify = (text: string) => {
     setToast(text);
@@ -221,14 +281,14 @@ export default function App() {
       /* Private browsing can disable storage; the current tab keeps its selection. */
     }
   }, [homePantry]);
-  const availableList = list.flatMap((item) => {
-    const product = products.find((p) => p.id === item.productId);
+  const availableList = currencyList.flatMap((item) => {
+    const product = currencyProducts.find((p) => p.id === item.productId);
     return product ? [{ ...item, product }] : [];
   });
   const listCount = availableList.length;
-  const total = cartTotal(list, products);
+  const total = cartTotal(currencyList, currencyProducts);
   const add = (product: Product) => {
-    if (!product.stock) return;
+    if (productCurrency(product) !== currencyMode || !availableForSale(product)) return;
     setList((previous) =>
       previous.some((item) => item.productId === product.id)
         ? previous.map((item) =>
@@ -238,7 +298,7 @@ export default function App() {
                   purchasedQuantity:
                     (item.purchasedQuantity || 0) + (item.checked ? item.quantity : 0),
                   checked: false,
-                  quantity: Math.min((item.checked ? 0 : item.quantity) + 1, product.stock, 99),
+                  quantity: Math.min((item.checked ? 0 : item.quantity) + 1, purchaseLimit(product)),
                 }
               : item,
           )
@@ -253,21 +313,48 @@ export default function App() {
         zones.find((zone) => zone.id === id)?.location ||
         entrance;
   const navigateTo = (id: Category, switchTab = false) => {
-    const sectionId = storeCategories.find((item) => item.id === id)?.sectionId || id;
-    const destinations = shelves.filter(
-      (shelf) => shelf.sectionId === sectionId && shelf.reachable,
-    );
+    const categoryRecord = storeCategories.find((item) => item.id === id);
+    const sectionId = categoryRecord?.sectionId || id;
+    const matchingProducts = currencyProducts.filter((product) => product.category === id);
+    const destinations = categoryRecord
+      ? [
+          ...new Map(
+            matchingProducts
+              .map(shelfForProduct)
+              .filter((shelf): shelf is Shelf => !!shelf)
+              .map((shelf) => [shelf.id, shelf] as const),
+          ).values(),
+        ]
+      : shelves.filter((shelf) => shelf.sectionId === sectionId && shelf.reachable);
     const section = storeSections.find((item) => item.id === sectionId);
-    setSelected(sectionId);
-    if (!sectionId || !section) {
+    setSelected(destinations[0]?.sectionId || sectionId);
+    if (categoryRecord && !destinations.length) {
       setRoute({
         points: [currentPoint],
         stops: [],
         distance: 0,
         minutes: 0,
         unreachable: [
-          `${storeCategories.find((item) => item.id === id)?.name || id}（未关联门店分区）`,
+          `${categoryRecord.name}（当前商品待确认分类、保存条件或陈列位置，暂不可导航）`,
         ],
+      });
+    } else if (categoryRecord) {
+      const next = buildShelfRoute(destinations, currentPoint, storeSections, shelves);
+      const notPlaced = matchingProducts
+        .filter((product) => !shelfForProduct(product))
+        .map(
+          (product) =>
+            `${product.name}（${productPlacementStatus(product) || '待安排陈列'}）`,
+        );
+      next.unreachable = [...(next.unreachable || []), ...notPlaced];
+      setRoute(next);
+    } else if (!sectionId || !section) {
+      setRoute({
+        points: [currentPoint],
+        stops: [],
+        distance: 0,
+        minutes: 0,
+        unreachable: [`${id}（未关联门店分区）`],
       });
     } else
       setRoute(
@@ -288,16 +375,48 @@ export default function App() {
               shelves,
             ),
       );
-    if (switchTab) setTab('map');
-    else if (window.innerWidth < 800) {
-      setTab('map');
-    }
+    if (switchTab || window.innerWidth < 800) revealHomeMap();
+  };
+  const navigateSection = (sectionId: string) => {
+    const destinations = shelves.filter(
+      (shelf) => shelf.sectionId === sectionId && shelf.reachable,
+    );
+    const section = storeSections.find((item) => item.id === sectionId);
+    setSelected(sectionId);
+    setRoute(
+      destinations.length
+        ? buildShelfRoute(destinations, currentPoint, storeSections, shelves)
+        : section
+          ? buildShelfRoute(
+              [
+                {
+                  id: section.id,
+                  sectionId: section.id,
+                  name: section.name,
+                  position: section.location,
+                  reachable: section.active,
+                },
+              ],
+              currentPoint,
+              storeSections,
+              shelves,
+            )
+          : {
+              points: [currentPoint],
+              stops: [],
+              distance: 0,
+              minutes: 0,
+              unreachable: [`${sectionId}（未关联门店分区）`],
+            },
+    );
+    revealHomeMap();
   };
   const navigateShelf = (shelf: Shelf) => {
+    setSelectedProductId('');
     const next = buildShelfRoute([shelf], currentPoint, storeSections, shelves);
     setSelected(shelf.sectionId);
     setRoute(next);
-    setTab('map');
+    revealHomeMap();
     notify(
       next.shelfStops?.length
         ? `已规划前往 ${shelf.name} 的模拟路线。`
@@ -305,21 +424,17 @@ export default function App() {
     );
   };
   const navigateProduct = (product: Product) => {
-    const shelf =
-      shelves.find((item) => item.id === product.shelfId) ||
-      shelves.find((item) => item.name === product.shelf);
+    const shelf = shelfForProduct(product);
     if (shelf) {
-      navigateShelf(productShelfTarget(product, shelf));
+      setSelectedProductId(product.id);
+      const target = productShelfTarget(product, shelf);
+      const next = buildShelfRoute([target], currentPoint, storeSections, shelves);
+      setSelected(target.sectionId);
+      setRoute(next);
+      revealHomeMap();
     } else {
-      setRoute({
-        points: [currentPoint],
-        stops: [],
-        distance: 0,
-        minutes: 0,
-        unreachable: [`${product.name}（未配置货架位置）`],
-      });
-      setTab('map');
-      notify(`${product.name}尚未配置货架位置，无法规划到货架的路线。`);
+      setSelectedProductId('');
+      notify(`${product.name}：${productPlacementStatus(product) || '待安排陈列'}，暂不可导航。`);
     }
   };
   const arrive = () => {
@@ -350,12 +465,10 @@ export default function App() {
       );
   };
   const planList = () => {
-    const pendingItems = availableList.filter((item) => !item.checked && item.product.stock > 0);
+    const pendingItems = availableList.filter((item) => !item.checked && availableForSale(item.product));
     const targets = pendingItems
       .map((item) => {
-        const shelf =
-          shelves.find((shelf) => shelf.id === item.product.shelfId) ||
-          shelves.find((shelf) => shelf.name === item.product.shelf);
+        const shelf = shelfForProduct(item.product);
         return shelf ? productShelfTarget(item.product, shelf) : undefined;
       })
       .filter((target): target is Shelf => !!target);
@@ -364,21 +477,19 @@ export default function App() {
       return;
     }
     const missing = pendingItems
-      .filter(
+      .filter((item) => !shelfForProduct(item.product))
+      .map(
         (item) =>
-          !shelves.some(
-            (shelf) => shelf.id === item.product.shelfId || shelf.name === item.product.shelf,
-          ),
-      )
-      .map((item) => item.product.name);
+          `${item.product.name}（${productPlacementStatus(item.product) || '待安排陈列'}）`,
+      );
     const nextRoute = buildShelfRoute(targets, currentPoint, storeSections, shelves);
     if (missing.length)
       nextRoute.unreachable = [
         ...(nextRoute.unreachable || []),
-        ...missing.map((name) => `${name}（未配置货架位置）`),
+        ...missing,
       ];
     setRoute(nextRoute);
-    setTab('map');
+    revealHomeMap();
   };
   const executeAction = async (action: ShoppingAction): Promise<string> => {
     if (action.type === 'undo') {
@@ -386,43 +497,54 @@ export default function App() {
       if (!before) return '当前没有可以撤销的清单操作。';
       listRef.current = before;
       setListState(before);
-      const message = `已撤销上一次清单操作。待购合计 ¥${money(cartTotal(before, products))}。`;
+      const message = `已撤销上一次清单操作。待购合计 ${currencySymbol(currencyMode)}${money(cartTotal(before, currencyProducts))}。`;
       notify(message);
       return message;
     }
     if (action.type === 'navigate') {
       if (action.productId) {
-        const product = products.find((item) => item.id === action.productId);
+        const product = currencyProducts.find((item) => item.id === action.productId);
         if (product) {
           navigateProduct(product);
-          return `正在模拟前往 ${productLocationLabel(product)}。`;
+          return shelfForProduct(product)
+            ? `正在模拟前往 ${productLocationLabel(product)}。`
+            : `${product.name}：${productPlacementStatus(product) || '待安排陈列'}，暂不可导航。`;
         }
       }
       if (action.category) {
         navigateTo(action.category, true);
         return `已规划前往${categoryName(action.category)}的路线，可在地图中查看。`;
       }
-      const pending = listRef.current
-        .filter((item) => !item.checked)
+      const requestedProducts = listRef.current
+        .filter((item) => !item.checked && currencyProductIds.has(item.productId))
         .flatMap((item) => {
-          const product = products.find((p) => p.id === item.productId && p.stock > 0);
-          const shelf =
-            product &&
-            (shelves.find((s) => s.id === product.shelfId) ||
-              shelves.find((s) => s.name === product.shelf));
-          return shelf && product ? [productShelfTarget(product, shelf)] : [];
+          const product = currencyProducts.find((p) => p.id === item.productId && availableForSale(p));
+          return product ? [product] : [];
         });
-      if (!pending.length) return '清单里没有待购的在售商品。请先确认采购方案或加入商品。';
+      const pending = requestedProducts
+        .flatMap((item) => {
+          const shelf = shelfForProduct(item);
+          return shelf ? [productShelfTarget(item, shelf)] : [];
+        });
+      if (!requestedProducts.length) return '清单里没有待购的在售商品。请先确认采购方案或加入商品。';
+      if (!pending.length)
+        return requestedProducts
+          .map((product) => `${product.name}：${productPlacementStatus(product) || '待安排陈列'}`)
+          .join('；');
       const nextRoute = buildShelfRoute(pending, currentPoint, storeSections, shelves);
+      const unplaced = requestedProducts
+        .filter((product) => !shelfForProduct(product))
+        .map((product) => `${product.name}（${productPlacementStatus(product) || '待安排陈列'}）`);
+      nextRoute.unreachable = [...(nextRoute.unreachable || []), ...unplaced];
       setRoute(nextRoute);
-      setTab('map');
+      revealHomeMap();
       return `已按待购清单规划 ${nextRoute.shelfStops?.length || 0} 个取货点的路线，约 ${nextRoute.distance} 米。到达后可说“去下一站”推进模拟行程。`;
     }
     if (action.type === 'next') {
       if (!route?.stops.length) return '当前没有正在进行的路线。可以先说“按清单规划路线”。';
       const reached = route.stops[0];
       arrive();
-      setTab('map');
+      revealHomeMap();
       return route.stops.length > 1
         ? `已模拟到达${route.shelfStops?.[0]?.name || categoryName(reached)}，下一站是${route.shelfStops?.[1]?.name || categoryName(route.stops[1])}。`
         : `已模拟到达${route.shelfStops?.[0]?.name || categoryName(reached)}，本次路线完成。`;
@@ -437,25 +559,41 @@ export default function App() {
   const shown = useMemo(() => {
     const source = recommendations
       ? recommendations
-          .map((p) => products.find((current) => current.id === p.id))
+          .map((p) => currencyProducts.find((current) => current.id === p.id))
           .filter((p): p is Product => !!p)
-      : products;
+      : currencyProducts;
     return source
       .filter(
         (p) =>
-          p.stock > 0 &&
+          p.status !== 'archived' &&
+          (p.inventoryMode === 'untracked' || availableForSale(p) || p.status === 'draft') &&
           (category === 'all' || p.category === category) &&
           `${p.name}${p.tags.join('')}${p.aliases.join('')}`.includes(query),
       )
-      .sort((a, b) =>
-        sort === 'asc' ? a.price - b.price : sort === 'desc' ? b.price - a.price : 0,
-      );
-  }, [products, recommendations, category, query, sort]);
+      .sort((a, b) => {
+        if (sort === 'asc') return a.price - b.price;
+        if (sort === 'desc') return b.price - a.price;
+        const catalogPriority = (product: Product) =>
+          Number(availableForSale(product)) * 4 + Number(product.price > 0) * 2 + Number(!!product.image);
+        return catalogPriority(b) - catalogPriority(a);
+      });
+  }, [currencyProducts, recommendations, category, query, sort]);
+  useEffect(() => setShownLimit(48), [category, query, sort, recommendations]);
+  const visibleProducts = shown.slice(0, shownLimit);
   const handleResults = (results: Product[], title: string) => {
-    setRecommendations(title ? results : null);
+    setRecommendations(title ? results.filter((product) => productCurrency(product) === currencyMode) : null);
     setResultTitle(title);
     setCategory('all');
     setQuery('');
+  };
+  const changeCurrencyMode = (currency: Currency) => {
+    if (currency === currencyMode) return;
+    setCurrencyMode(currency);
+    setRecommendations(null);
+    setResultTitle('');
+    setCategory('all');
+    setQuery('');
+    setMealPlan(null);
   };
   const mapProps = {
     route,
@@ -463,15 +601,19 @@ export default function App() {
     currentPoint,
     sections: storeSections,
     shelves,
-    products,
+    products: currencyProducts,
+    selectedProductId,
+    onSelectProduct: navigateProduct,
+    onClearSelectedProduct: () => setSelectedProductId(''),
     onShelfSelect: navigateShelf,
+    onPlanList: planList,
     selected,
     onSelect: (id: Category) => {
       const matchingCategories = storeCategories.filter(
         (item) => item.sectionId === id && item.active,
       );
       setCategory(matchingCategories.length === 1 ? matchingCategories[0].id : 'all');
-      navigateTo(id);
+      navigateSection(id);
     },
     onPosition: changePosition,
     onArrive: arrive,
@@ -502,14 +644,13 @@ export default function App() {
             {(
               [
                 { id: 'guide', label: '导购逛店', Icon: Compass },
-                { id: 'map', label: '门店地图', Icon: MapIcon },
                 { id: 'list', label: '购物清单', Icon: ShoppingBag },
               ] as const
             ).map(({ id, label, Icon }) => (
               <button
                 key={id}
-                className={tab === id && role === 'customer' ? 'active' : ''}
-                aria-current={tab === id && role === 'customer' ? 'page' : undefined}
+                className={displayTab === id && role === 'customer' ? 'active' : ''}
+                aria-current={displayTab === id && role === 'customer' ? 'page' : undefined}
                 onClick={() => {
                   setRole('customer');
                   setTab(id);
@@ -556,22 +697,18 @@ export default function App() {
         ) : role === 'store' ? (
           <Admin products={products} onRefresh={refresh} onToast={notify} ai={ai} />
         ) : (
-          <main className={`main-container ${tab === 'guide' ? 'guide-main' : ''}`}>
+          <main className={`main-container ${displayTab === 'guide' ? 'guide-main' : ''}`}>
             <div className="page-heading">
               <div>
                 <h1>
-                  {tab === 'guide'
+                  {displayTab === 'guide'
                     ? '今天，想买点什么？'
-                    : tab === 'map'
-                      ? '跟着地图，慢慢逛。'
-                      : '把想买的，都记下来。'}
+                    : '把想买的，都记下来。'}
                 </h1>
                 <p>
-                  {tab === 'guide'
+                  {displayTab === 'guide'
                     ? '聊聊你的想法，小禾帮你挑选，也带你找到。'
-                    : tab === 'map'
-                      ? '选择目的地，或按购物清单规划一条顺路的行程。'
-                      : '挑选好物，规划路线，让这一趟采购从容一点。'}
+                    : '挑选好物，规划路线，让这一趟采购从容一点。'}
                 </p>
               </div>
               <div className="store-label">
@@ -585,17 +722,19 @@ export default function App() {
                 </span>
               </div>
             </div>
-            <div hidden={tab !== 'guide'}>
+            <div hidden={displayTab !== 'guide'}>
               <div className="guide-workspace">
                 <ChatPanel
-                  products={products}
+                  key={currencyMode}
+                  currency={currencyMode}
+                  products={currencyProducts}
                   onResults={handleResults}
                   onNavigate={navigateProduct}
                   onAdd={add}
                   onToast={notify}
                   ai={ai}
                   context={{
-                    cart: list,
+                    cart: currencyList,
                     meal: displayedPlan?.preferences,
                     recipeIds: displayedPlan?.recipes.map((recipe) => recipe.id),
                     homePantry,
@@ -606,22 +745,22 @@ export default function App() {
                   onBusy={setChatBusy}
                   request={chatRequest}
                   onRequestConsumed={() => setChatRequest(null)}
-                  visible={tab === 'guide'}
+                  visible={displayTab === 'guide'}
                 />
-                {tab === 'guide' &&
-                  (displayedPlan ? (
-                    <MealPanel
-                      plan={displayedPlan}
-                      categoryNames={Object.fromEntries(
-                        storeCategories.map((item) => [item.id, item.name]),
-                      )}
-                      busy={chatBusy}
-                      onSend={askAgent}
-                    />
-                  ) : (
-                    <StoreMap {...mapProps} />
-                  ))}
+                {displayTab === 'guide' && <StoreMap {...mapProps} />}
               </div>
+              {displayedPlan && (
+                <div className="meal-plan-below-map">
+                  <MealPanel
+                    plan={displayedPlan}
+                    categoryNames={Object.fromEntries(
+                      storeCategories.map((item) => [item.id, item.name]),
+                    )}
+                    busy={chatBusy}
+                    onSend={askAgent}
+                  />
+                </div>
+              )}
               <div className="discovery-strip">
                 <div className="discovery-image" />
                 <div>
@@ -647,8 +786,10 @@ export default function App() {
               <section className="products-section" id="products">
                 <div className="section-heading">
                   <div>
-                    <h2>{resultTitle || '逛逛新鲜好物'}</h2>
-                    <span className="muted compact">{shown.length} 件可选商品</span>
+                    <h2>{resultTitle || '门店商品目录'}</h2>
+                    <span className="muted compact">
+                      {currencyMode} · {currencyMode === 'USD' ? '美元' : '人民币'} · {shown.length} 个商品
+                    </span>
                     {recommendations !== null && (
                       <button
                         className="text-button"
@@ -673,6 +814,22 @@ export default function App() {
                   </label>
                 </div>
                 <div className="product-toolbar">
+                  <div className="currency-toggle" role="group" aria-label="目录币种">
+                    <button
+                      className={currencyMode === 'USD' ? 'active' : ''}
+                      aria-pressed={currencyMode === 'USD'}
+                      onClick={() => changeCurrencyMode('USD')}
+                    >
+                      USD 美元
+                    </button>
+                    <button
+                      className={currencyMode === 'CNY' ? 'active' : ''}
+                      aria-pressed={currencyMode === 'CNY'}
+                      onClick={() => changeCurrencyMode('CNY')}
+                    >
+                      CNY 人民币
+                    </button>
+                  </div>
                   <div className="category-tabs" role="group" aria-label="商品分区">
                     <button
                       className={category === 'all' ? 'active' : ''}
@@ -682,7 +839,10 @@ export default function App() {
                       全部好物
                     </button>
                     {storeCategories
-                      .filter((item) => item.active)
+                      .filter(
+                        (item) =>
+                          item.active && currencyProducts.some((product) => product.category === item.id),
+                      )
                       .map((zone) => (
                         <button
                           key={zone.id}
@@ -714,13 +874,15 @@ export default function App() {
                   </div>
                 ) : shown.length ? (
                   <div className="product-grid">
-                    {shown.map((product) => (
+                    {visibleProducts.map((product) => (
                       <ProductCard
                         key={product.id}
                         product={product}
-                        categoryLabel={
-                          storeCategories.find((item) => item.id === product.category)?.name
-                        }
+                        categoryLabel={productCategoryLabel(
+                          product,
+                          storeCategories,
+                          categoryLabels[product.category] || product.category,
+                        )}
                         onAdd={add}
                         onNavigate={navigateProduct}
                         added={list.some((item) => item.productId === product.id)}
@@ -745,99 +907,31 @@ export default function App() {
                     </button>
                   </div>
                 )}
+                {shownLimit < shown.length && (
+                  <div className="product-load-more">
+                    <button
+                      className="button secondary"
+                      onClick={() => setShownLimit((current) => Math.min(current + 48, shown.length))}
+                    >
+                      加载更多（{visibleProducts.length}/{shown.length}）
+                    </button>
+                  </div>
+                )}
               </section>
             </div>
-            {tab === 'map' && (
-              <div className="map-page">
-                <aside className="zone-directory">
-                  <h2>卖场区域与陈列</h2>
-                  <p>展开区域选择取货点，点击地图设施查看商品侧面与层位。</p>
-                  {storeSections
-                    .filter((section) => section.active)
-                    .map((zone) => (
-                      <div key={zone.id}>
-                        <button
-                          className={selected === zone.id ? 'active' : ''}
-                          aria-expanded={selected === zone.id}
-                          onClick={() => setSelected(selected === zone.id ? undefined : zone.id)}
-                        >
-                          <span
-                            className="zone-letter"
-                            style={{ color: zone.color, background: zone.tint }}
-                          >
-                            {zone.code}
-                          </span>
-                          <span>
-                            <strong>{zone.name}</strong>
-                            <small>
-                              {
-                                products.filter(
-                                  (p) =>
-                                    (p.shelfId
-                                      ? shelves.find((s) => s.id === p.shelfId)?.sectionId
-                                      : shelves.find((s) => s.name === p.shelf)?.sectionId) ===
-                                      zone.id && p.stock > 0,
-                                ).length
-                              }{' '}
-                              件在售商品
-                            </small>
-                          </span>
-                          <ChevronRight size={16} />
-                        </button>
-                        {selected === zone.id && (
-                          <div style={{ padding: '4px 8px 12px' }}>
-                            {shelves
-                              .filter((shelf) => shelf.sectionId === zone.id)
-                              .map((shelf) => (
-                                <button
-                                  key={shelf.id}
-                                  onClick={() => navigateShelf(shelf)}
-                                  className={
-                                    route?.shelfStops?.[0]?.id.split('@')[0] === shelf.id
-                                      ? 'active'
-                                      : ''
-                                  }
-                                >
-                                  <MapPin size={15} />
-                                  <span>
-                                    <strong>{shelf.name}</strong>
-                                    <small>
-                                      {shelf.reachable && shelf.position
-                                        ? fixtureKindLabels[shelf.kind || 'gondola']
-                                        : '未配置可达位置'}
-                                    </small>
-                                  </span>
-                                  <ChevronRight size={14} />
-                                </button>
-                              ))}
-                            {!shelves.some((shelf) => shelf.sectionId === zone.id) && (
-                              <p className="field-note">此区域尚无陈列设施，请在超市端新增。</p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  <button
-                    className="button primary plan-list"
-                    onClick={planList}
-                    disabled={!availableList.some((x) => !x.checked)}
-                  >
-                    <Navigation size={16} />
-                    按购物清单规划
-                  </button>
-                  <p className="field-note">示例平面图，无真实室内定位。请手动设置“我的位置”。</p>
-                  {displayedPlan && (
-                    <button className="text-button" onClick={() => setTab('guide')}>
-                      返回菜谱与导购对话
-                      <ArrowRight size={14} />
-                    </button>
-                  )}
-                </aside>
-                <StoreMap {...mapProps} expanded />
-              </div>
-            )}
-            {tab === 'list' && (
+            {displayTab === 'list' && (
               <section className="shopping-page">
+                {otherCurrencyListCount > 0 && (
+                  <p className="currency-separation-note" role="status">
+                    另有 {otherCurrencyListCount} 件其他币种商品仍保留在清单中；当前只显示 {currencyMode} 小计。
+                    <button
+                      className="text-button"
+                      onClick={() => changeCurrencyMode(currencyMode === 'USD' ? 'CNY' : 'USD')}
+                    >
+                      切换查看
+                    </button>
+                  </p>
+                )}
                 {!availableList.length ? (
                   <div className="empty-state list-empty">
                     <span className="empty-basket">
@@ -865,7 +959,11 @@ export default function App() {
                           className="text-button"
                           disabled={!availableList.some((item) => item.checked)}
                           onClick={() =>
-                            setList((previous) => previous.filter((item) => !item.checked))
+                            setList((previous) =>
+                              previous.filter(
+                                (item) => !currencyProductIds.has(item.productId) || !item.checked,
+                              ),
+                            )
                           }
                         >
                           <CheckCheck size={15} />
@@ -896,9 +994,14 @@ export default function App() {
                             <strong>{item.product.name}</strong>
                             <span>
                               {categoryName(item.product.category)} ·{' '}
-                              {productLocationLabel(item.product)} · {item.product.unit}
-                              {!item.product.stock ? ' · 已售罄' : ''}
+                              {productLocationOrStatus(item.product)} · {item.product.unit}
+                              {item.product.inventoryMode !== 'untracked' && !item.product.stock ? ' · 已售罄' : ''}
                             </span>
+                            {productMerchandisingSummary(item.product) && (
+                              <span className="shopping-item-merchandising">
+                                {productMerchandisingSummary(item.product)}
+                              </span>
+                            )}
                             <span>{amountLabel(item.product, item.quantity)}</span>
                             {!!item.purchasedQuantity && (
                               <span>
@@ -907,10 +1010,17 @@ export default function App() {
                             )}
                             <button
                               className="text-button"
-                              onClick={() => navigateTo(item.product.category, true)}
+                              onClick={() => navigateProduct(item.product)}
+                              disabled={!shelfForProduct(item.product)}
                             >
-                              带我去
-                              <ArrowUpRight size={13} />
+                              {shelfForProduct(item.product) ? (
+                                <>
+                                  带我去
+                                  <ArrowUpRight size={13} />
+                                </>
+                              ) : (
+                                productPlacementStatus(item.product) || '待安排陈列'
+                              )}
                             </button>
                           </div>
                           <div className="quantity-control">
@@ -946,7 +1056,7 @@ export default function App() {
                               aria-label={`增加${item.product.name}数量`}
                               disabled={
                                 item.quantity + quantityStep(item.product) >
-                                Math.min(99, item.product.stock)
+                                purchaseLimit(item.product)
                               }
                               onClick={() =>
                                 setList((previous) =>
@@ -967,7 +1077,7 @@ export default function App() {
                             </button>
                           </div>
                           <strong className="item-total">
-                            ¥{money(lineCents(item.product, item.quantity) / 100)}
+                            {currencySymbol(currencyMode)}{money(lineCents(item.product, item.quantity) / 100)}
                           </strong>
                           <button
                             className="icon-button"
@@ -1005,7 +1115,7 @@ export default function App() {
                       </div>
                       <div className="list-total">
                         <span>待购合计</span>
-                        <strong>¥{money(total)}</strong>
+                        <strong>{currencySymbol(currencyMode)}{money(total)}</strong>
                       </div>
                       <p>按商品标注单位计价，称重商品以实际结算为准。</p>
                       {displayedPlan?.preferences.budget != null && (
@@ -1016,10 +1126,10 @@ export default function App() {
                               : 'budget-remains'
                           }
                         >
-                          整单预算 ¥{money(displayedPlan.preferences.budget)} ·{' '}
+                          整单预算 {currencySymbol(currencyMode)}{money(displayedPlan.preferences.budget)} ·{' '}
                           {total > displayedPlan.preferences.budget
-                            ? `已超出 ¥${money(total - displayedPlan.preferences.budget)}`
-                            : `还余 ¥${money(displayedPlan.preferences.budget - total)}`}
+                            ? `已超出 ${currencySymbol(currencyMode)}${money(total - displayedPlan.preferences.budget)}`
+                            : `还余 ${currencySymbol(currencyMode)}${money(displayedPlan.preferences.budget - total)}`}
                         </p>
                       )}
                       <button
@@ -1033,7 +1143,7 @@ export default function App() {
                         className="button primary"
                         onClick={planList}
                         disabled={
-                          !availableList.some((item) => !item.checked && item.product.stock > 0)
+                          !availableList.some((item) => !item.checked && availableForSale(item.product))
                         }
                       >
                         <Navigation size={16} />

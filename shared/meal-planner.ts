@@ -25,6 +25,8 @@ import {
   roundQuantity,
   purchasedQuantity,
 } from './shopping';
+import { purchaseLimit } from './catalog-status';
+import { currencySymbol, productCurrency } from './currency';
 import type { Recipe, RecipeIngredient } from './recipes';
 
 type ScheduledDish = { recipe: Recipe; day: number; meal: string; kind?: GeneratedDish['kind'] };
@@ -82,7 +84,13 @@ function findFoodProduct(
   products: Product[],
   categories: StoreCategory[],
 ) {
-  const food = products.filter((product) => isFoodProduct(product, categories));
+  const food = products.filter(
+    (product) =>
+      product.status !== 'draft' &&
+      product.status !== 'archived' &&
+      product.price > 0 &&
+      isFoodProduct(product, categories),
+  );
   const wanted = normalized(name);
   const aliases = ingredientAliases[key] || [];
   const related = (left: string, right: string) => {
@@ -444,15 +452,16 @@ function evaluate(
     const additional = roundQuantity(Math.max(0, mergedQuantity - listed));
     const costCents = lineCents(product, mergedQuantity) - lineCents(product, listed);
     if (bought > 0) owned.add(`${product.name}（已购）`);
-    if (mergedQuantity > Math.min(product.stock, 99)) {
+    if (mergedQuantity > purchaseLimit(product)) {
       const amount = displayAmount(need.amount, need.units);
+      const reason = product.inventoryMode === 'untracked' ? '超过单品购买上限' : '库存不足';
       unresolved.push({
         ingredient: product.name,
         amount,
         status: 'out_of_stock',
         dishes: [...new Set(need.dishes)],
       });
-      missing.add(`${product.name}库存不足，需要${required}份`);
+      missing.add(`${product.name}${reason}，需要${required}份`);
       unavailableProducts.add(product.id);
     }
     const size = packageSize(product);
@@ -473,7 +482,7 @@ function evaluate(
       remainingQuantity: Math.max(0, required - bought),
       listedQuantity: listed,
       additionalQuantity: additional,
-      calculation: `${displayAmount(need.amount, need.units)} ÷ ${packDescription}，整包装向上取整为 ${required} 份；${product.price.toFixed(2)} 元/${product.unit}`,
+      calculation: `${displayAmount(need.amount, need.units)} ÷ ${packDescription}，整包装向上取整为 ${required} 份；${currencySymbol(productCurrency(product))}${product.price.toFixed(2)}/${product.unit}`,
     });
   }
 
@@ -485,8 +494,9 @@ function evaluate(
   );
   for (const item of merged.filter((entry) => !entry.checked)) {
     const product = products.find((candidate) => candidate.id === item.productId);
-    if (!product || item.quantity > Math.min(product.stock, 99)) {
-      missing.add(`现有清单中的${product?.name || '商品'}已缺货或库存不足`);
+    if (!product || product.price <= 0 || product.status === 'draft' || product.status === 'archived' || item.quantity > purchaseLimit(product)) {
+      const reason = product?.inventoryMode === 'untracked' ? '超过单品清单数量上限' : '已缺货或库存不足';
+      missing.add(`现有清单中的${product?.name || '商品'}${reason}`);
       unavailableProducts.add(item.productId);
     }
   }
@@ -499,6 +509,8 @@ function evaluate(
     products,
   );
   const budgetComplete = unresolved.length === 0 && missing.size === 0;
+  const currency = products[0] ? productCurrency(products[0]) : 'CNY';
+  const symbol = currencySymbol(currency);
   const remaining =
     preferences.budget === null || !budgetComplete
       ? null
@@ -525,9 +537,10 @@ function evaluate(
     .map((item) => `${item.ingredient}（${item.amount}）`);
   const incomplete = unresolved.length > 0;
   const pricedPart = incomplete
-    ? `本店可购部分 ¥${total.toFixed(2)}，还有 ${unpriced.length + unresolved.filter((item) => item.status === 'out_of_stock').length} 项未计价。`
+    ? `本店可购部分 ${symbol}${total.toFixed(2)}，还有 ${unpriced.length + unresolved.filter((item) => item.status === 'out_of_stock').length} 项未计价。`
     : '';
   return {
+    currency,
     preferences,
     recipes: recipesForUi,
     items,
@@ -582,22 +595,23 @@ export function buildMealPlan(
 }
 
 export function describeMealPlan(plan: MealPlan, previousTotal?: number) {
+  const symbol = currencySymbol(plan.currency || 'CNY');
   const budget = plan.preferences.budget;
   const unpricedCount = plan.unpriced?.length || 0;
   const outOfStockCount =
     plan.unresolved?.filter((item) => item.status === 'out_of_stock').length || 0;
   const otherMissingCount = Math.max(0, plan.missing.length - unpricedCount - outOfStockCount);
   const amount = plan.budgetComplete
-    ? `计划食材采购 ¥${(plan.newlyAddedCost ?? plan.addedCost).toFixed(2)}；原清单 ¥${plan.existingCost.toFixed(2)}；合并待购 ¥${plan.total.toFixed(2)}`
-    : `本店可购部分 ¥${plan.total.toFixed(2)}；${unpricedCount} 项未计价、${outOfStockCount} 项缺货${otherMissingCount ? `、${otherMissingCount} 项条件未满足` : ''}`;
-  let text = `按 ${plan.preferences.people} 人、${plan.preferences.days} 天、每天 ${plan.preferences.mealsPerDay} 餐搭配。${amount}${budget === null ? '；未设置预算上限。' : `；预算 ¥${budget.toFixed(2)}。`}`;
+    ? `计划食材采购 ${symbol}${(plan.newlyAddedCost ?? plan.addedCost).toFixed(2)}；原清单 ${symbol}${plan.existingCost.toFixed(2)}；合并待购 ${symbol}${plan.total.toFixed(2)}`
+    : `本店可购部分 ${symbol}${plan.total.toFixed(2)}；${unpricedCount} 项未计价、${outOfStockCount} 项缺货${otherMissingCount ? `、${otherMissingCount} 项条件未满足` : ''}`;
+  let text = `按 ${plan.preferences.people} 人、${plan.preferences.days} 天、每天 ${plan.preferences.mealsPerDay} 餐搭配。${amount}${budget === null ? '；未设置预算上限。' : `；预算 ${symbol}${budget.toFixed(2)}。`}`;
   if (plan.preferences.cheaper && previousTotal !== undefined)
     text +=
       plan.total < previousTotal
-        ? ` 保持人数和份量，预计少花 ¥${(previousTotal - plan.total).toFixed(2)}。`
+        ? ` 保持人数和份量，预计少花 ${symbol}${(previousTotal - plan.total).toFixed(2)}。`
         : ' 当前没有更便宜且符合条件的搭配，保留这份方案。';
   if (plan.remaining !== null && plan.remaining < 0)
-    text += ` 超出 ¥${(-plan.remaining).toFixed(2)}，请提高预算或调整菜品，暂不能一键加入。`;
+    text += ` 超出 ${symbol}${(-plan.remaining).toFixed(2)}，请提高预算或调整菜品，暂不能一键加入。`;
   if (plan.missing.length) text += ` ${plan.missing.join('；')}。`;
   return text;
 }

@@ -163,8 +163,8 @@ export function parseMealPreferences(message: string, previous?: MealPreferences
   if (people) preferences.people = +people[1];
   const budget =
     normalized.match(
-      /(?:预算|总共|一共|总价|总额|花费|最多花|不超过)\s*(?:改为|改成|调整为|是|为|在|只有)?\s*[¥￥]?\s*(\d+(?:\.\d+)?)/,
-    ) || normalized.match(/(\d+(?:\.\d+)?)\s*(?:元|块钱?)(?:以内|以下|买|做|的晚饭|的晚餐)/);
+      /(?:预算|总共|一共|总价|总额|花费|最多花|不超过)\s*(?:改为|改成|调整为|是|为|在|只有)?\s*[$¥￥]?\s*(\d+(?:\.\d+)?)/,
+    ) || normalized.match(/[$¥￥]?\s*(\d+(?:\.\d+)?)\s*(?:元|块钱?|USD|美元)?(?:以内|以下|买|做|的晚饭|的晚餐)/i);
   if (budget) preferences.budget = +budget[1];
   if (/不限预算|预算不限|不用管预算/.test(message)) preferences.budget = null;
   const negative =
@@ -455,7 +455,7 @@ export async function shoppingAgent(
     preferences.generatedMeals = undefined;
   const valid = mealPreferencesSchema.safeParse(preferences);
   if (!valid.success)
-    return reply('目前支持 1–8 人、0–10000 元预算的采购方案，请调整人数或预算后重试。');
+    return reply('目前支持 1–8 人、0–10000 当前目录币种预算的采购方案，请调整人数或预算后重试。');
   if (preferences.generatedMeals) {
     const mealNames =
       preferences.mealsPerDay === 1

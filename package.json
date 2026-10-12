@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "concurrently -k -n api,web \"tsx watch server/index.ts\" \"vite --host 127.0.0.1\"",
     "build": "tsc --noEmit && vite build",
+    "catalog:openprices": "node scripts/import-openprices-usd.mjs",
     "build:mini": "node scripts/build-miniprogram.mjs",
     "test:mini": "npm run build:mini && node --import tsx --test tests/miniprogram.test.mjs",
     "test:mini:e2e": "node tests/miniprogram-e2e.mjs",

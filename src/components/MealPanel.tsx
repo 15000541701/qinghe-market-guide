@@ -15,6 +15,7 @@ import { categoryLabels } from '../../shared/catalog';
 import { productLocationLabel } from '../../shared/layout';
 import { money } from '../lib';
 import { amountLabel, isWeighed, packageSize } from '../../shared/shopping';
+import { currencySymbol, formatCurrency } from '../../shared/currency';
 
 const pantryLabel: Record<string, string> = {
   oil: '食用油',
@@ -68,6 +69,7 @@ export default function MealPanel({
   onSend: (text: string) => void;
 }) {
   const over = plan.remaining !== null && plan.remaining < 0;
+  const symbol = currencySymbol(plan.currency || 'CNY');
   const completeBudget = plan.budgetComplete !== false;
   const canConfirm = !over && completeBudget && !plan.missing.length && plan.recipes.length > 0;
   const menus = groupMeals(plan.recipes);
@@ -91,12 +93,12 @@ export default function MealPanel({
           <div>
             <span>{completeBudget ? '计划食材新增' : '本店可购部分'}</span>
             <strong>
-              ¥{money(completeBudget ? (plan.newlyAddedCost ?? plan.addedCost) : plan.total)}
+              {symbol}{money(completeBudget ? (plan.newlyAddedCost ?? plan.addedCost) : plan.total)}
             </strong>
           </div>
           <div>
             <span>原购物清单</span>
-            <strong>¥{money(plan.existingCost)}</strong>
+            <strong>{symbol}{money(plan.existingCost)}</strong>
           </div>
           <div>
             <span>
@@ -104,13 +106,13 @@ export default function MealPanel({
                 ? '合并待购金额'
                 : `未计价 ${plan.unpriced?.length || 0} 项 · 另有 ${Math.max(0, (plan.unresolved?.length || 0) - (plan.unpriced?.length || 0))} 项待处理`}
             </span>
-            <strong>{completeBudget ? `¥${money(plan.total)}` : '预算暂无法核算'}</strong>
+            <strong>{completeBudget ? `${symbol}${money(plan.total)}` : '预算暂无法核算'}</strong>
           </div>
           <div>
             <span>
               {plan.preferences.budget === null
                 ? '未设置预算上限'
-                : `预算 ¥${money(plan.preferences.budget)}`}
+                : `预算 ${symbol}${money(plan.preferences.budget)}`}
             </span>
             <strong>
               {plan.remaining === null
@@ -118,8 +120,8 @@ export default function MealPanel({
                   ? '可继续调整'
                   : '缺价项目未计入'
                 : over
-                  ? `超出 ¥${money(-plan.remaining)}`
-                  : `还余 ¥${money(plan.remaining)}`}
+                  ? `超出 ${symbol}${money(-plan.remaining)}`
+                  : `还余 ${symbol}${money(plan.remaining)}`}
             </strong>
           </div>
         </div>
@@ -211,8 +213,8 @@ export default function MealPanel({
                     全周需 {item.recipeAmount || item.amount}｜
                     {unavailable ? '本店库存不足' : purchaseText(item)}｜
                     {unavailable
-                      ? `标价 ¥${money(item.product.price)}（未计入可购小计）`
-                      : `¥${money(item.cost)}`}
+                      ? `标价 ${formatCurrency(item.product.price, plan.currency || 'CNY')}（未计入可购小计）`
+                      : `${symbol}${money(item.cost)}`}
                     {item.matchStatus === 'substitute' ? ' · 可替代' : ''}
                   </span>
                   <ChevronDown size={15} />
@@ -282,7 +284,7 @@ export default function MealPanel({
         )}
         {over && (
           <p className="inline-error" role="status">
-            超过整单预算 ¥{money(-plan.remaining!)}，可以换便宜一点或调整预算；目前不能一键加入。
+            超过整单预算 {symbol}{money(-plan.remaining!)}，可以换便宜一点或调整预算；目前不能一键加入。
           </p>
         )}
 

@@ -1,4 +1,6 @@
 import type { ListItem, Product, ShoppingAction } from './types';
+import { availableForSale, purchaseLimit } from './catalog-status';
+import { currencySymbol, productCurrency } from './currency';
 
 const legacyWeighed = new Set([
   'spinach',
@@ -122,6 +124,20 @@ export function mutateShoppingList(
   action: ShoppingAction,
 ): { list: ListItem[]; text: string; changed: boolean } {
   let next = list.map((item) => ({ ...item }));
+  const actionIds =
+    action.type === 'remove' ? action.productIds : action.type === 'add' || action.type === 'apply_plan' ? action.items.map((item) => item.productId) : [];
+  const actionCurrencies = new Set(
+    actionIds
+      .map((id) => products.find((product) => product.id === id))
+      .filter((product): product is Product => !!product)
+      .map((product) => productCurrency(product)),
+  );
+  if (actionCurrencies.size > 1)
+    throw new Error('不能在同一次清单操作中混合 USD 与 CNY 商品。');
+  const actionCurrency = actionCurrencies.values().next().value || 'CNY';
+  const actionProductIds = new Set(
+    products.filter((product) => productCurrency(product) === actionCurrency).map((product) => product.id),
+  );
   if (action.type === 'remove') {
     next = next.filter((item) => !action.productIds.includes(item.productId));
   } else if (action.type === 'add' || action.type === 'apply_plan') {
@@ -148,15 +164,21 @@ export function mutateShoppingList(
           existing.checked = false;
         } else next.push({ ...item, checked: false });
       }
-    for (const item of next.filter((item) => !item.checked)) {
+    for (const item of next.filter((item) => !item.checked && actionProductIds.has(item.productId))) {
       const product = products.find((p) => p.id === item.productId);
-      if (!product || item.quantity > Math.min(99, product.stock))
-        throw new Error(`${product?.name || '商品'}库存不足，清单未更改。`);
+      if (!product || !availableForSale(product))
+        throw new Error(`${product?.name || '商品'}当前不可购买，清单未更改。`);
+      if (item.quantity > purchaseLimit(product))
+        throw new Error(
+          product.inventoryMode === 'untracked'
+            ? `${product.name}超过单品购买上限，清单未更改。`
+            : `${product.name}库存不足，清单未更改。`,
+        );
     }
     if (
       action.type === 'apply_plan' &&
       action.budget !== null &&
-      cartTotal(next, products) > action.budget
+      cartTotal(next.filter((item) => actionProductIds.has(item.productId)), products) > action.budget
     )
       throw new Error('当前价格或清单有变化，合计超过预算。请重新生成方案后确认。');
   } else return { list, text: '无需更改购物清单。', changed: false };
@@ -171,7 +193,7 @@ export function mutateShoppingList(
     list: next,
     changed,
     text: changed
-      ? `${action.type === 'remove' ? '已移除' : action.type === 'apply_plan' ? '已补齐采购清单' : '已加入'}：${names}。待购合计 ¥${cartTotal(next, products).toFixed(2)}。可以撤销。`
+      ? `${action.type === 'remove' ? '已移除' : action.type === 'apply_plan' ? '已补齐采购清单' : '已加入'}：${names}。当前${actionCurrency}清单待购合计 ${currencySymbol(actionCurrency)}${cartTotal(next.filter((item) => actionProductIds.has(item.productId)), products).toFixed(2)}。可以撤销。`
       : '这些食材已在清单中，未重复添加。',
   };
 }

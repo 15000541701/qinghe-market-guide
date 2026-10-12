@@ -23,12 +23,24 @@ export type Shelf = {
   position: Point | null;
   reachable: boolean;
   kind?:
-    'gondola' | 'produce-table' | 'display-table' | 'service-counter' | 'seafood-tank' | 'chiller';
+    | 'gondola'
+    | 'produce-table'
+    | 'display-table'
+    | 'service-counter'
+    | 'seafood-tank'
+    | 'chiller'
+    | 'freezer'
+    | 'hanging-rack';
   footprint?: { x: number; y: number; w: number; h: number };
   levels?: number;
+  /** Maximum number of distinct SKUs placed on one side at one level. */
+  capacityPerSlot?: number;
+  /** Empty or omitted means this fixture has no display-group restriction. */
+  allowedDisplayGroups?: string[];
   accessPoints?: Partial<Record<'left' | 'right' | 'front' | 'back', Point>>;
 };
 export type Point = { x: number; y: number };
+export type Currency = 'USD' | 'CNY';
 export type Zone = {
   id: Category;
   name: string;
@@ -41,11 +53,64 @@ export type Zone = {
 export type PriceRecord = {
   price: number;
   date: string;
-  source: 'seed' | 'manual' | 'suggested';
+  source: 'seed' | 'manual' | 'suggested' | 'retail' | 'open-prices';
   unit?: string;
+  currency?: Currency;
 };
 export type Product = {
   id: string;
+  sku?: string;
+  brand?: string;
+  barcode?: string;
+  catalogOrigin?: 'retailer' | 'manual' | 'legacy-demo' | 'open-prices';
+  merchandisingFamily?: string;
+  processingForm?:
+    | 'fresh-whole'
+    | 'canned'
+    | 'dried'
+    | 'smoked'
+    | 'marinated'
+    | 'fermented'
+    | 'frozen'
+    | 'prepared'
+    | 'pickled'
+    | 'preserved'
+    | 'instant-ready'
+    | 'packaged'
+    | 'unknown';
+  storageCondition?: 'ambient-likely' | 'chilled-confirmed' | 'frozen-confirmed' | 'unknown';
+  classificationConfidence?:
+    | 'taxonomy-confirmed'
+    | 'manual-name-review'
+    | 'candidate'
+    | 'needs-review';
+  merchandisingState?: 'placed' | 'pending-review' | 'unplaced';
+  displayGroup?: string;
+  status?: 'draft' | 'active' | 'archived';
+  inventoryMode?: 'tracked' | 'untracked';
+  priceOrigin?: 'jd-retail' | 'manual' | 'open-prices';
+  currency?: Currency;
+  priceSourceUrl?: string;
+  priceCheckedAt?: string;
+  priceNote?: string;
+  pricePer?: string | null;
+  priceRecordId?: number;
+  priceIsDiscounted?: boolean;
+  priceWithoutDiscount?: number | null;
+  priceLocationId?: number;
+  priceLocationOsmId?: number;
+  priceLocationOsmType?: string;
+  priceLocationName?: string;
+  priceLocationDisplayName?: string;
+  priceLocationCity?: string;
+  priceLocationCountry?: string;
+  priceProofId?: number;
+  sourceImageUrl?: string;
+  sourceRetailer?: string;
+  sourceUrl?: string;
+  sourceSku?: string;
+  sourceListingUrl?: string;
+  sourceCheckedAt?: string;
   name: string;
   category: Category;
   price: number;
@@ -161,6 +226,7 @@ export type UnresolvedMealIngredient = {
 export type MealPlan = {
   preferences: MealPreferences;
   recipes: PlannedRecipe[];
+  currency?: Currency;
   items: MealLine[];
   owned: string[];
   pendingPantry: string[];

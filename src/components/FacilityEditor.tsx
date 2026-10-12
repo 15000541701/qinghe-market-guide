@@ -1,3 +1,4 @@
+import { mapBounds } from '../../shared/map-config';
 import { useEffect, useState } from 'react';
 import { LoaderCircle, Plus, Save } from 'lucide-react';
 import type { Point, Shelf, StoreSection } from '../../shared/types';
@@ -10,6 +11,7 @@ import {
 } from '../../shared/layout';
 import { entrance } from '../../shared/catalog';
 import { findPath, isWalkable } from '../../shared/navigation';
+import { DEFAULT_CAPACITY_PER_SLOT, MAX_CAPACITY_PER_SLOT, shelfSlotCapacity } from '../../shared/shelf-capacity';
 import { api } from '../lib';
 
 type FixtureKind = NonNullable<Shelf['kind']>;
@@ -22,6 +24,8 @@ type FixtureDraft = {
   kind: FixtureKind;
   footprint: Footprint;
   levels: number;
+  capacityPerSlot: number;
+  allowedDisplayGroups: string;
   reachable: boolean;
   access: AccessDraft;
 };
@@ -29,6 +33,18 @@ type FixtureDraft = {
 const sides: AccessSide[] = ['left', 'right', 'front', 'back'];
 const sideNames: Record<AccessSide, string> = fixtureSideLabels;
 const kinds: { id: FixtureKind; name: string; defaultFootprint: Footprint; levels: number }[] = [
+  {
+    id: 'freezer',
+    name: fixtureKindLabels.freezer,
+    defaultFootprint: { x: 2, y: 2, w: 3, h: 1 },
+    levels: 1,
+  },
+  {
+    id: 'hanging-rack',
+    name: fixtureKindLabels['hanging-rack'],
+    defaultFootprint: { x: 2, y: 2, w: 1, h: 4 },
+    levels: 1,
+  },
   {
     id: 'gondola',
     name: fixtureKindLabels.gondola,
@@ -204,6 +220,8 @@ function draftFromShelf(shelf: Shelf, sections: StoreSection[], shelves: Shelf[]
     kind,
     footprint,
     levels: ['gondola', 'chiller'].includes(kind) ? shelf.levels || 4 : 1,
+    capacityPerSlot: shelfSlotCapacity(shelf),
+    allowedDisplayGroups: (shelf.allowedDisplayGroups || []).join(', '),
     reachable: shelf.reachable,
     access: accessDraft(accessPoints),
   };
@@ -230,6 +248,8 @@ export default function FacilityEditor({
   const [kind, setKind] = useState<FixtureKind>('gondola');
   const [footprint, setFootprint] = useState<Footprint>(kinds[0].defaultFootprint);
   const [levels, setLevels] = useState(4);
+  const [capacityPerSlot, setCapacityPerSlot] = useState(DEFAULT_CAPACITY_PER_SLOT);
+  const [allowedDisplayGroups, setAllowedDisplayGroups] = useState('');
   const [reachable, setReachable] = useState(true);
   const [access, setAccess] = useState<AccessDraft>(suggestedAccess(kinds[0].defaultFootprint));
   const [drafts, setDrafts] = useState<Record<string, FixtureDraft>>({});
@@ -267,8 +287,8 @@ export default function FacilityEditor({
       draft.footprint.y < 1 ||
       draft.footprint.w < 1 ||
       draft.footprint.h < 1 ||
-      draft.footprint.x + draft.footprint.w > 32 ||
-      draft.footprint.y + draft.footprint.h > 24
+      draft.footprint.x + draft.footprint.w > mapBounds.maxX + 1 ||
+      draft.footprint.y + draft.footprint.h > mapBounds.maxY + 1
     )
       return '设施占地超出地图边界。';
     if (
@@ -280,6 +300,17 @@ export default function FacilityEditor({
       return '设施占地需要完整放在所属区域内。';
     if (draft.levels < 1 || draft.levels > 8) return '层数需设置为 1–8 层。';
     if (!multiLevel(draft.kind) && draft.levels !== 1) return '此类设施只能设置 1 层。';
+    if (
+      !Number.isInteger(draft.capacityPerSlot) ||
+      draft.capacityPerSlot < 1 ||
+      draft.capacityPerSlot > MAX_CAPACITY_PER_SLOT
+    )
+      return `每侧每层容量需设置为 1–${MAX_CAPACITY_PER_SLOT} 个 SKU。`;
+    const displayGroups = draft.allowedDisplayGroups
+      .split(',')
+      .map((group) => group.trim())
+      .filter(Boolean);
+    if (new Set(displayGroups).size !== displayGroups.length) return '允许的陈列分组不能重复。';
     if (fixedFixtures.some((fixture) => rectsOverlap(draft.footprint, fixture.rect)))
       return '设施占地与固定设施重叠。';
     if (mainAisles.some((aisle) => rectsOverlap(draft.footprint, aisle)))
@@ -305,6 +336,8 @@ export default function FacilityEditor({
       kind: draft.kind,
       footprint: draft.footprint,
       levels: draft.levels,
+      capacityPerSlot: draft.capacityPerSlot,
+      allowedDisplayGroups: displayGroups,
       accessPoints,
       position:
         accessPoints.front || accessPoints.right || accessPoints.back || accessPoints.left || null,
@@ -345,7 +378,17 @@ export default function FacilityEditor({
 
   const createFixture = async (event: React.FormEvent) => {
     event.preventDefault();
-    const draft: FixtureDraft = { sectionId, name, kind, footprint, levels, reachable, access };
+    const draft: FixtureDraft = {
+      sectionId,
+      name,
+      kind,
+      footprint,
+      levels,
+      capacityPerSlot,
+      allowedDisplayGroups,
+      reachable,
+      access,
+    };
     const validationError = fixtureError(draft);
     if (validationError) {
       setError(validationError);
@@ -366,6 +409,11 @@ export default function FacilityEditor({
           kind,
           footprint,
           levels: multiLevel(kind) ? levels : 1,
+          capacityPerSlot,
+          allowedDisplayGroups: allowedDisplayGroups
+            .split(',')
+            .map((group) => group.trim())
+            .filter(Boolean),
           accessPoints,
           position: firstAccess,
           reachable: reachable && !!firstAccess,
@@ -411,6 +459,11 @@ export default function FacilityEditor({
           kind: draft.kind,
           footprint: draft.footprint,
           levels: multiLevel(draft.kind) ? draft.levels : 1,
+          capacityPerSlot: draft.capacityPerSlot,
+          allowedDisplayGroups: draft.allowedDisplayGroups
+            .split(',')
+            .map((group) => group.trim())
+            .filter(Boolean),
           accessPoints,
           position: firstAccess,
           reachable: draft.reachable && !!firstAccess,
@@ -495,6 +548,26 @@ export default function FacilityEditor({
               onChange={(event) => setLevels(Number(event.target.value))}
             />
           </label>
+          <label className="field">
+            每侧每层 SKU 上限
+            <input
+              type="number"
+              min={1}
+              max={MAX_CAPACITY_PER_SLOT}
+              value={capacityPerSlot}
+              onChange={(event) => setCapacityPerSlot(Number(event.target.value))}
+            />
+            <small>默认 4 个 SKU；库存数量不占用陈列位。</small>
+          </label>
+          <label className="field">
+            允许的陈列分组
+            <input
+              value={allowedDisplayGroups}
+              onChange={(event) => setAllowedDisplayGroups(event.target.value)}
+              placeholder="留空表示不限制"
+            />
+            <small>可填逗号分隔的分组编号；未知储温不会自动推断。</small>
+          </label>
           <fieldset className="facility-footprint-fields">
             <legend>地图占地 x、y、宽、高</legend>
             {(['x', 'y', 'w', 'h'] as const).map((key) => (
@@ -503,7 +576,7 @@ export default function FacilityEditor({
                 <input
                   type="number"
                   min={1}
-                  max={31}
+                  max={key === 'x' ? mapBounds.maxX : key === 'y' ? mapBounds.maxY : 16}
                   value={footprint[key]}
                   onChange={(event) =>
                     setFootprint((current) => ({ ...current, [key]: Number(event.target.value) }))
@@ -608,6 +681,30 @@ export default function FacilityEditor({
                     }
                   />
                 </label>
+                <label className="field">
+                  每侧每层 SKU 上限
+                  <input
+                    type="number"
+                    min={1}
+                    max={MAX_CAPACITY_PER_SLOT}
+                    value={draft.capacityPerSlot}
+                    onChange={(event) =>
+                      updateDraft(shelf.id, { capacityPerSlot: Number(event.target.value) })
+                    }
+                  />
+                  <small>默认 4 个 SKU；库存数量不占用陈列位。</small>
+                </label>
+                <label className="field">
+                  允许的陈列分组
+                  <input
+                    value={draft.allowedDisplayGroups}
+                    onChange={(event) =>
+                      updateDraft(shelf.id, { allowedDisplayGroups: event.target.value })
+                    }
+                    placeholder="留空表示不限制"
+                  />
+                  <small>可填逗号分隔的分组编号；未知储温不会自动推断。</small>
+                </label>
                 <fieldset className="facility-footprint-fields">
                   <legend>地图占地 x、y、宽、高</legend>
                   {(['x', 'y', 'w', 'h'] as const).map((key) => (
@@ -616,7 +713,7 @@ export default function FacilityEditor({
                       <input
                         type="number"
                         min={1}
-                        max={31}
+                        max={key === 'x' ? mapBounds.maxX : key === 'y' ? mapBounds.maxY : 16}
                         value={draft.footprint[key]}
                         onChange={(event) =>
                           updateDraft(shelf.id, {
