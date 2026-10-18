@@ -45,6 +45,7 @@ import Admin from './components/Admin';
 import ModelSettingsPanel from './components/ModelSettingsPanel';
 import ChatPanel from './components/ChatPanel';
 import ProductCard from './components/ProductCard';
+import ProductDetail from './components/ProductDetail';
 import StoreMap from './components/StoreMap';
 import MealPanel from './components/MealPanel';
 import { buildMealPlan } from '../shared/meal-planner';
@@ -106,6 +107,48 @@ function loadList(): ListItem[] {
   }
 }
 export default function App() {
+  const [detailId, setDetailId] = useState(
+    () => new URLSearchParams(window.location.search).get('product') || '',
+  );
+  const [collection, setCollection] = useState<'all' | 'samsclub'>(() =>
+    new URLSearchParams(window.location.search).get('collection') === 'samsclub'
+      ? 'samsclub'
+      : 'all',
+  );
+  const catalogScroll = useRef(0);
+  const syncProductRoute = () => {
+    const id = new URLSearchParams(window.location.search).get('product') || '';
+    setDetailId(id);
+    requestAnimationFrame(() =>
+      window.scrollTo({ top: id ? 0 : catalogScroll.current, behavior: 'instant' }),
+    );
+  };
+  useEffect(() => {
+    window.addEventListener('popstate', syncProductRoute);
+    return () => window.removeEventListener('popstate', syncProductRoute);
+  }, []);
+  const openProductDetails = (product: Product) => {
+    catalogScroll.current = window.scrollY;
+    const url = new URL(window.location.href);
+    url.searchParams.set('product', product.id);
+    url.hash = '';
+    window.history.pushState({ qingheProduct: true }, '', url);
+    setDetailId(product.id);
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  };
+  const closeProductDetails = (restoreScroll = true) => {
+    if (window.history.state?.qingheProduct && restoreScroll) window.history.back();
+    else {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('product');
+      window.history.replaceState(null, '', url);
+      setDetailId('');
+      if (restoreScroll)
+        requestAnimationFrame(() =>
+          window.scrollTo({ top: catalogScroll.current, behavior: 'instant' }),
+        );
+    }
+  };
   const [role, setRole] = useState<'customer' | 'store'>('customer');
   const [tab, setTab] = useState<Tab>('guide');
   const displayTab: Tab = (tab as string) === 'map' ? 'guide' : tab;
@@ -298,7 +341,10 @@ export default function App() {
                   purchasedQuantity:
                     (item.purchasedQuantity || 0) + (item.checked ? item.quantity : 0),
                   checked: false,
-                  quantity: Math.min((item.checked ? 0 : item.quantity) + 1, purchaseLimit(product)),
+                  quantity: Math.min(
+                    (item.checked ? 0 : item.quantity) + 1,
+                    purchaseLimit(product),
+                  ),
                 }
               : item,
           )
@@ -342,10 +388,7 @@ export default function App() {
       const next = buildShelfRoute(destinations, currentPoint, storeSections, shelves);
       const notPlaced = matchingProducts
         .filter((product) => !shelfForProduct(product))
-        .map(
-          (product) =>
-            `${product.name}（${productPlacementStatus(product) || '待安排陈列'}）`,
-        );
+        .map((product) => `${product.name}（${productPlacementStatus(product) || '待安排陈列'}）`);
       next.unreachable = [...(next.unreachable || []), ...notPlaced];
       setRoute(next);
     } else if (!sectionId || !section) {
@@ -465,7 +508,9 @@ export default function App() {
       );
   };
   const planList = () => {
-    const pendingItems = availableList.filter((item) => !item.checked && availableForSale(item.product));
+    const pendingItems = availableList.filter(
+      (item) => !item.checked && availableForSale(item.product),
+    );
     const targets = pendingItems
       .map((item) => {
         const shelf = shelfForProduct(item.product);
@@ -479,15 +524,10 @@ export default function App() {
     const missing = pendingItems
       .filter((item) => !shelfForProduct(item.product))
       .map(
-        (item) =>
-          `${item.product.name}（${productPlacementStatus(item.product) || '待安排陈列'}）`,
+        (item) => `${item.product.name}（${productPlacementStatus(item.product) || '待安排陈列'}）`,
       );
     const nextRoute = buildShelfRoute(targets, currentPoint, storeSections, shelves);
-    if (missing.length)
-      nextRoute.unreachable = [
-        ...(nextRoute.unreachable || []),
-        ...missing,
-      ];
+    if (missing.length) nextRoute.unreachable = [...(nextRoute.unreachable || []), ...missing];
     setRoute(nextRoute);
     revealHomeMap();
   };
@@ -518,15 +558,17 @@ export default function App() {
       const requestedProducts = listRef.current
         .filter((item) => !item.checked && currencyProductIds.has(item.productId))
         .flatMap((item) => {
-          const product = currencyProducts.find((p) => p.id === item.productId && availableForSale(p));
+          const product = currencyProducts.find(
+            (p) => p.id === item.productId && availableForSale(p),
+          );
           return product ? [product] : [];
         });
-      const pending = requestedProducts
-        .flatMap((item) => {
-          const shelf = shelfForProduct(item);
-          return shelf ? [productShelfTarget(item, shelf)] : [];
-        });
-      if (!requestedProducts.length) return '清单里没有待购的在售商品。请先确认采购方案或加入商品。';
+      const pending = requestedProducts.flatMap((item) => {
+        const shelf = shelfForProduct(item);
+        return shelf ? [productShelfTarget(item, shelf)] : [];
+      });
+      if (!requestedProducts.length)
+        return '清单里没有待购的在售商品。请先确认采购方案或加入商品。';
       if (!pending.length)
         return requestedProducts
           .map((product) => `${product.name}：${productPlacementStatus(product) || '待安排陈列'}`)
@@ -566,6 +608,7 @@ export default function App() {
       .filter(
         (p) =>
           p.status !== 'archived' &&
+          (collection === 'all' || p.sourceRetailer === 'Sam’s Club US') &&
           (p.inventoryMode === 'untracked' || availableForSale(p) || p.status === 'draft') &&
           (category === 'all' || p.category === category) &&
           `${p.name}${p.tags.join('')}${p.aliases.join('')}`.includes(query),
@@ -574,14 +617,21 @@ export default function App() {
         if (sort === 'asc') return a.price - b.price;
         if (sort === 'desc') return b.price - a.price;
         const catalogPriority = (product: Product) =>
-          Number(availableForSale(product)) * 4 + Number(product.price > 0) * 2 + Number(!!product.image);
-        return catalogPriority(b) - catalogPriority(a);
+          Number(availableForSale(product)) * 4 +
+          Number(product.price > 0) * 2 +
+          Number(!!product.image);
+        return (
+          Number(b.sourceRetailer === 'Sam’s Club US') -
+            Number(a.sourceRetailer === 'Sam’s Club US') || catalogPriority(b) - catalogPriority(a)
+        );
       });
-  }, [currencyProducts, recommendations, category, query, sort]);
+  }, [currencyProducts, recommendations, category, query, sort, collection]);
   useEffect(() => setShownLimit(48), [category, query, sort, recommendations]);
   const visibleProducts = shown.slice(0, shownLimit);
   const handleResults = (results: Product[], title: string) => {
-    setRecommendations(title ? results.filter((product) => productCurrency(product) === currencyMode) : null);
+    setRecommendations(
+      title ? results.filter((product) => productCurrency(product) === currencyMode) : null,
+    );
     setResultTitle(title);
     setCategory('all');
     setQuery('');
@@ -589,6 +639,7 @@ export default function App() {
   const changeCurrencyMode = (currency: Currency) => {
     if (currency === currencyMode) return;
     setCurrencyMode(currency);
+    if (currency === 'CNY') setCollection('all');
     setRecommendations(null);
     setResultTitle('');
     setCategory('all');
@@ -605,6 +656,7 @@ export default function App() {
     selectedProductId,
     onSelectProduct: navigateProduct,
     onClearSelectedProduct: () => setSelectedProductId(''),
+    onViewProduct: openProductDetails,
     onShelfSelect: navigateShelf,
     onPlanList: planList,
     selected,
@@ -628,6 +680,7 @@ export default function App() {
           <button
             className="brand"
             onClick={() => {
+              if (detailId) closeProductDetails(false);
               setRole('customer');
               setTab('guide');
             }}
@@ -652,6 +705,7 @@ export default function App() {
                 className={displayTab === id && role === 'customer' ? 'active' : ''}
                 aria-current={displayTab === id && role === 'customer' ? 'page' : undefined}
                 onClick={() => {
+                  if (detailId) closeProductDetails(false);
                   setRole('customer');
                   setTab(id);
                 }}
@@ -665,14 +719,20 @@ export default function App() {
           <div className="role-switch" aria-label="切换使用角色">
             <button
               className={role === 'customer' ? 'active' : ''}
-              onClick={() => setRole('customer')}
+              onClick={() => {
+                if (detailId) closeProductDetails(false);
+                setRole('customer');
+              }}
               aria-pressed={role === 'customer'}
             >
               顾客端
             </button>
             <button
               className={role === 'store' ? 'active' : ''}
-              onClick={() => setRole('store')}
+              onClick={() => {
+                if (detailId) closeProductDetails(false);
+                setRole('store');
+              }}
               aria-pressed={role === 'store'}
             >
               <Store size={14} />
@@ -683,483 +743,542 @@ export default function App() {
       </header>
       <ModelSettingsPanel />
       <div id="main-content" tabIndex={-1}>
-        {error ? (
-          <main className="main-container">
-            <div className="service-error">
-              <Store size={38} />
-              <h1>门店暂时没有连接上</h1>
-              <p>{error}</p>
-              <button className="button primary" onClick={() => void load()}>
-                重新连接
-              </button>
-            </div>
-          </main>
-        ) : role === 'store' ? (
-          <Admin products={products} onRefresh={refresh} onToast={notify} ai={ai} />
-        ) : (
-          <main className={`main-container ${displayTab === 'guide' ? 'guide-main' : ''}`}>
-            <div className="page-heading">
-              <div>
-                <h1>
-                  {displayTab === 'guide'
-                    ? '今天，想买点什么？'
-                    : '把想买的，都记下来。'}
-                </h1>
-                <p>
-                  {displayTab === 'guide'
-                    ? '聊聊你的想法，小禾帮你挑选，也带你找到。'
-                    : '挑选好物，规划路线，让这一趟采购从容一点。'}
-                </p>
-              </div>
-              <div className="store-label">
-                <MapPin size={16} />
-                <span>
-                  青禾生活超市<span className="demo-label">示例门店</span>
-                </span>
-                <span className="open-label">
-                  <span className="status-dot" />
-                  体验中
-                </span>
-              </div>
-            </div>
-            <div hidden={displayTab !== 'guide'}>
-              <div className="guide-workspace">
-                <ChatPanel
-                  key={currencyMode}
-                  currency={currencyMode}
-                  products={currencyProducts}
-                  onResults={handleResults}
-                  onNavigate={navigateProduct}
-                  onAdd={add}
-                  onToast={notify}
-                  ai={ai}
-                  context={{
-                    cart: currencyList,
-                    meal: displayedPlan?.preferences,
-                    recipeIds: displayedPlan?.recipes.map((recipe) => recipe.id),
-                    homePantry,
-                  }}
-                  storeCategories={storeCategories}
-                  onPlan={receivePlan}
-                  onAction={executeAction}
-                  onBusy={setChatBusy}
-                  request={chatRequest}
-                  onRequestConsumed={() => setChatRequest(null)}
-                  visible={displayTab === 'guide'}
-                />
-                {displayTab === 'guide' && <StoreMap {...mapProps} />}
-              </div>
-              {displayedPlan && (
-                <div className="meal-plan-below-map">
-                  <MealPanel
-                    plan={displayedPlan}
-                    categoryNames={Object.fromEntries(
-                      storeCategories.map((item) => [item.id, item.name]),
-                    )}
-                    busy={chatBusy}
-                    onSend={askAgent}
-                  />
-                </div>
-              )}
-              <div className="discovery-strip">
-                <div className="discovery-image" />
-                <div>
-                  <span className="strip-leaf">
-                    <Leaf size={18} />
-                  </span>
-                  <strong>把新鲜，带回家。</strong>
-                  <span>从一把青菜开始，给日常添点好滋味。</span>
-                </div>
-                <button
-                  className="text-button"
-                  onClick={() => {
-                    setRecommendations(null);
-                    setResultTitle('');
-                    setCategory('vegetables');
-                    document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' });
-                  }}
-                >
-                  去蔬菜区看看
-                  <ArrowUpRight size={16} />
+        {detailId && (
+          <ProductDetail
+            key={detailId}
+            id={detailId}
+            onBack={() => closeProductDetails()}
+            onAdd={add}
+            onNavigate={(product) => {
+              closeProductDetails(false);
+              navigateProduct(product);
+            }}
+            added={list.some((item) => item.productId === detailId)}
+          />
+        )}
+        <div hidden={!!detailId}>
+          {error ? (
+            <main className="main-container">
+              <div className="service-error">
+                <Store size={38} />
+                <h1>门店暂时没有连接上</h1>
+                <p>{error}</p>
+                <button className="button primary" onClick={() => void load()}>
+                  重新连接
                 </button>
               </div>
-              <section className="products-section" id="products">
-                <div className="section-heading">
+            </main>
+          ) : role === 'store' ? (
+            <Admin products={products} onRefresh={refresh} onToast={notify} ai={ai} />
+          ) : (
+            <main className={`main-container ${displayTab === 'guide' ? 'guide-main' : ''}`}>
+              <div className="page-heading">
+                <div>
+                  <h1>{displayTab === 'guide' ? '今天，想买点什么？' : '把想买的，都记下来。'}</h1>
+                  <p>
+                    {displayTab === 'guide'
+                      ? '聊聊你的想法，小禾帮你挑选，也带你找到。'
+                      : '挑选好物，规划路线，让这一趟采购从容一点。'}
+                  </p>
+                </div>
+                <div className="store-label">
+                  <MapPin size={16} />
+                  <span>
+                    青禾生活超市<span className="demo-label">示例门店</span>
+                  </span>
+                  <span className="open-label">
+                    <span className="status-dot" />
+                    体验中
+                  </span>
+                </div>
+              </div>
+              <div hidden={displayTab !== 'guide'}>
+                <div className="guide-workspace">
+                  <ChatPanel
+                    key={currencyMode}
+                    currency={currencyMode}
+                    products={currencyProducts}
+                    onResults={handleResults}
+                    onNavigate={navigateProduct}
+                    onView={openProductDetails}
+                    onAdd={add}
+                    onToast={notify}
+                    ai={ai}
+                    context={{
+                      cart: currencyList,
+                      meal: displayedPlan?.preferences,
+                      recipeIds: displayedPlan?.recipes.map((recipe) => recipe.id),
+                      homePantry,
+                    }}
+                    storeCategories={storeCategories}
+                    onPlan={receivePlan}
+                    onAction={executeAction}
+                    onBusy={setChatBusy}
+                    request={chatRequest}
+                    onRequestConsumed={() => setChatRequest(null)}
+                    visible={displayTab === 'guide'}
+                  />
+                  {displayTab === 'guide' && <StoreMap {...mapProps} />}
+                </div>
+                {displayedPlan && (
+                  <div className="meal-plan-below-map">
+                    <MealPanel
+                      plan={displayedPlan}
+                      categoryNames={Object.fromEntries(
+                        storeCategories.map((item) => [item.id, item.name]),
+                      )}
+                      busy={chatBusy}
+                      onSend={askAgent}
+                    />
+                  </div>
+                )}
+                <div className="discovery-strip">
+                  <div className="discovery-image" />
                   <div>
-                    <h2>{resultTitle || '门店商品目录'}</h2>
-                    <span className="muted compact">
-                      {currencyMode} · {currencyMode === 'USD' ? '美元' : '人民币'} · {shown.length} 个商品
+                    <span className="strip-leaf">
+                      <Leaf size={18} />
                     </span>
-                    {recommendations !== null && (
+                    <strong>把新鲜，带回家。</strong>
+                    <span>从一把青菜开始，给日常添点好滋味。</span>
+                  </div>
+                  <button
+                    className="text-button"
+                    onClick={() => {
+                      setRecommendations(null);
+                      setResultTitle('');
+                      setCategory('vegetables');
+                      document.getElementById('products')?.scrollIntoView({ behavior: 'smooth' });
+                    }}
+                  >
+                    去蔬菜区看看
+                    <ArrowUpRight size={16} />
+                  </button>
+                </div>
+                <section className="products-section" id="products">
+                  <div className="section-heading">
+                    <div>
+                      <h2>{resultTitle || '门店商品目录'}</h2>
+                      <span className="muted compact">
+                        {currencyMode} · {currencyMode === 'USD' ? '美元' : '人民币'} ·{' '}
+                        {shown.length} 个商品
+                      </span>
+                      {recommendations !== null && (
+                        <button
+                          className="text-button"
+                          onClick={() => {
+                            setRecommendations(null);
+                            setResultTitle('');
+                          }}
+                        >
+                          查看全部
+                          <X size={13} />
+                        </button>
+                      )}
+                    </div>
+                    <label className="search-field">
+                      <Search size={16} />
+                      <input
+                        value={query}
+                        onChange={(event) => setQuery(event.target.value)}
+                        placeholder="搜索商品"
+                        aria-label="搜索顾客商品"
+                      />
+                    </label>
+                  </div>
+                  {currencyMode === 'USD' && (
+                    <div className="catalog-source-switch" role="group" aria-label="商品来源">
                       <button
-                        className="text-button"
+                        className={collection === 'all' ? 'active' : ''}
+                        aria-pressed={collection === 'all'}
+                        onClick={() => setCollection('all')}
+                      >
+                        全部商品
+                      </button>
+                      <button
+                        className={collection === 'samsclub' ? 'active' : ''}
+                        aria-pressed={collection === 'samsclub'}
                         onClick={() => {
+                          setCollection('samsclub');
+                          setCategory('all');
+                          setQuery('');
                           setRecommendations(null);
                           setResultTitle('');
                         }}
                       >
-                        查看全部
-                        <X size={13} />
+                        山姆精选 · {currencyProducts.filter((product) => product.sourceRetailer === 'Sam’s Club US' && product.status !== 'archived').length}款
                       </button>
-                    )}
+                    </div>
+                  )}
+                  <div className="product-toolbar">
+                    <div className="currency-toggle" role="group" aria-label="目录币种">
+                      <button
+                        className={currencyMode === 'USD' ? 'active' : ''}
+                        aria-pressed={currencyMode === 'USD'}
+                        onClick={() => changeCurrencyMode('USD')}
+                      >
+                        USD 美元
+                      </button>
+                      <button
+                        className={currencyMode === 'CNY' ? 'active' : ''}
+                        aria-pressed={currencyMode === 'CNY'}
+                        onClick={() => changeCurrencyMode('CNY')}
+                      >
+                        CNY 人民币
+                      </button>
+                    </div>
+                    <div className="category-tabs" role="group" aria-label="商品分区">
+                      <button
+                        className={category === 'all' ? 'active' : ''}
+                        onClick={() => setCategory('all')}
+                      >
+                        <LayoutGrid size={15} />
+                        全部好物
+                      </button>
+                      {storeCategories
+                        .filter(
+                          (item) =>
+                            item.active &&
+                            currencyProducts.some((product) => product.category === item.id),
+                        )
+                        .map((zone) => (
+                          <button
+                            key={zone.id}
+                            className={category === zone.id ? 'active' : ''}
+                            onClick={() => setCategory(zone.id)}
+                          >
+                            {zone.name}
+                          </button>
+                        ))}
+                    </div>
+                    <label className="sort-label">
+                      <SlidersHorizontal size={14} />
+                      <select
+                        aria-label="商品排序"
+                        value={sort}
+                        onChange={(event) => setSort(event.target.value)}
+                      >
+                        <option value="featured">默认排序</option>
+                        <option value="asc">价格从低到高</option>
+                        <option value="desc">价格从高到低</option>
+                      </select>
+                    </label>
                   </div>
-                  <label className="search-field">
-                    <Search size={16} />
-                    <input
-                      value={query}
-                      onChange={(event) => setQuery(event.target.value)}
-                      placeholder="搜索商品"
-                      aria-label="搜索顾客商品"
-                    />
-                  </label>
-                </div>
-                <div className="product-toolbar">
-                  <div className="currency-toggle" role="group" aria-label="目录币种">
-                    <button
-                      className={currencyMode === 'USD' ? 'active' : ''}
-                      aria-pressed={currencyMode === 'USD'}
-                      onClick={() => changeCurrencyMode('USD')}
-                    >
-                      USD 美元
-                    </button>
-                    <button
-                      className={currencyMode === 'CNY' ? 'active' : ''}
-                      aria-pressed={currencyMode === 'CNY'}
-                      onClick={() => changeCurrencyMode('CNY')}
-                    >
-                      CNY 人民币
-                    </button>
-                  </div>
-                  <div className="category-tabs" role="group" aria-label="商品分区">
-                    <button
-                      className={category === 'all' ? 'active' : ''}
-                      onClick={() => setCategory('all')}
-                    >
-                      <LayoutGrid size={15} />
-                      全部好物
-                    </button>
-                    {storeCategories
-                      .filter(
-                        (item) =>
-                          item.active && currencyProducts.some((product) => product.category === item.id),
-                      )
-                      .map((zone) => (
-                        <button
-                          key={zone.id}
-                          className={category === zone.id ? 'active' : ''}
-                          onClick={() => setCategory(zone.id)}
-                        >
-                          {zone.name}
-                        </button>
+                  {loading ? (
+                    <div className="product-grid">
+                      {[1, 2, 3, 4].map((i) => (
+                        <div className="product-skeleton skeleton" key={i} />
                       ))}
-                  </div>
-                  <label className="sort-label">
-                    <SlidersHorizontal size={14} />
-                    <select
-                      aria-label="商品排序"
-                      value={sort}
-                      onChange={(event) => setSort(event.target.value)}
-                    >
-                      <option value="featured">默认排序</option>
-                      <option value="asc">价格从低到高</option>
-                      <option value="desc">价格从高到低</option>
-                    </select>
-                  </label>
-                </div>
-                {loading ? (
-                  <div className="product-grid">
-                    {[1, 2, 3, 4].map((i) => (
-                      <div className="product-skeleton skeleton" key={i} />
-                    ))}
-                  </div>
-                ) : shown.length ? (
-                  <div className="product-grid">
-                    {visibleProducts.map((product) => (
-                      <ProductCard
-                        key={product.id}
-                        product={product}
-                        categoryLabel={productCategoryLabel(
-                          product,
-                          storeCategories,
-                          categoryLabels[product.category] || product.category,
-                        )}
-                        onAdd={add}
-                        onNavigate={navigateProduct}
-                        added={list.some((item) => item.productId === product.id)}
-                      />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="empty-state">
-                    <ShoppingBasket size={34} />
-                    <h3>暂时没有符合条件的商品</h3>
-                    <p>试试其他关键词、分区，或让小禾帮你放宽预算。</p>
-                    <button
-                      className="button secondary"
-                      onClick={() => {
-                        setRecommendations(null);
-                        setCategory('all');
-                        setQuery('');
-                        setResultTitle('');
-                      }}
-                    >
-                      查看全部商品
-                    </button>
-                  </div>
-                )}
-                {shownLimit < shown.length && (
-                  <div className="product-load-more">
-                    <button
-                      className="button secondary"
-                      onClick={() => setShownLimit((current) => Math.min(current + 48, shown.length))}
-                    >
-                      加载更多（{visibleProducts.length}/{shown.length}）
-                    </button>
-                  </div>
-                )}
-              </section>
-            </div>
-            {displayTab === 'list' && (
-              <section className="shopping-page">
-                {otherCurrencyListCount > 0 && (
-                  <p className="currency-separation-note" role="status">
-                    另有 {otherCurrencyListCount} 件其他币种商品仍保留在清单中；当前只显示 {currencyMode} 小计。
-                    <button
-                      className="text-button"
-                      onClick={() => changeCurrencyMode(currencyMode === 'USD' ? 'CNY' : 'USD')}
-                    >
-                      切换查看
-                    </button>
-                  </p>
-                )}
-                {!availableList.length ? (
-                  <div className="empty-state list-empty">
-                    <span className="empty-basket">
-                      <ShoppingBag size={40} strokeWidth={1.4} />
-                    </span>
-                    <h2>清单还空着，去挑点喜欢的。</h2>
-                    <p>
-                      点击商品图片上的加号，把好物加入清单，
-                      <br />
-                      小禾会帮你串起要逛的分区。
+                    </div>
+                  ) : shown.length ? (
+                    <div className="product-grid">
+                      {visibleProducts.map((product) => (
+                        <ProductCard
+                          key={product.id}
+                          product={product}
+                          categoryLabel={productCategoryLabel(
+                            product,
+                            storeCategories,
+                            categoryLabels[product.category] || product.category,
+                          )}
+                          onAdd={add}
+                          onNavigate={navigateProduct}
+                          onView={openProductDetails}
+                          added={list.some((item) => item.productId === product.id)}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="empty-state">
+                      <ShoppingBasket size={34} />
+                      <h3>暂时没有符合条件的商品</h3>
+                      <p>试试其他关键词、分区，或让小禾帮你放宽预算。</p>
+                      <button
+                        className="button secondary"
+                        onClick={() => {
+                          setRecommendations(null);
+                          setCategory('all');
+                          setQuery('');
+                          setResultTitle('');
+                        }}
+                      >
+                        查看全部商品
+                      </button>
+                    </div>
+                  )}
+                  {shownLimit < shown.length && (
+                    <div className="product-load-more">
+                      <button
+                        className="button secondary"
+                        onClick={() =>
+                          setShownLimit((current) => Math.min(current + 48, shown.length))
+                        }
+                      >
+                        加载更多（{visibleProducts.length}/{shown.length}）
+                      </button>
+                    </div>
+                  )}
+                </section>
+              </div>
+              {displayTab === 'list' && (
+                <section className="shopping-page">
+                  {otherCurrencyListCount > 0 && (
+                    <p className="currency-separation-note" role="status">
+                      另有 {otherCurrencyListCount} 件其他币种商品仍保留在清单中；当前只显示{' '}
+                      {currencyMode} 小计。
+                      <button
+                        className="text-button"
+                        onClick={() => changeCurrencyMode(currencyMode === 'USD' ? 'CNY' : 'USD')}
+                      >
+                        切换查看
+                      </button>
                     </p>
-                    <button className="button primary" onClick={() => setTab('guide')}>
-                      去逛逛
-                      <ArrowRight size={16} />
-                    </button>
-                  </div>
-                ) : (
-                  <>
-                    <div className="shopping-items">
-                      <div className="section-heading">
-                        <h2>
-                          我的购物清单 <span className="muted compact">{listCount} 种</span>
-                        </h2>
-                        <button
-                          className="text-button"
-                          disabled={!availableList.some((item) => item.checked)}
-                          onClick={() =>
-                            setList((previous) =>
-                              previous.filter(
-                                (item) => !currencyProductIds.has(item.productId) || !item.checked,
-                              ),
-                            )
-                          }
-                        >
-                          <CheckCheck size={15} />
-                          清除已购
-                        </button>
-                      </div>
-                      {availableList.map((item) => (
-                        <div
-                          className={`shopping-item ${item.checked ? 'is-checked' : ''}`}
-                          key={item.productId}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={item.checked}
-                            aria-label={`标记${item.product.name}已购买`}
-                            onChange={(event) =>
+                  )}
+                  {!availableList.length ? (
+                    <div className="empty-state list-empty">
+                      <span className="empty-basket">
+                        <ShoppingBag size={40} strokeWidth={1.4} />
+                      </span>
+                      <h2>清单还空着，去挑点喜欢的。</h2>
+                      <p>
+                        点击商品图片上的加号，把好物加入清单，
+                        <br />
+                        小禾会帮你串起要逛的分区。
+                      </p>
+                      <button className="button primary" onClick={() => setTab('guide')}>
+                        去逛逛
+                        <ArrowRight size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="shopping-items">
+                        <div className="section-heading">
+                          <h2>
+                            我的购物清单 <span className="muted compact">{listCount} 种</span>
+                          </h2>
+                          <button
+                            className="text-button"
+                            disabled={!availableList.some((item) => item.checked)}
+                            onClick={() =>
                               setList((previous) =>
-                                previous.map((entry) =>
-                                  entry.productId === item.productId
-                                    ? { ...entry, checked: event.target.checked }
-                                    : entry,
+                                previous.filter(
+                                  (item) =>
+                                    !currencyProductIds.has(item.productId) || !item.checked,
                                 ),
                               )
                             }
-                          />
-                          <img src={item.product.image} alt="" />
-                          <div className="shopping-item-name">
-                            <strong>{item.product.name}</strong>
-                            <span>
-                              {categoryName(item.product.category)} ·{' '}
-                              {productLocationOrStatus(item.product)} · {item.product.unit}
-                              {item.product.inventoryMode !== 'untracked' && !item.product.stock ? ' · 已售罄' : ''}
-                            </span>
-                            {productMerchandisingSummary(item.product) && (
-                              <span className="shopping-item-merchandising">
-                                {productMerchandisingSummary(item.product)}
-                              </span>
-                            )}
-                            <span>{amountLabel(item.product, item.quantity)}</span>
-                            {!!item.purchasedQuantity && (
-                              <span>
-                                此前已购：{amountLabel(item.product, item.purchasedQuantity)}
-                              </span>
-                            )}
-                            <button
-                              className="text-button"
-                              onClick={() => navigateProduct(item.product)}
-                              disabled={!shelfForProduct(item.product)}
-                            >
-                              {shelfForProduct(item.product) ? (
-                                <>
-                                  带我去
-                                  <ArrowUpRight size={13} />
-                                </>
-                              ) : (
-                                productPlacementStatus(item.product) || '待安排陈列'
-                              )}
-                            </button>
-                          </div>
-                          <div className="quantity-control">
-                            <button
-                              aria-label={`减少${item.product.name}数量`}
-                              disabled={item.quantity <= quantityStep(item.product)}
-                              onClick={() =>
-                                setList((previous) =>
-                                  previous.map((entry) =>
-                                    entry.productId === item.productId
-                                      ? {
-                                          ...entry,
-                                          quantity: roundQuantity(
-                                            Math.max(
-                                              quantityStep(item.product),
-                                              entry.quantity - quantityStep(item.product),
-                                            ),
-                                          ),
-                                        }
-                                      : entry,
-                                  ),
-                                )
-                              }
-                            >
-                              <Minus size={13} />
-                            </button>
-                            <span>
-                              {isWeighed(item.product)
-                                ? amountLabel(item.product, item.quantity).replace('预计 ', '')
-                                : item.quantity}
-                            </span>
-                            <button
-                              aria-label={`增加${item.product.name}数量`}
-                              disabled={
-                                item.quantity + quantityStep(item.product) >
-                                purchaseLimit(item.product)
-                              }
-                              onClick={() =>
-                                setList((previous) =>
-                                  previous.map((entry) =>
-                                    entry.productId === item.productId
-                                      ? {
-                                          ...entry,
-                                          quantity: roundQuantity(
-                                            entry.quantity + quantityStep(item.product),
-                                          ),
-                                        }
-                                      : entry,
-                                  ),
-                                )
-                              }
-                            >
-                              <Plus size={13} />
-                            </button>
-                          </div>
-                          <strong className="item-total">
-                            {currencySymbol(currencyMode)}{money(lineCents(item.product, item.quantity) / 100)}
-                          </strong>
-                          <button
-                            className="icon-button"
-                            aria-label={`从清单移除${item.product.name}`}
-                            onClick={() =>
-                              setList((previous) =>
-                                previous.filter((entry) => entry.productId !== item.productId),
-                              )
-                            }
                           >
-                            <Trash2 size={16} />
+                            <CheckCheck size={15} />
+                            清除已购
                           </button>
                         </div>
-                      ))}
-                    </div>
-                    <aside className="list-summary">
-                      <ShoppingBasket size={27} strokeWidth={1.4} />
-                      <h2>这一趟，要买这些。</h2>
-                      <div>
-                        <span>商品种类</span>
-                        <strong>{listCount} 种</strong>
+                        {availableList.map((item) => (
+                          <div
+                            className={`shopping-item ${item.checked ? 'is-checked' : ''}`}
+                            key={item.productId}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={item.checked}
+                              aria-label={`标记${item.product.name}已购买`}
+                              onChange={(event) =>
+                                setList((previous) =>
+                                  previous.map((entry) =>
+                                    entry.productId === item.productId
+                                      ? { ...entry, checked: event.target.checked }
+                                      : entry,
+                                  ),
+                                )
+                              }
+                            />
+                            <img src={item.product.image} alt="" />
+                            <div className="shopping-item-name">
+                              <strong>
+                                <button
+                                  className="product-title-link"
+                                  onClick={() => openProductDetails(item.product)}
+                                >
+                                  {item.product.name}
+                                </button>
+                              </strong>
+                              <span>
+                                {categoryName(item.product.category)} ·{' '}
+                                {productLocationOrStatus(item.product)} · {item.product.unit}
+                                {item.product.inventoryMode !== 'untracked' && !item.product.stock
+                                  ? ' · 已售罄'
+                                  : ''}
+                              </span>
+                              {productMerchandisingSummary(item.product) && (
+                                <span className="shopping-item-merchandising">
+                                  {productMerchandisingSummary(item.product)}
+                                </span>
+                              )}
+                              <span>{amountLabel(item.product, item.quantity)}</span>
+                              {!!item.purchasedQuantity && (
+                                <span>
+                                  此前已购：{amountLabel(item.product, item.purchasedQuantity)}
+                                </span>
+                              )}
+                              <button
+                                className="text-button"
+                                onClick={() => navigateProduct(item.product)}
+                                disabled={!shelfForProduct(item.product)}
+                              >
+                                {shelfForProduct(item.product) ? (
+                                  <>
+                                    带我去
+                                    <ArrowUpRight size={13} />
+                                  </>
+                                ) : (
+                                  productPlacementStatus(item.product) || '待安排陈列'
+                                )}
+                              </button>
+                            </div>
+                            <div className="quantity-control">
+                              <button
+                                aria-label={`减少${item.product.name}数量`}
+                                disabled={item.quantity <= quantityStep(item.product)}
+                                onClick={() =>
+                                  setList((previous) =>
+                                    previous.map((entry) =>
+                                      entry.productId === item.productId
+                                        ? {
+                                            ...entry,
+                                            quantity: roundQuantity(
+                                              Math.max(
+                                                quantityStep(item.product),
+                                                entry.quantity - quantityStep(item.product),
+                                              ),
+                                            ),
+                                          }
+                                        : entry,
+                                    ),
+                                  )
+                                }
+                              >
+                                <Minus size={13} />
+                              </button>
+                              <span>
+                                {isWeighed(item.product)
+                                  ? amountLabel(item.product, item.quantity).replace('预计 ', '')
+                                  : item.quantity}
+                              </span>
+                              <button
+                                aria-label={`增加${item.product.name}数量`}
+                                disabled={
+                                  item.quantity + quantityStep(item.product) >
+                                  purchaseLimit(item.product)
+                                }
+                                onClick={() =>
+                                  setList((previous) =>
+                                    previous.map((entry) =>
+                                      entry.productId === item.productId
+                                        ? {
+                                            ...entry,
+                                            quantity: roundQuantity(
+                                              entry.quantity + quantityStep(item.product),
+                                            ),
+                                          }
+                                        : entry,
+                                    ),
+                                  )
+                                }
+                              >
+                                <Plus size={13} />
+                              </button>
+                            </div>
+                            <strong className="item-total">
+                              {currencySymbol(currencyMode)}
+                              {money(lineCents(item.product, item.quantity) / 100)}
+                            </strong>
+                            <button
+                              className="icon-button"
+                              aria-label={`从清单移除${item.product.name}`}
+                              onClick={() =>
+                                setList((previous) =>
+                                  previous.filter((entry) => entry.productId !== item.productId),
+                                )
+                              }
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        ))}
                       </div>
-                      <div>
-                        <span>待逛分区</span>
-                        <strong>
-                          {
-                            new Set(
-                              availableList
-                                .filter((item) => !item.checked)
-                                .map((item) => item.product.category),
-                            ).size
-                          }{' '}
-                          个
-                        </strong>
-                      </div>
-                      <div className="list-total">
-                        <span>待购合计</span>
-                        <strong>{currencySymbol(currencyMode)}{money(total)}</strong>
-                      </div>
-                      <p>按商品标注单位计价，称重商品以实际结算为准。</p>
-                      {displayedPlan?.preferences.budget != null && (
-                        <p
-                          className={
-                            total > displayedPlan.preferences.budget
-                              ? 'budget-exceeded'
-                              : 'budget-remains'
+                      <aside className="list-summary">
+                        <ShoppingBasket size={27} strokeWidth={1.4} />
+                        <h2>这一趟，要买这些。</h2>
+                        <div>
+                          <span>商品种类</span>
+                          <strong>{listCount} 种</strong>
+                        </div>
+                        <div>
+                          <span>待逛分区</span>
+                          <strong>
+                            {
+                              new Set(
+                                availableList
+                                  .filter((item) => !item.checked)
+                                  .map((item) => item.product.category),
+                              ).size
+                            }{' '}
+                            个
+                          </strong>
+                        </div>
+                        <div className="list-total">
+                          <span>待购合计</span>
+                          <strong>
+                            {currencySymbol(currencyMode)}
+                            {money(total)}
+                          </strong>
+                        </div>
+                        <p>按商品标注单位计价，称重商品以实际结算为准。</p>
+                        {displayedPlan?.preferences.budget != null && (
+                          <p
+                            className={
+                              total > displayedPlan.preferences.budget
+                                ? 'budget-exceeded'
+                                : 'budget-remains'
+                            }
+                          >
+                            整单预算 {currencySymbol(currencyMode)}
+                            {money(displayedPlan.preferences.budget)} ·{' '}
+                            {total > displayedPlan.preferences.budget
+                              ? `已超出 ${currencySymbol(currencyMode)}${money(total - displayedPlan.preferences.budget)}`
+                              : `还余 ${currencySymbol(currencyMode)}${money(displayedPlan.preferences.budget - total)}`}
+                          </p>
+                        )}
+                        <button
+                          className="text-button"
+                          disabled={!undoStack.current.length}
+                          onClick={() => void executeAction({ type: 'undo' })}
+                        >
+                          撤销上一次清单操作
+                        </button>
+                        <button
+                          className="button primary"
+                          onClick={planList}
+                          disabled={
+                            !availableList.some(
+                              (item) => !item.checked && availableForSale(item.product),
+                            )
                           }
                         >
-                          整单预算 {currencySymbol(currencyMode)}{money(displayedPlan.preferences.budget)} ·{' '}
-                          {total > displayedPlan.preferences.budget
-                            ? `已超出 ${currencySymbol(currencyMode)}${money(total - displayedPlan.preferences.budget)}`
-                            : `还余 ${currencySymbol(currencyMode)}${money(displayedPlan.preferences.budget - total)}`}
-                        </p>
-                      )}
-                      <button
-                        className="text-button"
-                        disabled={!undoStack.current.length}
-                        onClick={() => void executeAction({ type: 'undo' })}
-                      >
-                        撤销上一次清单操作
-                      </button>
-                      <button
-                        className="button primary"
-                        onClick={planList}
-                        disabled={
-                          !availableList.some((item) => !item.checked && availableForSale(item.product))
-                        }
-                      >
-                        <Navigation size={16} />
-                        规划采购路线
-                      </button>
-                      <button className="text-button" onClick={() => setTab('guide')}>
-                        继续挑选
-                        <ArrowRight size={14} />
-                      </button>
-                    </aside>
-                  </>
-                )}
-              </section>
-            )}
-          </main>
-        )}
+                          <Navigation size={16} />
+                          规划采购路线
+                        </button>
+                        <button className="text-button" onClick={() => setTab('guide')}>
+                          继续挑选
+                          <ArrowRight size={14} />
+                        </button>
+                      </aside>
+                    </>
+                  )}
+                </section>
+              )}
+            </main>
+          )}
+        </div>
       </div>
       <footer className="site-footer">
         <span>

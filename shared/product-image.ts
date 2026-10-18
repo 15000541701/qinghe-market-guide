@@ -1,13 +1,14 @@
 export function validProductImage(value: string) {
-  if (/^\/(?:images\/[a-z0-9-]+\.(?:jpg|svg)|uploads\/[a-f0-9-]+\.jpg)$/.test(value))
-    return true;
+  if (/^\/images\/samsclub\/\d+\/(?:card|\d{2}|thumb-\d{2})\.jpg$/.test(value)) return true;
+  if (/^\/(?:images\/[a-z0-9-]+\.(?:jpg|svg)|uploads\/[a-f0-9-]+\.jpg)$/.test(value)) return true;
   try {
     const url = new URL(value);
     return (
       url.protocol === 'https:' &&
       (/^img\d+\.360buyimg\.com$/.test(url.hostname) ||
         url.hostname === 'images.openfoodfacts.net' ||
-        url.hostname === 'images.openfoodfacts.org') &&
+        url.hostname === 'images.openfoodfacts.org' ||
+        /^i\d+\.samsclubimages\.com$/.test(url.hostname)) &&
       !url.username &&
       !url.password
     );
@@ -18,7 +19,8 @@ export function validProductImage(value: string) {
 
 export type ProductImageSize = 'card' | 'list' | 'map' | 'admin';
 
-const offProductImagePath = /^\/images\/products\/(?:\d{3}\/){3}\d{4}\/[a-z0-9_-]+(?:\.[a-z0-9_-]+)*\.(?:jpe?g|png|webp)$/i;
+const offProductImagePath =
+  /^\/images\/products\/(?:\d{3}\/){3}\d{4}\/[a-z0-9_-]+(?:\.[a-z0-9_-]+)*\.(?:jpe?g|png|webp)$/i;
 
 export function isOfficialOpenFoodFactsImage(value: string): boolean {
   try {

@@ -1,6 +1,8 @@
 import type { Category, GuideResponse, Product, QueryFilters, StoreCategory } from './types';
 import { categoryLabels } from './catalog';
 import { currencySymbol, productCurrency } from './currency';
+import { ingredientKeys } from './recipes';
+import { matchesMealIngredient, englishContains, englishProductName } from './meal-catalog';
 
 const groups: [Category, RegExp][] = [
   ['vegetables', /蔬菜|青菜|绿叶|叶菜|素菜/],
@@ -70,7 +72,14 @@ export function parseQuery(
   if (!foundCategories.length && previous.term) filters.term = previous.term;
   if (/绿叶|叶菜/.test(text)) filters.term = '绿叶蔬菜';
   else if (/鱼/.test(text) && !/虾|海鲜|水产/.test(text)) filters.term = '鱼类';
-  if (exact.length) filters.term = exact.map((p) => p.id).join('|');
+  const englishKeys = ingredientKeys(message);
+  const englishMatches = catalog.filter((p) =>
+    englishKeys.some((key) => matchesMealIngredient(p, key)),
+  );
+  if (englishKeys.length) filters.term = englishKeys.join('|');
+  else if (exact.length) filters.term = exact.map((p) => p.id).join('|');
+  if (englishMatches.length)
+    filters.categories = [...new Set(englishMatches.map((p) => p.category))];
   const range = text.match(
     /[$¥￥]?\s*(\d+(?:\.\d+)?)\s*(?:块钱?|元|rmb|usd|美元)?\s*(?:到|至|[-~～—])\s*[$¥￥]?\s*(\d+(?:\.\d+)?)/i,
   );
@@ -124,7 +133,13 @@ export function filterProducts(products: Product[], filters: QueryFilters): Prod
             .split('|')
             .some(
               (t) =>
-                p.id === t || p.name.includes(t) || p.tags.includes(t) || p.aliases.includes(t),
+                p.id === t ||
+                (t === '绿叶蔬菜'
+                  ? ['spinach', 'bokchoy', 'lettuce'].some((key) => matchesMealIngredient(p, key))
+                  : t === '鱼类'
+                    ? ['seabass', 'carp', 'salmon'].some((key) => matchesMealIngredient(p, key))
+                    : matchesMealIngredient(p, t) ||
+                      (/^[a-z0-9 -]+$/i.test(t) && englishContains(englishProductName(p), t))),
             )),
     )
     .sort((a, b) => (filters.sort === 'price' ? a.price - b.price : 0));

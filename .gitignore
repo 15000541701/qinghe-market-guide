@@ -13,3 +13,4 @@ test-results/
 project.private.config.json
 miniprogram/lib/
 miniprogram/assets/
+public/images/samsclub/

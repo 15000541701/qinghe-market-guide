@@ -18,6 +18,7 @@ export default function ProductCard({
   categoryLabel,
   onAdd,
   onNavigate,
+  onView,
   added,
   priority = false,
 }: {
@@ -25,13 +26,21 @@ export default function ProductCard({
   categoryLabel?: string;
   onAdd: (p: Product) => void;
   onNavigate: (p: Product) => void;
+  onView: (p: Product) => void;
   added?: boolean;
   priority?: boolean;
 }) {
   const canNavigate = productHasNavigableShelf(product);
   return (
-    <article className="product-card">
+    <article
+      className={`product-card ${product.priceOrigin === 'samsclub' ? 'product-card--samsclub' : ''}`}
+    >
       <div className="product-photo">
+        <button
+          className="product-photo-link"
+          onClick={() => onView(product)}
+          aria-label={`查看${product.name}详情`}
+        />
         <ProductImage
           src={product.image}
           fallbackSrc={product.sourceImageUrl}
@@ -60,7 +69,11 @@ export default function ProductCard({
             )}{' '}
           · {canNavigate ? productLocationLabel(product) : '陈列位置待确认'}
         </span>
-        <h3>{product.name}</h3>
+        <h3>
+          <button className="product-title-link" onClick={() => onView(product)}>
+            {product.name}
+          </button>
+        </h3>
         {productMerchandisingSummary(product) && (
           <p className="product-merchandising-status">{productMerchandisingSummary(product)}</p>
         )}

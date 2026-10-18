@@ -10,10 +10,10 @@ import type {
 } from './types';
 import {
   defaultHomePantry,
-  ingredientAliases,
   ingredientKey,
   ingredientNames,
   recipes,
+  mealPlanningVersion,
 } from './recipes';
 import {
   cartTotal,
@@ -25,7 +25,15 @@ import {
   roundQuantity,
   purchasedQuantity,
 } from './shopping';
-import { purchaseLimit } from './catalog-status';
+import { purchaseLimit, availableForSale } from './catalog-status';
+import {
+  findMealProduct,
+  mealMeasureReliable,
+  mealProductExcluded,
+  mealIngredientExcluded,
+  dishMealKinds,
+  canonicalMealIngredient,
+} from './meal-catalog';
 import { currencySymbol, productCurrency } from './currency';
 import type { Recipe, RecipeIngredient } from './recipes';
 
@@ -37,19 +45,12 @@ type Demand = {
   name: string;
   dishes: string[];
   basicPantry: boolean;
+  productId?: string;
 };
-
-const stapleIds = new Set(['steamed-rice', 'oat-egg-breakfast']);
-const vegetableIds = new Set(['spinach-greens', 'bokchoy-greens', 'lettuce-greens']);
-const safeSubstitutes: Record<string, string[]> = {
-  spinach: ['bokchoy', 'lettuce'],
-  bokchoy: ['spinach', 'lettuce'],
-  lettuce: ['spinach', 'bokchoy'],
-};
-const knownNonFoodCategories = new Set(['home', 'cleaning', 'clothing', 'personal-care']);
 
 export function createMealPreferences(): MealPreferences {
   return {
+    planningVersion: mealPlanningVersion,
     people: 2,
     budget: null,
     wants: [],
@@ -61,64 +62,22 @@ export function createMealPreferences(): MealPreferences {
     includeRice: true,
     days: 1,
     mealsPerDay: 2,
+    singleMeal: '晚餐',
     homePantry: [...defaultHomePantry],
   };
 }
 
-function normalized(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[\s·、，,（）()]/g, '');
-}
-
-function isFoodProduct(product: Product, categories: StoreCategory[]) {
-  const category = categories.find((item) => item.id === product.category);
-  if (category) return category.active && category.kind === 'food';
-  return !knownNonFoodCategories.has(product.category);
-}
-
 function findFoodProduct(
   key: string,
-  name: string,
+  _name: string,
   products: Product[],
   categories: StoreCategory[],
+  unit?: Demand['unit'],
+  excluded: string[] = [],
+  productId?: string,
 ) {
-  const food = products.filter(
-    (product) =>
-      product.status !== 'draft' &&
-      product.status !== 'archived' &&
-      product.price > 0 &&
-      isFoodProduct(product, categories),
-  );
-  const wanted = normalized(name);
-  const aliases = ingredientAliases[key] || [];
-  const related = (left: string, right: string) => {
-    const a = normalized(left);
-    const b = normalized(right);
-    return a === b || (Math.min(a.length, b.length) >= 2 && (a.includes(b) || b.includes(a)));
-  };
-  const candidates = food.filter(
-    (product) =>
-      product.id === key ||
-      related(product.name, wanted) ||
-      product.aliases.some(
-        (alias) =>
-          related(alias, wanted) || aliases.some((item) => normalized(alias) === normalized(item)),
-      ),
-  );
-  if (candidates.length) return { product: candidates[0], substitute: false };
-  for (const alternative of safeSubstitutes[key] || []) {
-    const alternativeName = ingredientNames[alternative] || alternative;
-    const product = food.find(
-      (item) =>
-        item.id === alternative ||
-        normalized(item.name) === normalized(alternativeName) ||
-        item.aliases.some((alias) => normalized(alias) === normalized(alternativeName)),
-    );
-    if (product) return { product, substitute: true };
-  }
-  return undefined;
+  const product = findMealProduct(key, products, categories, unit, excluded, productId);
+  return product ? { product, substitute: false } : undefined;
 }
 
 function ingredientValue(ingredient: RecipeIngredient) {
@@ -136,22 +95,12 @@ function displayAmount(amount: number, unit: Demand['unit']) {
 }
 
 function inferKind(recipe: Recipe): GeneratedDish['kind'] {
-  if (stapleIds.has(recipe.id)) return 'staple';
-  if (vegetableIds.has(recipe.id)) return 'vegetable';
-  if (
-    recipe.wants.includes('meat') ||
-    recipe.wants.includes('fish') ||
-    recipe.wants.includes('shrimp')
-  )
-    return 'protein';
-  if (recipe.wants.includes('egg') && !recipe.wants.includes('breakfast')) return 'protein';
-  if (recipe.wants.includes('breakfast')) return 'mixed';
-  return 'mixed';
+  return recipe.kind || 'mixed';
 }
 
 function mealNames(preferences: MealPreferences) {
   return preferences.mealsPerDay === 1
-    ? ['晚餐']
+    ? [preferences.singleMeal || (preferences.wants.includes('breakfast') ? '早餐' : '晚餐')]
     : preferences.mealsPerDay === 2
       ? ['午餐', '晚餐']
       : preferences.mealsPerDay === 3
@@ -178,6 +127,9 @@ function recipeEstimate(
       ingredientNames[ingredient.key] || ingredient.key,
       products,
       categories,
+      amount.unit,
+      preferences.excluded,
+      ingredient.productId,
     );
     if (!match) return sum + 100000;
     const quantity =
@@ -194,107 +146,84 @@ function staticSchedule(
   categories: StoreCategory[],
   fixedRecipeIds?: string[],
 ): ScheduledDish[] {
-  const allowed = recipes.filter(
-    (recipe) =>
-      !recipe.ingredients.some((ingredient) => preferences.excluded.includes(ingredient.key)),
+  const homes = new Set(
+    [...preferences.homePantry, ...preferences.owned].filter(
+      (key) => !preferences.buyPantry.includes(key),
+    ),
+  );
+  const allowed = recipes.filter((recipe) =>
+    recipe.ingredients.every((ingredient) => {
+      if (mealIngredientExcluded(ingredient.key, preferences.excluded)) return false;
+      if (homes.has(ingredient.key)) return true;
+      const value = ingredientValue(ingredient);
+      const product = findMealProduct(
+        ingredient.key,
+        products,
+        categories,
+        value.unit,
+        preferences.excluded,
+      );
+      return (
+        product &&
+        availableForSale(product) &&
+        mealMeasureReliable(product) &&
+        packageSize(product).unit === value.unit
+      );
+    }),
   );
   const slots = mealNames(preferences);
-  if (fixedRecipeIds?.length) {
-    const fixed = fixedRecipeIds.flatMap((value, index) => {
-      const match = value.match(/^(.*?)#(\d+)-(.+)$/);
-      const recipe = allowed.find((item) => item.id === (match?.[1] || value));
-      if (!recipe) return [];
-      const day = match ? +match[2] : Math.floor(index / Math.max(1, preferences.mealsPerDay)) + 1;
-      const meal = match ? match[3] : slots[index % slots.length];
-      return [{ recipe, day, meal, kind: inferKind(recipe) }];
-    });
-    const fixedGroups = new Map<string, ScheduledDish[]>();
-    for (const item of fixed) {
-      const key = `${item.day}-${item.meal}`;
-      fixedGroups.set(key, [...(fixedGroups.get(key) || []), item]);
-    }
-    const fixedComplete = Array.from({ length: preferences.days }, (_, index) => index + 1).every(
-      (day) =>
-        slots.every((meal) => {
-          const group = fixedGroups.get(`${day}-${meal}`) || [];
-          if (!group.length) return false;
-          if (!['午餐', '晚餐'].includes(meal)) return true;
-          const kinds = new Set(group.map((item) => item.kind));
-          return (
-            group.length >= 3 &&
-            kinds.has('staple') &&
-            kinds.has('protein') &&
-            kinds.has('vegetable')
-          );
-        }),
-    );
-    if (fixedComplete) return fixed;
-  }
-  const explicitlyRequested = preferences.dishIds
-    .map((id) => allowed.find((recipe) => recipe.id === id))
-    .filter((recipe): recipe is Recipe => !!recipe);
-  const breakfastChoices = allowed.filter((recipe) => recipe.wants.includes('breakfast'));
-  const proteinChoices = allowed.filter(
-    (recipe) =>
-      ['fish', 'meat', 'shrimp'].some((want) => recipe.wants.includes(want as MealWant)) ||
-      (recipe.wants.includes('egg') && !recipe.wants.includes('breakfast')),
-  );
-  const vegetableChoices = allowed.filter((recipe) => vegetableIds.has(recipe.id));
-  const sortByCost = (choices: Recipe[]) =>
-    preferences.cheaper
-      ? [...choices].sort(
-          (a, b) =>
-            recipeEstimate(a, preferences, products, categories) -
-            recipeEstimate(b, preferences, products, categories),
-        )
-      : choices;
-  const sortedBreakfastChoices = sortByCost(breakfastChoices);
-  const sortedProteinChoices = sortByCost(proteinChoices);
-  const sortedVegetableChoices = sortByCost(vegetableChoices);
-  const rice = allowed.find((recipe) => recipe.id === 'steamed-rice');
-  const breakfastDefault = breakfastChoices[0] || proteinChoices[0];
   const schedule: ScheduledDish[] = [];
+  const estimates = new Map<string, number>();
+  const cost = (recipe: Recipe) => {
+    if (!estimates.has(recipe.id))
+      estimates.set(recipe.id, recipeEstimate(recipe, preferences, products, categories));
+    return estimates.get(recipe.id)!;
+  };
+  const choose = (pool: Recipe[], day: number, offset: number) => {
+    const requested = pool.find((recipe) => preferences.dishIds.includes(recipe.id));
+    if (requested) return requested;
+    const sorted =
+      preferences.cheaper || preferences.budget !== null
+        ? [...pool].sort((a, b) => cost(a) - cost(b))
+        : pool;
+    return sorted[preferences.cheaper ? 0 : (day + offset - 1) % Math.max(1, sorted.length)];
+  };
   for (let day = 1; day <= preferences.days; day++)
     for (const meal of slots) {
-      if (meal === '早餐' || meal === '加餐') {
-        const choice =
-          sortedBreakfastChoices[(day - 1) % Math.max(1, sortedBreakfastChoices.length)] ||
-          breakfastDefault;
-        if (choice) schedule.push({ recipe: choice, day, meal, kind: inferKind(choice) });
-        continue;
+      const breakfast = meal === '早餐' || meal === '加餐';
+      const roles = breakfast
+        ? (['staple', 'protein'] as const)
+        : (['staple', 'protein', 'vegetable'] as const);
+      for (const kind of roles) {
+        if (kind === 'staple' && !preferences.includeRice) continue;
+        const pool = allowed.filter(
+          (recipe) =>
+            recipe.kind === kind &&
+            (!breakfast || recipe.wants.includes('breakfast') || recipe.id === 'toasted-bread'),
+        );
+        const preferred =
+          kind === 'protein' && !breakfast
+            ? pool.filter((recipe) => recipe.wants.some((want) => preferences.wants.includes(want)))
+            : kind === 'vegetable' && preferences.wants.includes('greens')
+              ? pool.filter((recipe) => recipe.wants.includes('greens'))
+              : [];
+        const fixedId = fixedRecipeIds?.find(
+          (id) =>
+            id.endsWith(`#${day}-${meal}`) && pool.some((recipe) => id.startsWith(`${recipe.id}#`)),
+        );
+        const recipe = fixedId
+          ? pool.find((item) => fixedId.startsWith(`${item.id}#`))
+          : choose(preferred.length ? preferred : pool, day, meal === '晚餐' ? 1 : 0);
+        if (recipe) schedule.push({ recipe, day, meal, kind });
       }
-      if (preferences.includeRice && rice)
-        schedule.push({ recipe: rice, day, meal, kind: 'staple' });
-      const requested = explicitlyRequested.find((recipe) => inferKind(recipe) === 'protein');
-      const requestedFish = preferences.wants.includes('fish');
-      const requestedMeat = preferences.wants.includes('meat');
-      const chosenPool = requestedFish
-        ? proteinChoices.filter((recipe) => recipe.wants.includes('fish'))
-        : requestedMeat
-          ? proteinChoices.filter((recipe) => recipe.wants.includes('meat'))
-          : proteinChoices;
-      const pool = sortByCost(chosenPool.length ? chosenPool : sortedProteinChoices);
-      const protein =
-        requested ||
-        pool[
-          preferences.cheaper ? 0 : (day + (meal === '晚餐' ? 1 : 0) - 1) % Math.max(1, pool.length)
-        ];
-      if (protein) schedule.push({ recipe: protein, day, meal, kind: inferKind(protein) });
-      const vegPool = vegetableChoices.length
-        ? sortedVegetableChoices
-        : sortByCost(allowed.filter((recipe) => recipe.wants.includes('vegetables')));
-      const vegetable =
-        vegPool[
-          preferences.cheaper
-            ? 0
-            : (day + (meal === '晚餐' ? 1 : 0) - 1) % Math.max(1, vegPool.length)
-        ];
-      if (vegetable) schedule.push({ recipe: vegetable, day, meal, kind: inferKind(vegetable) });
     }
   return schedule;
 }
 
-function scheduledFromGenerated(preferences: MealPreferences): ScheduledDish[] {
+function scheduledFromGenerated(
+  preferences: MealPreferences,
+  products: Product[],
+): ScheduledDish[] {
   return (preferences.generatedMeals || []).flatMap((slot) =>
     slot.dishes.map((dish) => ({
       recipe: {
@@ -305,9 +234,12 @@ function scheduledFromGenerated(preferences: MealPreferences): ScheduledDish[] {
         steps: dish.steps,
         ingredients: dish.ingredients.map((item) => {
           const source = item.ingredient || item.productId || '未知食材';
-          const key = item.productId || ingredientKey(source) || source;
+          const selected = products.find((product) => product.id === item.productId);
+          const key =
+            ingredientKey(source) || (selected && canonicalMealIngredient(selected)) || source;
           return {
             key,
+            productId: item.productId,
             ...(item.grams !== undefined ? { grams: item.grams } : {}),
             ...(item.milliliters !== undefined ? { milliliters: item.milliliters } : {}),
             ...(item.pieces !== undefined ? { pieces: item.pieces } : {}),
@@ -348,15 +280,21 @@ function evaluate(
       const title = `第${day}天${meal}·${recipe.title}`;
       const basicPantry =
         ingredient.pantryType === 'basic' || defaultHomePantry.includes(canonical);
-      if (homes.has(canonical) && (!basicPantry || !buyPantry.has(canonical))) {
-        owned.add(rawName);
-        continue;
-      }
-      if (preferences.excluded.includes(canonical)) {
+      const selectedProduct = ingredient.productId
+        ? products.find((p) => p.id === ingredient.productId)
+        : undefined;
+      if (
+        mealIngredientExcluded(canonical, preferences.excluded) ||
+        (selectedProduct && mealProductExcluded(selectedProduct, preferences.excluded))
+      ) {
         missing.add(`“${title}”含有已排除的${rawName}`);
         continue;
       }
-      const identity = `${canonical}|${value.unit}`;
+      if (homes.has(canonical) && !buyPantry.has(canonical)) {
+        owned.add(rawName);
+        continue;
+      }
+      const identity = `${ingredient.productId || canonical}|${value.unit}`;
       const previous = demand.get(identity);
       if (previous) {
         previous.amount += amount;
@@ -369,6 +307,7 @@ function evaluate(
           name: rawName,
           dishes: [title],
           basicPantry,
+          productId: ingredient.productId,
         });
       }
     }
@@ -385,7 +324,15 @@ function evaluate(
   >();
   let recipeCostCents = 0;
   for (const need of demand.values()) {
-    const match = findFoodProduct(need.key, need.name, products, storeCategories);
+    const match = findFoodProduct(
+      need.key,
+      need.name,
+      products,
+      storeCategories,
+      need.unit,
+      preferences.excluded,
+      need.productId,
+    );
     const dishes = [...new Set(need.dishes)];
     if (!match) {
       unresolved.push({
@@ -404,7 +351,7 @@ function evaluate(
           ? 1
           : null
         : quantityForMeasure(product, need.amount, need.unit);
-    if (purchaseUnits === null) {
+    if (purchaseUnits === null || !mealMeasureReliable(product)) {
       unresolved.push({
         ingredient: need.name,
         amount: displayAmount(need.amount, need.unit),
@@ -494,8 +441,15 @@ function evaluate(
   );
   for (const item of merged.filter((entry) => !entry.checked)) {
     const product = products.find((candidate) => candidate.id === item.productId);
-    if (!product || product.price <= 0 || product.status === 'draft' || product.status === 'archived' || item.quantity > purchaseLimit(product)) {
-      const reason = product?.inventoryMode === 'untracked' ? '超过单品清单数量上限' : '已缺货或库存不足';
+    if (
+      !product ||
+      product.price <= 0 ||
+      product.status === 'draft' ||
+      product.status === 'archived' ||
+      item.quantity > purchaseLimit(product)
+    ) {
+      const reason =
+        product?.inventoryMode === 'untracked' ? '超过单品清单数量上限' : '已缺货或库存不足';
       missing.add(`现有清单中的${product?.name || '商品'}${reason}`);
       unavailableProducts.add(item.productId);
     }
@@ -553,10 +507,10 @@ function evaluate(
     remaining,
     canApply: !missing.size && (remaining === null || remaining >= 0) && budgetComplete,
     notes: [
-      '默认食用油、盐、糖、生抽、老抽、醋、料酒家中已有，不计入采购；可说“家里没有油”更新。',
-      '葱姜蒜和特色调味不默认已有；食谱继续显示用量，缺货或本店暂无的食材会单独标出。',
+      '按美国山姆商品规划西式餐食；中文展示，商品按英文原名匹配。默认家中有食用油和盐，可在常备项中修改。',
+      '大蒜、黑胡椒、酱料等不默认已有；规格不明确或缺货的商品不作完整预算承诺。',
       '包装采购先合并全周期需求、扣除已购和清单数量，再按完整包装向上取整。',
-      '菜谱是家常搭配参考，不提供精确营养值、医疗建议或减重承诺。',
+      '西式餐食搭配仅供参考；生熟状态不明时以包装说明为准，不提供精确营养值或减重承诺。',
       ...(pricedPart ? [pricedPart] : []),
     ],
     recipeCost: recipeCostCents / 100,
@@ -574,23 +528,59 @@ export function buildMealPlan(
   fixedRecipeIds?: string[],
   storeCategories: StoreCategory[] = [],
 ): MealPlan {
+  // Old browser contexts must not resurrect the Chinese recipe planner.
+  if (preferences.planningVersion !== mealPlanningVersion)
+    preferences = {
+      ...preferences,
+      planningVersion: mealPlanningVersion,
+      generatedMeals: undefined,
+      dishIds: [],
+    };
   const slots = preferences.days * preferences.mealsPerDay;
-  if (preferences.generatedMeals?.length === slots)
-    return evaluate(
-      scheduledFromGenerated(preferences),
-      preferences,
-      products,
-      cart,
-      storeCategories,
-    );
-  const schedule = staticSchedule(preferences, products, storeCategories, fixedRecipeIds);
+  const schedule =
+    preferences.generatedMeals?.length === slots
+      ? scheduledFromGenerated(preferences, products)
+      : staticSchedule(preferences, products, storeCategories, fixedRecipeIds);
   const unmet: string[] = [];
   if (preferences.dishIds.some((id) => !recipes.some((recipe) => recipe.id === id)))
-    unmet.push('指定菜谱不可用，需重新选择');
-  if (!schedule.length) unmet.push('暂时没有符合条件的完整餐食组合');
+    unmet.push('指定菜谱不属于当前西式餐食目录，需重新选择');
+  for (let day = 1; day <= preferences.days; day++)
+    for (const meal of mealNames(preferences)) {
+      const group = schedule.filter((item) => item.day === day && item.meal === meal);
+      const kinds = new Set(
+        group.flatMap((item) =>
+          dishMealKinds(
+            {
+              kind: item.kind || inferKind(item.recipe),
+              ingredients: item.recipe.ingredients.map((ingredient) => ({
+                ingredient: ingredient.key,
+                productId: ingredient.productId,
+              })),
+            },
+            products,
+          ),
+        ),
+      );
+      const required =
+        meal === '早餐' || meal === '加餐'
+          ? ['staple', 'protein']
+          : ['staple', 'protein', 'vegetable'];
+      if (
+        required.some(
+          (kind) =>
+            (kind !== 'staple' || preferences.includeRice) &&
+            !kinds.has(kind as GeneratedDish['kind']),
+        )
+      )
+        unmet.push(`第${day}天${meal}缺少可用食材，暂不能组成完整西式餐食`);
+    }
   const plan = evaluate(schedule, preferences, products, cart, storeCategories);
   plan.missing.push(...unmet);
-  if (unmet.length) plan.canApply = false;
+  if (unmet.length) {
+    plan.canApply = false;
+    plan.budgetComplete = false;
+    plan.remaining = null;
+  }
   return plan;
 }
 
@@ -604,7 +594,19 @@ export function describeMealPlan(plan: MealPlan, previousTotal?: number) {
   const amount = plan.budgetComplete
     ? `计划食材采购 ${symbol}${(plan.newlyAddedCost ?? plan.addedCost).toFixed(2)}；原清单 ${symbol}${plan.existingCost.toFixed(2)}；合并待购 ${symbol}${plan.total.toFixed(2)}`
     : `本店可购部分 ${symbol}${plan.total.toFixed(2)}；${unpricedCount} 项未计价、${outOfStockCount} 项缺货${otherMissingCount ? `、${otherMissingCount} 项条件未满足` : ''}`;
-  let text = `按 ${plan.preferences.people} 人、${plan.preferences.days} 天、每天 ${plan.preferences.mealsPerDay} 餐搭配。${amount}${budget === null ? '；未设置预算上限。' : `；预算 ${symbol}${budget.toFixed(2)}。`}`;
+  const menu =
+    plan.preferences.days === 1
+      ? [...new Set(plan.recipes.map((recipe) => recipe.meal || '餐食'))]
+          .map(
+            (meal) =>
+              `${meal}：${plan.recipes
+                .filter((recipe) => (recipe.meal || '餐食') === meal)
+                .map((recipe) => recipe.title)
+                .join('、')}`,
+          )
+          .join('；')
+      : '';
+  let text = `${menu ? `${menu}。\n` : ''}按 ${plan.preferences.people} 人、${plan.preferences.days} 天、每天 ${plan.preferences.mealsPerDay} 餐搭配。${amount}${budget === null ? '；未设置预算上限。' : `；预算 ${symbol}${budget.toFixed(2)}。`}`;
   if (plan.preferences.cheaper && previousTotal !== undefined)
     text +=
       plan.total < previousTotal

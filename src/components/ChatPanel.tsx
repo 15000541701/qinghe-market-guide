@@ -43,7 +43,7 @@ type Message = {
 const welcome: Message = {
   id: 0,
   role: 'assistant',
-  text: '你好呀，我是小禾。\n想吃点什么，或准备做什么菜？告诉我你的预算，我来帮你挑，还能带你找到货架。',
+  text: '你好呀，我是小禾。\n想搭配烤鱼、意面、三明治或沙拉？用中文告诉我人数和预算，我来按美国山姆商品规划西式餐食，还能带你找到货架。',
 };
 interface Props {
   currency: Currency;
@@ -51,6 +51,7 @@ interface Props {
   storeCategories: StoreCategory[];
   onResults: (products: Product[], label: string) => void;
   onNavigate: (p: Product) => void;
+  onView: (p: Product) => void;
   onAdd: (p: Product) => void;
   onToast: (text: string) => void;
   ai: boolean;
@@ -68,6 +69,7 @@ export default function ChatPanel({
   storeCategories,
   onResults,
   onNavigate,
+  onView,
   onAdd,
   onToast,
   ai,
@@ -218,7 +220,8 @@ export default function ChatPanel({
   const chooseCandidate = (candidate: VisionResponse['candidates'][number]) => {
     const matches = products.filter(
       (p) =>
-        p.status !== 'archived' && (p.inventoryMode === 'untracked' || p.stock > 0) &&
+        p.status !== 'archived' &&
+        (p.inventoryMode === 'untracked' || p.stock > 0) &&
         (candidate.productId ? p.id === candidate.productId : p.category === candidate.category),
     );
     onResults(matches, `${candidate.name} · 图片找货`);
@@ -325,8 +328,7 @@ export default function ChatPanel({
                       <span>
                         <strong>{candidate.name}</strong>
                         <small>
-                          {categoryName(candidate.category)} ·{' '}
-                          {i === 0 ? '首选匹配' : '其他可能'}
+                          {categoryName(candidate.category)} · {i === 0 ? '首选匹配' : '其他可能'}
                         </small>
                       </span>
                       <ArrowRight size={16} />
@@ -338,11 +340,22 @@ export default function ChatPanel({
                 <div className="chat-products">
                   {message.products.slice(0, 3).map((product) => (
                     <div key={product.id} className="chat-product">
-                      <img src={product.image} alt="" />
+                      <button
+                        className="chat-product-detail-link"
+                        onClick={() => onView(product)}
+                        aria-label={`查看${product.name}详情`}
+                      >
+                        <img src={product.image} alt="" />
+                      </button>
                       <div>
-                        <strong>{product.name}</strong>
+                        <strong>
+                          <button className="product-title-link" onClick={() => onView(product)}>
+                            {product.name}
+                          </button>
+                        </strong>
                         <span>
-                          {currencySymbol(currency)}{money(product.price)} / {product.unit}
+                          {currencySymbol(currency)}
+                          {money(product.price)} / {product.unit}
                         </span>
                       </div>
                       <button
@@ -374,8 +387,16 @@ export default function ChatPanel({
           <div className="starter-questions">
             <p>不知道怎么问？试试这些</p>
             {(currency === 'USD'
-              ? ['两个人吃，预算 50 USD，想吃鱼和绿叶菜，家里有葱姜', '推荐 $10 以内的零食', '想买 $20 到 $40 的鱼']
-              : ['两个人吃，预算 50 元，想吃鱼和绿叶菜，家里有葱姜', '推荐 10 元以内的蔬菜', '想买 20 到 40 元的鱼']
+              ? [
+                  '两个人吃，预算 50 USD，想搭配西式鱼餐和沙拉',
+                  '推荐 $10 以内的零食',
+                  '想买 $20 到 $40 的鱼',
+                ]
+              : [
+                  '两个人吃，预算 50 元，想搭配西式鱼餐和沙拉',
+                  '推荐 10 元以内的蔬菜',
+                  '想买 20 到 40 元的鱼',
+                ]
             ).map((text) => (
               <button key={text} onClick={() => void send(text)}>
                 <span>{text}</span>

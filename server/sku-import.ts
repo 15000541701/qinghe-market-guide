@@ -129,7 +129,7 @@ export function importSkus(
       const priceOrigin =
         input.priceOrigin ||
         (input.price !== undefined && input.price !== previous?.price ? 'manual' : previous?.priceOrigin);
-      if (priceOrigin && !['jd-retail', 'manual', 'open-prices'].includes(priceOrigin))
+      if (priceOrigin && !['jd-retail', 'manual', 'open-prices', 'samsclub'].includes(priceOrigin))
         throw new Error('priceOrigin 无效。');
       const catalogOrigin =
         (input.catalogOrigin as Product['catalogOrigin']) ||

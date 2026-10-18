@@ -13,6 +13,8 @@ import { fixtureAccessPoints } from '../shared/layout';
 import { mapBounds } from '../shared/map-config';
 import { realCatalogProducts } from '../shared/real-catalog';
 import { openPricesUsdCatalog } from '../shared/open-prices-usd-catalog';
+import { samsClubCategories, samsClubProducts } from './samsclub-catalog';
+import samsClubLayout from '../shared/samsclub-layout.json';
 import {
   openPricesMerchandisingFamilies,
 } from '../shared/open-prices-merchandising';
@@ -28,10 +30,15 @@ import {
 } from './open-prices-merchandising-migration';
 
 const dataDirectory = path.resolve(process.env.DATA_DIR || 'data');
+// The active catalog now comes from Sam’s Club. Do not resurrect the removed legacy batches.
+const legacyCatalogEnabled = false;
 mkdirSync(dataDirectory, { recursive: true });
 export const db = new DatabaseSync(path.join(dataDirectory, 'market.sqlite'));
 db.exec(
   'PRAGMA journal_mode = WAL; CREATE TABLE IF NOT EXISTS products (id TEXT PRIMARY KEY, data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS store_categories (id TEXT PRIMARY KEY, data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS store_sections (id TEXT PRIMARY KEY, data TEXT NOT NULL); CREATE TABLE IF NOT EXISTS shelves (id TEXT PRIMARY KEY, data TEXT NOT NULL);',
+);
+const initializeSamLayout = ['products', 'store_categories', 'store_sections', 'shelves'].every(
+  (table) => (db.prepare(`SELECT COUNT(*) AS count FROM ${table}`).get() as { count: number }).count === 0,
 );
 const sectionInsert = db.prepare('INSERT OR IGNORE INTO store_sections (id, data) VALUES (?, ?)');
 for (const zone of zones) sectionInsert.run(zone.id, JSON.stringify({ ...zone, active: true }));
@@ -84,7 +91,7 @@ for (const zone of zones) {
 const productInsert = db.prepare('INSERT OR IGNORE INTO products (id, data) VALUES (?, ?)');
 db.exec('BEGIN');
 try {
-  if (process.env.SEED_DEMO_DATA === 'true')
+  if (legacyCatalogEnabled && process.env.SEED_DEMO_DATA === 'true')
     for (const product of makeSeedProducts())
       productInsert.run(product.id, JSON.stringify(product));
   db.exec('COMMIT');
@@ -504,7 +511,8 @@ if (!db.prepare('SELECT id FROM layout_migrations WHERE id=?').get('real-sku-v1'
       )
         saveProduct({ ...product, catalogOrigin: 'legacy-demo', status: 'archived', stock: 0 });
     }
-    for (const product of realCatalogProducts()) if (!getProduct(product.id)) saveProduct(product);
+    if (legacyCatalogEnabled)
+      for (const product of realCatalogProducts()) if (!getProduct(product.id)) saveProduct(product);
     db.exec('COMMIT');
   } catch (error) {
     db.exec('ROLLBACK');
@@ -525,7 +533,7 @@ export function saveProductsAtomically(products: Product[]) {
 
 // Default retailer catalog is displayed immediately; no fictitious JD stock counts.
 // Refresh public quotes only when a recorded quote changes, preserving manual pricing/images.
-const retailerDefaults = realCatalogProducts();
+const retailerDefaults: Product[] = legacyCatalogEnabled ? realCatalogProducts() : [];
 db.exec('BEGIN');
 try {
   if (!db.prepare('SELECT id FROM layout_migrations WHERE id=?').get('retailer-display-v1'))
@@ -655,6 +663,7 @@ const existingBarcodes = new Set(
   getProducts().map((product) => product.barcode).filter((barcode): barcode is string => !!barcode),
 );
 const importedOpenPrices = openPricesUsdCatalog
+  .filter(() => legacyCatalogEnabled)
   .filter((record) => !existingBarcodes.has(record.barcode))
   .map((record): Product => {
     const unit = `${record.quantity}${record.quantityUnit}`;
@@ -766,7 +775,7 @@ if (!db.prepare('SELECT id FROM layout_migrations WHERE id=?').get(openPricesLoc
 // affected catalog and layout; prices, stock, history, and non-target records are
 // copied through unchanged.
 const openPricesMerchandisingMigrationId = 'openprices-merchandising-layout-v1';
-if (!db.prepare('SELECT id FROM layout_migrations WHERE id=?').get(openPricesMerchandisingMigrationId)) {
+if (legacyCatalogEnabled && !db.prepare('SELECT id FROM layout_migrations WHERE id=?').get(openPricesMerchandisingMigrationId)) {
   const byBarcode = new Map(openPricesUsdCatalog.map((record) => [record.barcode, record]));
   const targetRows = (db.prepare('SELECT id, data FROM products').all() as { id: string; data: string }[])
     .filter((row) => {
@@ -1044,7 +1053,7 @@ function productGroupStorage(products: ClassifiedOpenPricesProduct[]): 'frozen' 
 // Tighten only the new Open Prices fixture rows; keep the original departments
 // and their user-managed fixture positions intact.
 const openPricesLayoutDensityMigrationId = 'openprices-layout-density-v1';
-if (!db.prepare('SELECT id FROM layout_migrations WHERE id=?').get(openPricesLayoutDensityMigrationId)) {
+if (legacyCatalogEnabled && !db.prepare('SELECT id FROM layout_migrations WHERE id=?').get(openPricesLayoutDensityMigrationId)) {
   const targetSectionIds = new Set([
     'openprices-ambient-north',
     'openprices-ambient-south',
@@ -1187,4 +1196,40 @@ if (!db.prepare('SELECT id FROM layout_migrations WHERE id=?').get(openPricesLay
     db.exec('ROLLBACK');
     throw error;
   }
+}
+
+// Add verified Sam’s Club batches without replacing prior products or staff edits.
+db.exec('BEGIN');
+try {
+  if (initializeSamLayout) {
+    // Fresh clones need the validated fixture geometry, including the former
+    // legacy fixture IDs used by the replanner. Never replace an existing store.
+    db.exec('DELETE FROM shelves; DELETE FROM store_sections; DELETE FROM store_categories;');
+    for (const category of samsClubLayout.categories) categoryInsert.run(category.id, JSON.stringify(category));
+    for (const section of samsClubLayout.sections) sectionInsert.run(section.id, JSON.stringify(section));
+    for (const shelf of samsClubLayout.shelves) shelfInsert.run(shelf.id, JSON.stringify(shelf));
+  }
+  for (const category of samsClubCategories(getCategories())) saveCategory(category);
+  for (const shelf of getShelves().filter((shelf) => shelf.kind === 'chiller' && shelf.sectionId === 'meat')) {
+    const allowedDisplayGroups = [...new Set([...(shelf.allowedDisplayGroups || []), 'chilled-meat-raw'])];
+    if (allowedDisplayGroups.length !== shelf.allowedDisplayGroups?.length)
+      db.prepare('UPDATE shelves SET data=? WHERE id=?').run(JSON.stringify({ ...shelf, allowedDisplayGroups }), shelf.id);
+  }
+  const current = getProducts();
+  const layoutShelves = getShelves();
+  const retryPlacement = current.filter((product) => product.sourceRetailer === 'Sam’s Club US' && (
+    product.merchandisingState !== 'placed' ||
+    (product.category === 'meat' && ['chilled-confirmed', 'chilled-or-frozen-confirmed'].includes(product.storageCondition || '') && product.shelfId && layoutShelves.find((shelf) => shelf.id === product.shelfId)?.sectionId !== 'meat')
+  ));
+  const movedIds = new Set(retryPlacement.map((product) => product.id));
+  for (const placed of samsClubProducts(current.filter((product) => !movedIds.has(product.id)), getShelves(), getSections()).filter((product) => movedIds.has(product.id))) {
+    const previous = retryPlacement.find((product) => product.id === placed.id)!;
+    db.prepare('UPDATE products SET data=? WHERE id=?').run(JSON.stringify({ ...previous, shelf: placed.shelf, shelfId: placed.shelfId, shelfSide: placed.shelfSide, shelfLevel: placed.shelfLevel, merchandisingState: placed.merchandisingState }), placed.id);
+  }
+  for (const product of samsClubProducts(getProducts(), getShelves(), getSections()))
+    productInsert.run(product.id, JSON.stringify(product));
+  db.exec('COMMIT');
+} catch (error) {
+  db.exec('ROLLBACK');
+  throw error;
 }

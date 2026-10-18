@@ -1,5 +1,6 @@
 import { mapBounds } from '../shared/map-config';
 import 'dotenv/config';
+import { configureNetworkProxy } from './network-proxy';
 import express from 'express';
 import multer from 'multer';
 import sharp from 'sharp';
@@ -9,8 +10,7 @@ import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
 import { aiConfigured, AiError, guide, identifyImage } from './ai';
-import { modelOptions } from '../shared/model-options';
-import { getModelSettings, saveModelSettings } from './model-settings';
+import { getModelSettings, modelSettingsSchema, saveModelSettings } from './model-settings';
 import {
   getCategories,
   getProduct,
@@ -44,7 +44,10 @@ import { availableForSale } from '../shared/catalog-status';
 import { validProductImage } from '../shared/product-image';
 import { currencyMismatchMessage, productCurrency } from '../shared/currency';
 import { registerProductImageCacheRoute } from './product-image-cache';
+import { productDetail } from './samsclub-catalog';
+import { mealPlanningVersion } from '../shared/recipes';
 
+configureNetworkProxy();
 const app = express();
 registerProductImageCacheRoute(app);
 const uploads = path.resolve(process.env.DATA_DIR || 'data', 'uploads');
@@ -57,18 +60,22 @@ app.use((_req, res, next) => {
 });
 app.use(express.json({ limit: '5mb' }));
 app.use('/uploads', express.static(uploads));
+// Serve newly collected galleries immediately, including between catalog batches.
+app.use('/images/samsclub', express.static(path.resolve('public/images/samsclub')));
 app.get('/api/model-settings', (_req, res) => res.json(getModelSettings()));
 app.put('/api/model-settings', (req, res) => {
-  const model = z
-    .string()
-    .refine((id) => modelOptions.some((option) => option.id === id), '请选择支持的模型');
-  const settings = z.object({ model }).strict().parse(req.body);
+  const settings = modelSettingsSchema.parse(req.body);
   res.json(saveModelSettings(settings));
 });
 app.get('/api/status', (_req, res) =>
-  res.json({ ai: aiConfigured(), mode: aiConfigured() ? '大模型导购' : '规则导购', demo: true }),
+  res.json({ ai: aiConfigured(), mode: aiConfigured() ? '大模型导购' : '规则导购', demo: true, mealPlanner: mealPlanningVersion }),
 );
 app.get('/api/products', (_req, res) => res.json(getProducts()));
+app.get('/api/products/:id', (req, res) => {
+  const product = getProduct(req.params.id);
+  if (!product || product.status === 'archived') return res.status(404).json({ error: '这件商品暂不可查看。' });
+  return res.json(productDetail(product));
+});
 app.get('/api/categories', (_req, res) => res.json(getCategories()));
 app.get('/api/sections', (_req, res) => res.json(getSections()));
 app.get('/api/shelves', (_req, res) => res.json(getShelves()));

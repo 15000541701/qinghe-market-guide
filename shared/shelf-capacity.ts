@@ -37,6 +37,11 @@ export function shelfSlotPlacementError(
   side: ShelfSide,
   level: number,
 ): string | undefined {
+  const chilledOrFrozen = product.storageCondition === 'chilled-or-frozen-confirmed';
+  const coldFixture = shelf.kind === 'chiller' || shelf.kind === 'freezer';
+  if (chilledOrFrozen && !coldFixture)
+    return `“${product.name}”已确认需要冷链保存，请放入冷藏柜或冷冻柜。`;
+
   const allowedGroups = shelf.allowedDisplayGroups || [];
   const displayGroup = product.displayGroup?.trim();
   if (allowedGroups.length) {

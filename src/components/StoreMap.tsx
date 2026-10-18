@@ -37,6 +37,7 @@ interface Props {
   onPlanList?: () => void;
   selectedProductId?: string;
   onSelectProduct?: (product: Product) => void;
+  onViewProduct?: (product: Product) => void;
   onClearSelectedProduct?: () => void;
 }
 const cell = 28;
@@ -96,12 +97,26 @@ function FixtureDrawing({
   const long = h > w;
   const capacity = shelfSlotCapacity(shelf);
   const level = focusedId === shelf.id ? selectedLevel || 1 : 1;
-  const availableSides = Object.keys(shelf.accessPoints || {}) as NonNullable<Product['shelfSide']>[];
+  const availableSides = Object.keys(shelf.accessPoints || {}) as NonNullable<
+    Product['shelfSide']
+  >[];
   const merchandiseColor = (product?: Product) => {
     if (!product) return '#edf0e8';
     const key = product.merchandisingFamily || product.displayGroup || product.category;
-    const palette = ['#78a16d', '#c99b4e', '#7c9fac', '#b87e68', '#9c8db2', '#8d9b70', '#bd8dba', '#7c8cae'];
-    const hash = [...key].reduce((value, character) => (value * 31 + character.charCodeAt(0)) >>> 0, 7);
+    const palette = [
+      '#78a16d',
+      '#c99b4e',
+      '#7c9fac',
+      '#b87e68',
+      '#9c8db2',
+      '#8d9b70',
+      '#bd8dba',
+      '#7c8cae',
+    ];
+    const hash = [...key].reduce(
+      (value, character) => (value * 31 + character.charCodeAt(0)) >>> 0,
+      7,
+    );
     return palette[hash % palette.length];
   };
   const itemsForSide = (side: NonNullable<Product['shelfSide']>) =>
@@ -121,9 +136,7 @@ function FixtureDrawing({
       const slotX = long
         ? x + 3 + (sideIndex ? w * 0.53 : 0)
         : x + 4 + (index * (w - 8)) / capacity;
-      const slotY = long
-        ? y + 5 + (index * (h - 10)) / capacity
-        : y + 3 + sideIndex * h * 0.53;
+      const slotY = long ? y + 5 + (index * (h - 10)) / capacity : y + 3 + sideIndex * h * 0.53;
       const slotWidth = long ? Math.max(3, w * 0.4) : Math.max(3, (w - 8) / capacity - 2);
       const slotHeight = long ? Math.max(3, (h - 10) / capacity - 2) : Math.max(3, h * 0.3);
       return (
@@ -205,7 +218,15 @@ function FixtureDrawing({
         </>
       )}
       {kind === 'seafood-tank' && (
-        <rect x={x + 3} y={y + 3} width={w - 6} height={h - 6} rx="4" fill="#c2e0e5" stroke="#518392" />
+        <rect
+          x={x + 3}
+          y={y + 3}
+          width={w - 6}
+          height={h - 6}
+          rx="4"
+          fill="#c2e0e5"
+          stroke="#518392"
+        />
       )}
       {kind === 'service-counter' && (
         <>
@@ -231,7 +252,9 @@ function FixtureDrawing({
                   width={slotWidth}
                   height={Math.max(3, h - 14)}
                   fill={merchandiseColor(product)}
-                  stroke={product?.id === selectedProductId ? '#203e2f' : product ? '#fff' : '#c8cec2'}
+                  stroke={
+                    product?.id === selectedProductId ? '#203e2f' : product ? '#fff' : '#c8cec2'
+                  }
                 />
               );
             })
@@ -275,6 +298,7 @@ export default function StoreMap({
   onPlanList,
   selectedProductId,
   onSelectProduct,
+  onViewProduct,
   onClearSelectedProduct,
 }: Props) {
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
@@ -287,7 +311,9 @@ export default function StoreMap({
   const zoomRef = useRef(zoom);
   const panRef = useRef(pan);
   const activePointers = useRef(new Map<number, Point>());
-  const dragStart = useRef<{ id: number; x: number; y: number; panX: number; panY: number } | null>(null);
+  const dragStart = useRef<{ id: number; x: number; y: number; panX: number; panY: number } | null>(
+    null,
+  );
   const pinchStart = useRef<{
     distance: number;
     zoom: number;
@@ -303,12 +329,14 @@ export default function StoreMap({
     if (!viewport) return next;
     const width = mapView.width * scale;
     const height = mapView.height * scale;
-    const x = width <= viewport.clientWidth
-      ? (viewport.clientWidth - width) / 2
-      : Math.max(viewport.clientWidth - width, Math.min(0, next.x));
-    const y = height <= viewport.clientHeight
-      ? (viewport.clientHeight - height) / 2
-      : Math.max(viewport.clientHeight - height, Math.min(0, next.y));
+    const x =
+      width <= viewport.clientWidth
+        ? (viewport.clientWidth - width) / 2
+        : Math.max(viewport.clientWidth - width, Math.min(0, next.x));
+    const y =
+      height <= viewport.clientHeight
+        ? (viewport.clientHeight - height) / 2
+        : Math.max(viewport.clientHeight - height, Math.min(0, next.y));
     return { x, y };
   };
   const fitMap = (oversize = 1) => {
@@ -433,7 +461,8 @@ export default function StoreMap({
       const midpoint = { x: (points[0].x + points[1].x) / 2, y: (points[0].y + points[1].y) / 2 };
       const rect = viewport.getBoundingClientRect();
       const scale = clampZoom(
-        pinchStart.current.zoom * (pointDistance(points[0], points[1]) / pinchStart.current.distance),
+        pinchStart.current.zoom *
+          (pointDistance(points[0], points[1]) / pinchStart.current.distance),
       );
       setZoom(scale);
       setPan(
@@ -565,12 +594,7 @@ export default function StoreMap({
           aria-label="主通道连接双面货架、生鲜岛台、熟食档口、活鲜池及冷藏柜"
         >
           <defs>
-            <pattern
-              id="floor-tiles"
-              width="28"
-              height="28"
-              patternUnits="userSpaceOnUse"
-            >
+            <pattern id="floor-tiles" width="28" height="28" patternUnits="userSpaceOnUse">
               <rect width="28" height="28" fill="#fbfaf6" />
               <path d="M28 0H0V28" fill="none" stroke="#eae8df" strokeWidth=".5" />
             </pattern>
@@ -778,7 +802,8 @@ export default function StoreMap({
           </text>
         </svg>
         {(() => {
-          const preview = products.find((product) => product.id === hoveredProductId) ||
+          const preview =
+            products.find((product) => product.id === hoveredProductId) ||
             products.find((product) => product.id === selectedProductId);
           return preview ? (
             <div className="map-product-preview" role="status">
@@ -792,6 +817,11 @@ export default function StoreMap({
               />
               <span>
                 <strong title={preview.name}>{preview.name}</strong>
+                {onViewProduct && (
+                  <button className="text-button" onClick={() => onViewProduct(preview)}>
+                    查看商品详情
+                  </button>
+                )}
                 <small>
                   {preview.price > 0
                     ? `${currencySymbol(productCurrency(preview))}${preview.price.toFixed(2)}/${preview.unit}`
@@ -906,7 +936,10 @@ export default function StoreMap({
                 aria-pressed={selected === area.id}
                 onClick={() => onSelect(area.id)}
               >
-                <span className="store-area-code" style={{ color: area.color, background: area.tint }}>
+                <span
+                  className="store-area-code"
+                  style={{ color: area.color, background: area.tint }}
+                >
                   {area.code}
                 </span>
                 <span className="store-area-name">{area.name}</span>
@@ -1012,7 +1045,11 @@ export default function StoreMap({
                             </small>
                           </button>
                         ) : (
-                          <div className="fixture-slot empty" key={`empty-${level}-${slot}`} aria-label="空陈列位">
+                          <div
+                            className="fixture-slot empty"
+                            key={`empty-${level}-${slot}`}
+                            aria-label="空陈列位"
+                          >
                             <span className="fixture-slot-media" />
                             <strong>空位</strong>
                             <small>{slot + 1}</small>

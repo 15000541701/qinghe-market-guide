@@ -78,17 +78,19 @@ export type Product = {
     | 'instant-ready'
     | 'packaged'
     | 'unknown';
-  storageCondition?: 'ambient-likely' | 'chilled-confirmed' | 'frozen-confirmed' | 'unknown';
+  storageCondition?:
+    | 'ambient-likely'
+    | 'chilled-confirmed'
+    | 'frozen-confirmed'
+    | 'chilled-or-frozen-confirmed'
+    | 'unknown';
   classificationConfidence?:
-    | 'taxonomy-confirmed'
-    | 'manual-name-review'
-    | 'candidate'
-    | 'needs-review';
+    'taxonomy-confirmed' | 'manual-name-review' | 'candidate' | 'needs-review';
   merchandisingState?: 'placed' | 'pending-review' | 'unplaced';
   displayGroup?: string;
   status?: 'draft' | 'active' | 'archived';
   inventoryMode?: 'tracked' | 'untracked';
-  priceOrigin?: 'jd-retail' | 'manual' | 'open-prices';
+  priceOrigin?: 'jd-retail' | 'manual' | 'open-prices' | 'samsclub';
   currency?: Currency;
   priceSourceUrl?: string;
   priceCheckedAt?: string;
@@ -107,6 +109,8 @@ export type Product = {
   priceProofId?: number;
   sourceImageUrl?: string;
   sourceRetailer?: string;
+  /** Sam’s Club PDP usItemId; distinct from the store Item # stored in sourceSku. */
+  sourcePageId?: string;
   sourceUrl?: string;
   sourceSku?: string;
   sourceListingUrl?: string;
@@ -134,6 +138,64 @@ export type Product = {
   /** Net contents of one sold unit. `unit` remains the display/legacy source. */
   packageSize?: { quantity: number; unit: 'g' | 'ml' | 'piece' | 'package' };
 };
+export type ProductGalleryImage = {
+  url: string;
+  thumbnailUrl?: string;
+  sourceUrl?: string;
+  width?: number;
+  height?: number;
+};
+export type RetailPriceObservation = {
+  price: number;
+  currency: Currency;
+  channel: string;
+  clubId: string | null;
+  clubName: string | null;
+  city: string | null;
+  capturedAt: string;
+  unitPriceText: string | null;
+  finalCostByWeight: boolean;
+};
+export type ProductDetailResponse = {
+  product: Product;
+  originalName?: string;
+  gallery: ProductGalleryImage[];
+  introduction: string;
+  introductionIsSummary?: boolean;
+  highlights: string[];
+  specifications: string[];
+  prices: RetailPriceObservation[];
+  selectedChannel?: string;
+  finalCostByWeight?: boolean;
+};
+export type SamsClubCatalogRecord = {
+  itemId: string;
+  /** Sam’s Club PDP usItemId from the public URL; distinct from the store Item #. */
+  sourcePageId?: string;
+  originalName: string;
+  name: string;
+  category: string;
+  categoryName?: string;
+  storageCondition: NonNullable<Product['storageCondition']>;
+  displayGroup: string;
+  unit: string;
+  packageSize?: Product['packageSize'] | null;
+  description: string;
+  barcode: string | null;
+  brand: string | null;
+  sourceUrl: string;
+  capturedAt: string;
+  price: number;
+  selectedChannel: string;
+  clubId: string | null;
+  finalCostByWeight: boolean;
+  gallery: ProductGalleryImage[];
+  introduction: string;
+  introductionIsSummary?: boolean;
+  highlights: string[];
+  specifications: string[];
+  prices: RetailPriceObservation[];
+};
 export type QueryFilters = {
   categories: Category[];
   min?: number;
@@ -153,6 +215,7 @@ export type GuideResponse = {
 };
 export type MealWant = 'fish' | 'greens' | 'vegetables' | 'meat' | 'shrimp' | 'egg' | 'breakfast';
 export type MealPreferences = {
+  planningVersion?: string;
   people: number;
   budget: number | null;
   wants: MealWant[];
@@ -161,9 +224,11 @@ export type MealPreferences = {
   buyPantry: string[];
   dishIds: string[];
   cheaper: boolean;
+  /** Legacy field name: include a Western starchy side, not mandatory rice. */
   includeRice: boolean;
   days: number;
   mealsPerDay: number;
+  singleMeal?: '早餐' | '午餐' | '晚餐' | '加餐';
   /** Household staples confirmed available; amounts are intentionally not inferred. */
   homePantry: string[];
   generatedMeals?: GeneratedMeal[];
@@ -185,7 +250,7 @@ export type GeneratedDish = {
     grams?: number;
     milliliters?: number;
     pieces?: number;
-    /** Accepted only for old saved plans; new model output never supplies SKU units. */
+    /** Model references the supplied English catalog by ID; amounts remain consumption needs. */
     productId?: string;
     units?: number;
   }[];

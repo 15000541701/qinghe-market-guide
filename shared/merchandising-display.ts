@@ -71,6 +71,7 @@ const storageLabels: Record<NonNullable<Product['storageCondition']>, string> = 
   'ambient-likely': '常温倾向',
   'chilled-confirmed': '冷藏保存',
   'frozen-confirmed': '冷冻保存',
+  'chilled-or-frozen-confirmed': '冷藏或冷冻',
   unknown: '保存条件待确认',
 };
 
@@ -116,7 +117,12 @@ export function productPlacementStatus(product: Product) {
 }
 
 export function productMerchandisingSummary(product: Product) {
-  if (product.catalogOrigin !== 'open-prices') return '';
+  if (product.catalogOrigin !== 'open-prices') {
+    return product.sourceRetailer === 'Sam’s Club US' &&
+      product.storageCondition === 'chilled-or-frozen-confirmed'
+      ? storageLabels[product.storageCondition]
+      : '';
+  }
   const reviewGroup =
     product.displayGroup === 'review-storage' ||
     product.displayGroup === 'unclassified-review';
@@ -129,7 +135,8 @@ export function productMerchandisingSummary(product: Product) {
       ? processLabels[product.processingForm]
       : undefined,
     product.storageCondition === 'chilled-confirmed' ||
-    product.storageCondition === 'frozen-confirmed'
+    product.storageCondition === 'frozen-confirmed' ||
+    product.storageCondition === 'chilled-or-frozen-confirmed'
       ? storageLabels[product.storageCondition]
       : undefined,
     productPlacementStatus(product) !== '已安排陈列'

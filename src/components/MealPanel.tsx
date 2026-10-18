@@ -20,11 +20,8 @@ import { currencySymbol, formatCurrency } from '../../shared/currency';
 const pantryLabel: Record<string, string> = {
   oil: '食用油',
   salt: '盐',
-  sugar: '糖',
-  'soy-sauce': '生抽',
-  'dark-soy': '老抽',
+  'black-pepper': '黑胡椒',
   vinegar: '醋',
-  'cooking-wine': '料酒',
 };
 
 function purchaseText(item: MealPlan['items'][number]) {
