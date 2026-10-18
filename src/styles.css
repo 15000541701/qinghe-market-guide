@@ -1032,6 +1032,27 @@ img {
   gap: 15px;
   margin-bottom: 23px;
 }
+.currency-toggle {
+  display: flex;
+  flex-shrink: 0;
+  border: 1px solid #d6ddcf;
+  border-radius: 7px;
+  padding: 2px;
+  background: #fff;
+}
+.currency-toggle button {
+  border: 0;
+  border-radius: 5px;
+  padding: 7px 9px;
+  background: transparent;
+  color: #606f56;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.currency-toggle button.active {
+  background: var(--green);
+  color: #fff;
+}
 .category-tabs {
   display: flex;
   gap: 7px;
@@ -1077,6 +1098,11 @@ img {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 29px 23px;
+}
+.product-load-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 28px;
 }
 .product-card {
   min-width: 0;
@@ -1149,6 +1175,13 @@ img {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.product-copy > .product-merchandising-status {
+  color: #5a6950;
+  background: #f3f5ed;
+  border-radius: 4px;
+  padding: 4px 6px;
+  line-height: 1.45;
 }
 .product-bottom {
   display: flex;
@@ -1278,75 +1311,6 @@ img {
 }
 .service-error p {
   color: var(--muted);
-}
-.map-page {
-  display: grid;
-  grid-template-columns: 270px minmax(0, 1fr);
-  gap: 25px;
-}
-.zone-directory {
-  padding: 18px 0;
-}
-.zone-directory > h2 {
-  font-size: 17px;
-}
-.zone-directory > p {
-  font-size: 12px;
-  color: var(--muted);
-  margin-top: 8px;
-  margin-bottom: 20px;
-}
-.zone-directory > button:not(.plan-list) {
-  display: flex;
-  align-items: center;
-  width: 100%;
-  gap: 12px;
-  text-align: left;
-  border: 1px solid transparent;
-  background: transparent;
-  padding: 11px 12px;
-  margin: 5px 0;
-  border-radius: 9px;
-}
-.zone-directory > button:not(.plan-list):hover,
-.zone-directory > button.active {
-  background: white;
-  border-color: var(--line);
-}
-.zone-letter {
-  width: 36px;
-  height: 38px;
-  display: grid;
-  place-items: center;
-  font-size: 15px;
-  border-radius: 6px;
-}
-.zone-directory > button > span:nth-child(2) {
-  flex: 1;
-}
-.zone-directory strong {
-  font-size: 13px;
-  font-weight: 500;
-  display: block;
-}
-.zone-directory small {
-  font-size: 10px;
-  display: block;
-  margin-top: 5px;
-  color: #606f56;
-}
-.zone-directory > button > svg {
-  color: #859478;
-}
-.zone-directory .plan-list {
-  width: 100%;
-  margin-top: 20px;
-}
-.zone-directory p.field-note {
-  margin: 15px 12px;
-}
-.map-expanded {
-  height: 735px;
 }
 .shopping-page {
   display: grid;
@@ -2065,9 +2029,6 @@ td {
   .map-panel {
     height: 670px;
   }
-  .map-expanded {
-    height: 790px;
-  }
   .product-photo {
     height: 202px;
   }
@@ -2115,9 +2076,6 @@ td {
   }
   .discovery-strip span:not(.strip-leaf) {
     display: none;
-  }
-  .map-page {
-    grid-template-columns: 230px minmax(0, 1fr);
   }
   .intake-panel,
   .pricing-panel {
@@ -2316,52 +2274,6 @@ td {
   }
   .discovery-strip strong {
     font-size: 15px;
-  }
-  .map-page {
-    grid-template-columns: 1fr;
-  }
-  .zone-directory {
-    padding: 0;
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 6px;
-  }
-  .zone-directory > h2,
-  .zone-directory > p {
-    grid-column: 1/-1;
-  }
-  .zone-directory > p {
-    margin: 0 0 8px;
-  }
-  .zone-directory > button:not(.plan-list) {
-    padding: 9px;
-    gap: 8px;
-    background: #fff;
-    border-color: var(--line);
-  }
-  .zone-letter {
-    width: 27px;
-    height: 32px;
-    font-size: 12px;
-  }
-  .zone-directory strong {
-    font-size: 12px;
-  }
-  .zone-directory small {
-    display: none;
-  }
-  .zone-directory > button > svg {
-    display: none;
-  }
-  .zone-directory .plan-list {
-    grid-column: 1/-1;
-    margin-top: 8px;
-  }
-  .zone-directory p.field-note {
-    margin: 2px 0;
-  }
-  .map-expanded {
-    height: 665px;
   }
   .shopping-page {
     grid-template-columns: 1fr;
@@ -2603,27 +2515,6 @@ td {
   }
   .strip-leaf svg {
     width: 16px;
-  }
-  .zone-directory {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 7px;
-  }
-  .zone-directory > button:not(.plan-list) {
-    margin: 0;
-    padding: 9px 12px;
-  }
-  .zone-directory small {
-    display: block;
-    font-size: 9px;
-  }
-  .zone-directory strong {
-    font-size: 12px;
-  }
-  .zone-letter {
-    width: 30px;
-  }
-  .map-expanded {
-    height: 530px;
   }
   .route-details {
     padding: 10px 12px;

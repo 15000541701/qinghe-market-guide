@@ -23,12 +23,24 @@ export type Shelf = {
   position: Point | null;
   reachable: boolean;
   kind?:
-    'gondola' | 'produce-table' | 'display-table' | 'service-counter' | 'seafood-tank' | 'chiller';
+    | 'gondola'
+    | 'produce-table'
+    | 'display-table'
+    | 'service-counter'
+    | 'seafood-tank'
+    | 'chiller'
+    | 'freezer'
+    | 'hanging-rack';
   footprint?: { x: number; y: number; w: number; h: number };
   levels?: number;
+  /** Maximum number of distinct SKUs placed on one side at one level. */
+  capacityPerSlot?: number;
+  /** Empty or omitted means this fixture has no display-group restriction. */
+  allowedDisplayGroups?: string[];
   accessPoints?: Partial<Record<'left' | 'right' | 'front' | 'back', Point>>;
 };
 export type Point = { x: number; y: number };
+export type Currency = 'USD' | 'CNY';
 export type Zone = {
   id: Category;
   name: string;
@@ -41,11 +53,68 @@ export type Zone = {
 export type PriceRecord = {
   price: number;
   date: string;
-  source: 'seed' | 'manual' | 'suggested';
+  source: 'seed' | 'manual' | 'suggested' | 'retail' | 'open-prices';
   unit?: string;
+  currency?: Currency;
 };
 export type Product = {
   id: string;
+  sku?: string;
+  brand?: string;
+  barcode?: string;
+  catalogOrigin?: 'retailer' | 'manual' | 'legacy-demo' | 'open-prices';
+  merchandisingFamily?: string;
+  processingForm?:
+    | 'fresh-whole'
+    | 'canned'
+    | 'dried'
+    | 'smoked'
+    | 'marinated'
+    | 'fermented'
+    | 'frozen'
+    | 'prepared'
+    | 'pickled'
+    | 'preserved'
+    | 'instant-ready'
+    | 'packaged'
+    | 'unknown';
+  storageCondition?:
+    | 'ambient-likely'
+    | 'chilled-confirmed'
+    | 'frozen-confirmed'
+    | 'chilled-or-frozen-confirmed'
+    | 'unknown';
+  classificationConfidence?:
+    'taxonomy-confirmed' | 'manual-name-review' | 'candidate' | 'needs-review';
+  merchandisingState?: 'placed' | 'pending-review' | 'unplaced';
+  displayGroup?: string;
+  status?: 'draft' | 'active' | 'archived';
+  inventoryMode?: 'tracked' | 'untracked';
+  priceOrigin?: 'jd-retail' | 'manual' | 'open-prices' | 'samsclub';
+  currency?: Currency;
+  priceSourceUrl?: string;
+  priceCheckedAt?: string;
+  priceNote?: string;
+  pricePer?: string | null;
+  priceRecordId?: number;
+  priceIsDiscounted?: boolean;
+  priceWithoutDiscount?: number | null;
+  priceLocationId?: number;
+  priceLocationOsmId?: number;
+  priceLocationOsmType?: string;
+  priceLocationName?: string;
+  priceLocationDisplayName?: string;
+  priceLocationCity?: string;
+  priceLocationCountry?: string;
+  priceProofId?: number;
+  sourceImageUrl?: string;
+  sourceRetailer?: string;
+  /** Sam’s Club PDP usItemId; distinct from the store Item # stored in sourceSku. */
+  sourcePageId?: string;
+  sourceUrl?: string;
+  sourceSku?: string;
+  sourceListingUrl?: string;
+  sourceCheckedAt?: string;
   name: string;
   category: Category;
   price: number;
@@ -69,6 +138,64 @@ export type Product = {
   /** Net contents of one sold unit. `unit` remains the display/legacy source. */
   packageSize?: { quantity: number; unit: 'g' | 'ml' | 'piece' | 'package' };
 };
+export type ProductGalleryImage = {
+  url: string;
+  thumbnailUrl?: string;
+  sourceUrl?: string;
+  width?: number;
+  height?: number;
+};
+export type RetailPriceObservation = {
+  price: number;
+  currency: Currency;
+  channel: string;
+  clubId: string | null;
+  clubName: string | null;
+  city: string | null;
+  capturedAt: string;
+  unitPriceText: string | null;
+  finalCostByWeight: boolean;
+};
+export type ProductDetailResponse = {
+  product: Product;
+  originalName?: string;
+  gallery: ProductGalleryImage[];
+  introduction: string;
+  introductionIsSummary?: boolean;
+  highlights: string[];
+  specifications: string[];
+  prices: RetailPriceObservation[];
+  selectedChannel?: string;
+  finalCostByWeight?: boolean;
+};
+export type SamsClubCatalogRecord = {
+  itemId: string;
+  /** Sam’s Club PDP usItemId from the public URL; distinct from the store Item #. */
+  sourcePageId?: string;
+  originalName: string;
+  name: string;
+  category: string;
+  categoryName?: string;
+  storageCondition: NonNullable<Product['storageCondition']>;
+  displayGroup: string;
+  unit: string;
+  packageSize?: Product['packageSize'] | null;
+  description: string;
+  barcode: string | null;
+  brand: string | null;
+  sourceUrl: string;
+  capturedAt: string;
+  price: number;
+  selectedChannel: string;
+  clubId: string | null;
+  finalCostByWeight: boolean;
+  gallery: ProductGalleryImage[];
+  introduction: string;
+  introductionIsSummary?: boolean;
+  highlights: string[];
+  specifications: string[];
+  prices: RetailPriceObservation[];
+};
 export type QueryFilters = {
   categories: Category[];
   min?: number;
@@ -88,6 +215,7 @@ export type GuideResponse = {
 };
 export type MealWant = 'fish' | 'greens' | 'vegetables' | 'meat' | 'shrimp' | 'egg' | 'breakfast';
 export type MealPreferences = {
+  planningVersion?: string;
   people: number;
   budget: number | null;
   wants: MealWant[];
@@ -96,9 +224,11 @@ export type MealPreferences = {
   buyPantry: string[];
   dishIds: string[];
   cheaper: boolean;
+  /** Legacy field name: include a Western starchy side, not mandatory rice. */
   includeRice: boolean;
   days: number;
   mealsPerDay: number;
+  singleMeal?: '早餐' | '午餐' | '晚餐' | '加餐';
   /** Household staples confirmed available; amounts are intentionally not inferred. */
   homePantry: string[];
   generatedMeals?: GeneratedMeal[];
@@ -120,7 +250,7 @@ export type GeneratedDish = {
     grams?: number;
     milliliters?: number;
     pieces?: number;
-    /** Accepted only for old saved plans; new model output never supplies SKU units. */
+    /** Model references the supplied English catalog by ID; amounts remain consumption needs. */
     productId?: string;
     units?: number;
   }[];
@@ -161,6 +291,7 @@ export type UnresolvedMealIngredient = {
 export type MealPlan = {
   preferences: MealPreferences;
   recipes: PlannedRecipe[];
+  currency?: Currency;
   items: MealLine[];
   owned: string[];
   pendingPantry: string[];

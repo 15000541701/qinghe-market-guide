@@ -42,12 +42,12 @@ test('小程序清单支持预计重量、持久化与撤销',async()=>{
 });
 test('缺货时操作失败，原清单保持不变',async()=>{
   const products=makeSeedProducts().map(p=>p.id==='spinach'?{...p,stock:0}:p);const {app}=await runtime({products});
-  await assert.rejects(app.execute({type:'add',items:[{productId:'spinach',quantity:1}]}),/库存/);assert.deepEqual(app.globalData.cart,[]);
+  await assert.rejects(app.execute({type:'add',items:[{productId:'spinach',quantity:1}]}),/当前不可购买，清单未更改/);assert.deepEqual(app.globalData.cart,[]);
 });
 test('导购回执仅在清单操作成功后显示撤销',async()=>{
   const products=makeSeedProducts().map(p=>p.id==='spinach'?{...p,stock:0}:p);
   const {app}=await runtime({products,answer:{text:'准备加入',filters:{categories:[]},products:[],action:{type:'add',items:[{productId:'spinach',quantity:1}]}}});
-  const result=await app.send('把菠菜加入清单');assert.equal(result.performed,null);assert.equal(app.globalData.messages.at(-1).receipt,false);assert.match(app.globalData.messages.at(-1).text,/库存/);
+  const result=await app.send('把菠菜加入清单');assert.equal(result.performed,null);assert.equal(app.globalData.messages.at(-1).receipt,false);assert.match(app.globalData.messages.at(-1).text,/当前不可购买，清单未更改/);
 });
 test('小程序导航可以规划路线并模拟到达',async()=>{
   const {app}=await runtime();await app.execute({type:'navigate',category:'vegetables'});assert.equal(app.globalData.route.stops[0],'vegetables');

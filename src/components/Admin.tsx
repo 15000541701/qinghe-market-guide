@@ -1,3 +1,4 @@
+import { mapBounds } from '../../shared/map-config';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowRight,
@@ -35,6 +36,16 @@ import MarketLookup from './MarketLookup';
 import { marketToday } from '../../shared/market';
 import { isWeighed } from '../../shared/shopping';
 import FacilityEditor from './FacilityEditor';
+import SkuTransferPanel from './SkuTransferPanel';
+import MerchandisingBoard from './MerchandisingBoard';
+import './SkuManagement.css';
+import { inventoryLabel } from '../../shared/catalog-status';
+import { currencySymbol, formatCurrency, productCurrency } from '../../shared/currency';
+import {
+  productCategoryLabel,
+  productMerchandisingSummary,
+  productPlacementStatus,
+} from '../../shared/merchandising-display';
 
 interface Props {
   products: Product[];
@@ -71,8 +82,8 @@ function rectInBounds(rect: MapRect) {
     rect.h >= 2 &&
     rect.w <= 12 &&
     rect.h <= 10 &&
-    rect.x + rect.w <= 32 &&
-    rect.y + rect.h <= 24
+    rect.x + rect.w <= mapBounds.maxX + 1 &&
+    rect.y + rect.h <= mapBounds.maxY + 1
   );
 }
 function rectPointDistance(point: Point, rect: MapRect) {
@@ -100,8 +111,8 @@ function findOpenArea(sections: StoreSection[], shelves: Shelf[]) {
   ];
   const candidateW = 2;
   const candidateH = 2;
-  for (let y = 1; y <= 24 - candidateH; y++)
-    for (let x = 1; x <= 32 - candidateW; x++) {
+  for (let y = 1; y <= mapBounds.maxY + 1 - candidateH; y++)
+    for (let x = 1; x <= mapBounds.maxX + 1 - candidateW; x++) {
       const rect = { x, y, w: candidateW, h: candidateH };
       if (
         !rectInBounds(rect) ||
@@ -162,7 +173,8 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
   const [category, setCategory] = useState<Category>('vegetables');
   const [unit, setUnit] = useState('500g');
   const [saleMode, setSaleMode] = useState<'weight' | 'pack'>('weight');
-  const [stock, setStock] = useState('50');
+  const [stock, setStock] = useState('100');
+  const [inventoryMode, setInventoryMode] = useState<'tracked' | 'untracked'>('tracked');
   const [shelf, setShelf] = useState('A-01');
   const [shelfId, setShelfId] = useState('');
   const [shelfSide, setShelfSide] = useState<ShelfSide>('front');
@@ -187,6 +199,7 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
   const [manualContext, setManualContext] = useState('');
   const [adviceRevision, setAdviceRevision] = useState(0);
   const [search, setSearch] = useState('');
+  const [showArchived, setShowArchived] = useState(false);
   const [filter, setFilter] = useState('all');
   const inputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -220,6 +233,7 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
   }, []);
   const referenceContext = [editing, name, unit, baseline].join('|');
   const baselineProduct = products.find((product) => product.id === baseline);
+  const formCurrency = productCurrency(baselineProduct);
   const reference = useMemo<MarketReference | undefined>(() => {
     if (liveReference?.context === referenceContext) return liveReference.value;
     if (manualContext !== referenceContext || !marketPrice) return undefined;
@@ -235,7 +249,7 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
     const value = parseSpokenPrice(text);
     if (value && value > 0) {
       setPrice(String(value));
-      onToast(`已识别售价 ¥${money(value)}，请确认后保存。`);
+      onToast(`已识别售价 ${currencySymbol(formCurrency)}${money(value)}，请确认后保存。`);
     } else {
       onToast(`听到“${text}”，没有识别到有效价格，请再试一次。`);
     }
@@ -246,6 +260,7 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
     setAdvice(null);
     const referenceProduct = products.find((p) => p.id === baseline);
     if (
+      (referenceProduct && productCurrency(referenceProduct) === 'USD') ||
       (referenceProduct && referenceProduct.unit !== unit) ||
       (reference && (!(reference.price > 0) || !reference.source || !reference.date))
     ) {
@@ -291,7 +306,8 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
         ? 'weight'
         : 'pack',
     );
-    setStock('50');
+    setStock('100');
+    setInventoryMode('tracked');
     setShelf(firstShelf?.name || '');
     setShelfId(firstShelf?.id || '');
     setShelfSide(shelfAccessSides(firstShelf)[0] || 'front');
@@ -369,6 +385,7 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
     setUnit(product.unit);
     setSaleMode(product.saleMode || (isWeighed(product) ? 'weight' : 'pack'));
     setStock(String(product.stock));
+    setInventoryMode(product.inventoryMode || 'tracked');
     setShelf(product.shelf);
     setShelfId(product.shelfId || shelves.find((item) => item.name === product.shelf)?.id || '');
     const selectedShelf = shelves.find((item) => item.id === (product.shelfId || ''));
@@ -425,6 +442,7 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
           unit,
           saleMode,
           stock: Number(stock),
+          inventoryMode,
           shelf,
           shelfId: shelfId || undefined,
           shelfSide,
@@ -444,7 +462,10 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
     }
   };
   const filtered = products.filter(
-    (p) => (filter === 'all' || p.category === filter) && `${p.name}${p.shelf}`.includes(search),
+    (p) =>
+      (showArchived || p.status !== 'archived') &&
+      (filter === 'all' || p.category === filter) &&
+      `${p.name}${p.shelf}${p.sku || p.id}${p.brand || ''}`.includes(search),
   );
   const sectionMapSections =
     sections.filter((section) => section.active).length > 0
@@ -481,11 +502,17 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
     const bounds = event.currentTarget.getBoundingClientRect();
     const x = Math.max(
       1,
-      Math.min(31, Math.floor(((event.clientX - bounds.left) / bounds.width) * 31) + 1),
+      Math.min(
+        mapBounds.maxX,
+        Math.floor(((event.clientX - bounds.left) / bounds.width) * mapBounds.maxX) + 1,
+      ),
     );
     const y = Math.max(
       1,
-      Math.min(23, Math.floor(((event.clientY - bounds.top) / bounds.height) * 23) + 1),
+      Math.min(
+        mapBounds.maxY,
+        Math.floor(((event.clientY - bounds.top) / bounds.height) * mapBounds.maxY) + 1,
+      ),
     );
     setSectionDraftTouched(true);
     setSectionError('');
@@ -501,9 +528,20 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
         </div>
         <span className="store-label">
           <span className="status-dot" />
-          {products.length} 件商品 · 示例门店
+          {products.filter((p) => p.status !== 'archived').length} 个 SKU · 门店商品库
         </span>
       </div>
+      <SkuTransferPanel onRefresh={onRefresh} onToast={onToast} />
+      <MerchandisingBoard
+        products={products}
+        shelves={shelves}
+        sections={sections}
+        onRefresh={async () => {
+          await onRefresh();
+          await refreshLocations();
+        }}
+        onToast={onToast}
+      />
       <section className="inventory" aria-label="分类与货架管理">
         <div className="section-heading">
           <h2>分类与门店位置</h2>
@@ -737,7 +775,15 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
                     <input
                       type="number"
                       min={key === 'x' || key === 'y' ? 1 : 2}
-                      max={key === 'x' ? 31 : key === 'y' ? 23 : key === 'w' ? 12 : 10}
+                      max={
+                        key === 'x'
+                          ? mapBounds.maxX
+                          : key === 'y'
+                            ? mapBounds.maxY
+                            : key === 'w'
+                              ? 12
+                              : 10
+                      }
                       value={newSectionRect[key]}
                       onChange={(e) => {
                         const value = Number(e.target.value);
@@ -758,7 +804,7 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
                     <input
                       type="number"
                       min={1}
-                      max={key === 'x' ? 31 : 23}
+                      max={key === 'x' ? mapBounds.maxX : mapBounds.maxY}
                       value={newSectionLocation[key]}
                       onChange={(e) => {
                         setNewSectionLocation((point) => ({
@@ -800,12 +846,18 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
             <div className="area-map-preview-wrap">
               <svg
                 className="area-map-preview"
-                viewBox="0 0 31 23"
+                viewBox={`0 0 ${mapBounds.maxX} ${mapBounds.maxY}`}
                 role="img"
                 aria-label="分区地图预览，可按所选模式点选区域或通道点"
                 onClick={pickAreaMapPoint}
               >
-                <rect x="0" y="0" width="31" height="23" className="area-map-background" />
+                <rect
+                  x="0"
+                  y="0"
+                  width={mapBounds.maxX}
+                  height={mapBounds.maxY}
+                  className="area-map-background"
+                />
                 {sectionMapSections.map((section) => (
                   <rect
                     key={section.id}
@@ -865,7 +917,13 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
                       : 'area-map-access area-map-access-invalid'
                   }
                 />
-                <rect x="0" y="0" width="31" height="23" fill="transparent" />
+                <rect
+                  x="0"
+                  y="0"
+                  width={mapBounds.maxX}
+                  height={mapBounds.maxY}
+                  fill="transparent"
+                />
               </svg>
               <div className="area-map-legend">
                 <span>
@@ -1163,6 +1221,7 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
             </label>
             <label className="field">
               库存数量
+              <select value={inventoryMode} onChange={(event) => setInventoryMode(event.target.value as 'tracked' | 'untracked')} aria-label="库存管理方式"><option value="tracked">管理本店库存数量</option><option value="untracked">未管理库存（不代表京东库存）</option></select>
               <input
                 required
                 type="number"
@@ -1171,6 +1230,7 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
                 max="1000000"
                 value={stock}
                 onChange={(event) => setStock(event.target.value)}
+                disabled={inventoryMode === 'untracked'}
               />
             </label>
           </div>
@@ -1195,31 +1255,35 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
               }}
             >
               <option value="">新商品 / 暂无历史</option>
-              {products.map((product) => (
+              {products
+                .filter((product) => productCurrency(product) === formCurrency)
+                .map((product) => (
                 <option key={product.id} value={product.id}>
                   {product.name} · {product.unit}
                 </option>
               ))}
             </select>
           </label>
-          <MarketLookup
-            key={referenceContext}
-            name={name || baselineProduct?.name || ''}
-            unit={unit}
-            product={baselineProduct}
-            applied={
-              reference ||
-              (baselineProduct?.unit === unit ? baselineProduct.marketReference : undefined)
-            }
-            onApply={(value) => {
-              setLiveReference({ context: referenceContext, value });
-              setMarketPrice('');
-              setMarketSource('');
-              setError('');
-              onToast('已使用所选批发报价重新计算建议，最终售价由你确认。');
-            }}
-          />
-          <div className="price-advice">
+          {formCurrency === 'CNY' && (
+            <MarketLookup
+              key={referenceContext}
+              name={name || baselineProduct?.name || ''}
+              unit={unit}
+              product={baselineProduct}
+              applied={
+                reference ||
+                (baselineProduct?.unit === unit ? baselineProduct.marketReference : undefined)
+              }
+              onApply={(value) => {
+                setLiveReference({ context: referenceContext, value });
+                setMarketPrice('');
+                setMarketSource('');
+                setError('');
+                onToast('已使用所选人民币报价重新计算建议，最终售价由你确认。');
+              }}
+            />
+          )}
+          {formCurrency === 'CNY' && <div className="price-advice">
             <div>
               <span>建议售价</span>
               {advising ? (
@@ -1254,8 +1318,8 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
                 参考区间 ¥{money(advice.low)}–{money(advice.high)}（建议价 ±10%）
               </span>
             )}
-          </div>
-          <div className="price-evidence">
+          </div>}
+          {formCurrency === 'CNY' && <div className="price-evidence">
             <div>
               <span>历史价格中位数</span>
               <strong>
@@ -1273,8 +1337,8 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
               <small>{advice?.marketSource || '需要日期与来源'}</small>
               {advice?.marketDate && <small>报价日期：{advice.marketDate}</small>}
             </div>
-          </div>
-          {!!advice?.history.length && (
+          </div>}
+          {formCurrency === 'CNY' && !!advice?.history.length && (
             <details className="history-details">
               <summary>
                 查看历史记录与来源
@@ -1284,9 +1348,11 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
                 {advice.history.map((record, i) => (
                   <div key={i}>
                     <span>{record.date}</span>
-                    <strong>¥{money(record.price)}</strong>
+                    <strong>{formatCurrency(record.price, record.currency || formCurrency)}</strong>
                     <span>
-                      {record.source === 'seed'
+                      {record.source === 'open-prices'
+                        ? 'Open Prices参考价'
+                        : record.source === 'seed'
                         ? '演示记录'
                         : record.source === 'suggested'
                           ? '采纳建议价'
@@ -1297,7 +1363,7 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
               </div>
             </details>
           )}
-          <details className="market-reference">
+          {formCurrency === 'CNY' && <details className="market-reference">
             <summary>
               手动补充零售参考价
               <Plus size={14} />
@@ -1357,13 +1423,31 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
             >
               重新计算建议
             </button>
-          </details>
+          </details>}
+          {formCurrency === 'USD' && baselineProduct && (
+            <div className="price-evidence">
+              <div>
+                <span>USD 条码参考价</span>
+                <strong>{formatCurrency(baselineProduct.price, 'USD')}</strong>
+                <small>{baselineProduct.priceNote}</small>
+              </div>
+              <div>
+                <span>Open Prices 来源</span>
+                {baselineProduct.priceSourceUrl && (
+                  <a href={baselineProduct.priceSourceUrl} target="_blank" rel="noreferrer">
+                    价格记录 #{baselineProduct.priceRecordId || '查看'}
+                  </a>
+                )}
+                <small>位置 #{baselineProduct.priceLocationId ?? '未提供'} · proof #{baselineProduct.priceProofId ?? '未提供'} · price_per {baselineProduct.pricePer ?? '未注明'}</small>
+              </div>
+            </div>
+          )}
           <div className="final-pricing">
             <label className="field" htmlFor="final-price">
-              最终售价（元 / {unit}）
+              最终售价（{formCurrency} / {unit}）
             </label>
             <div className="price-input">
-              <span>¥</span>
+              <span>{currencySymbol(formCurrency)}</span>
               <input
                 id="final-price"
                 required
@@ -1416,10 +1500,18 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
       <section className="inventory">
         <div className="section-heading">
           <div>
-            <h2>在售商品</h2>
-            <span className="muted compact">共 {products.length} 件</span>
+            <h2>SKU 商品库</h2>
+            <span className="muted compact">当前 {filtered.length} 个 SKU</span>
           </div>
           <div className="inventory-tools">
+            <label>
+              <input
+                type="checkbox"
+                checked={showArchived}
+                onChange={(e) => setShowArchived(e.target.checked)}
+              />
+              显示已归档商品
+            </label>
             <label className="search-field">
               <Search size={16} />
               <input
@@ -1465,17 +1557,48 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
                       <span>
                         {product.name}
                         <small>{product.unit}</small>
+                        <small>
+                          {product.sku || product.id} ·{' '}
+                          {product.status === 'draft'
+                            ? '待本店确认'
+                            : product.status === 'archived'
+                              ? '已归档'
+                              : '已上架'}
+                        </small>
+                        {product.sourceUrl && (
+                          <small>
+                            <a href={product.sourceUrl} target="_blank" rel="noreferrer">
+                              {product.sourceRetailer || '商品来源'}
+                            </a>
+                            {product.sourceSku ? ` · 平台编号 ${product.sourceSku}` : ''}
+                          </small>
+                        )}
                       </span>
                     </div>
                   </td>
                   <td>
-                    {categories.find((item) => item.id === product.category)?.name ||
-                      categoryLabels[product.category] ||
-                      product.category}
-                    <small className="table-sub">{product.shelf}</small>
+                    {productCategoryLabel(
+                      product,
+                      categories,
+                      categoryLabels[product.category] || product.category,
+                    )}
+                    <small className="table-sub">
+                      {product.catalogOrigin === 'open-prices'
+                        ? productPlacementStatus(product)
+                        : product.shelf}
+                    </small>
+                    {productMerchandisingSummary(product) && (
+                      <small className="table-sub">{productMerchandisingSummary(product)}</small>
+                    )}
                   </td>
-                  <td className="table-price">¥{money(product.price)}</td>
-                  <td>{product.stock > 0 ? product.stock : '已售罄'}</td>
+                  <td className="table-price">
+                    {product.price > 0 ? formatCurrency(product.price, productCurrency(product)) : '报价暂未获取'}
+                    {product.priceOrigin === 'jd-retail' && <small className="table-sub">京东列表价 · {product.priceCheckedAt}</small>}
+                    {product.priceOrigin === 'open-prices' && <small className="table-sub">Open Prices USD · {product.priceCheckedAt}</small>}
+                  </td>
+                  <td>
+                    {product.status === 'archived' ? '已归档' : inventoryLabel(product)}
+                  </td>
                   <td>
                     <button className="text-button" onClick={() => edit(product)}>
                       <Pencil size={14} />

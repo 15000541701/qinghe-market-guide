@@ -7,6 +7,8 @@ export const fixtureKindLabels = {
   'service-counter': '熟食服务柜台',
   'seafood-tank': '活鲜池',
   chiller: '冷藏展示柜',
+  freezer: '卧式冷冻柜',
+  'hanging-rack': '服饰挂架',
 };
 export const fixtureSideLabels = { left: '左侧', right: '右侧', front: '前侧', back: '后侧' };
 export const fixedFixtures = [
@@ -17,8 +19,10 @@ export const fixedFixtures = [
 export const mainAisles = [
   { x: 10, y: 1, w: 2, h: 20 },
   { x: 20, y: 1, w: 2, h: 20 },
-  { x: 1, y: 10, w: 30, h: 2 },
-  { x: 1, y: 20, w: 30, h: 2 },
+  { x: 30, y: 1, w: 2, h: 20 },
+  { x: 40, y: 1, w: 2, h: 20 },
+  { x: 1, y: 10, w: 66, h: 2 },
+  { x: 1, y: 20, w: 66, h: 2 },
 ];
 // Original department footprints used only to identify untouched demo layouts during migration.
 export const legacyDefaultRects: Record<string, StoreSection['rect']> = {

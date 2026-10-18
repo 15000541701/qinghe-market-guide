@@ -1,5 +1,8 @@
 import type { Category, GuideResponse, Product, QueryFilters, StoreCategory } from './types';
 import { categoryLabels } from './catalog';
+import { currencySymbol, productCurrency } from './currency';
+import { ingredientKeys } from './recipes';
+import { matchesMealIngredient, englishContains, englishProductName } from './meal-catalog';
 
 const groups: [Category, RegExp][] = [
   ['vegetables', /蔬菜|青菜|绿叶|叶菜|素菜/],
@@ -69,17 +72,24 @@ export function parseQuery(
   if (!foundCategories.length && previous.term) filters.term = previous.term;
   if (/绿叶|叶菜/.test(text)) filters.term = '绿叶蔬菜';
   else if (/鱼/.test(text) && !/虾|海鲜|水产/.test(text)) filters.term = '鱼类';
-  if (exact.length) filters.term = exact.map((p) => p.id).join('|');
+  const englishKeys = ingredientKeys(message);
+  const englishMatches = catalog.filter((p) =>
+    englishKeys.some((key) => matchesMealIngredient(p, key)),
+  );
+  if (englishKeys.length) filters.term = englishKeys.join('|');
+  else if (exact.length) filters.term = exact.map((p) => p.id).join('|');
+  if (englishMatches.length)
+    filters.categories = [...new Set(englishMatches.map((p) => p.category))];
   const range = text.match(
-    /(\d+(?:\.\d+)?)\s*(?:块钱?|元|rmb|¥|￥)?\s*(?:到|至|[-~～—])\s*(\d+(?:\.\d+)?)/,
+    /[$¥￥]?\s*(\d+(?:\.\d+)?)\s*(?:块钱?|元|rmb|usd|美元)?\s*(?:到|至|[-~～—])\s*[$¥￥]?\s*(\d+(?:\.\d+)?)/i,
   );
   const maximum =
     text.match(
-      /(?:不超过|最多|低于|少于|小于|预算(?:是|在|为)?|上限|以内)\s*[¥￥]?\s*(\d+(?:\.\d+)?)/,
-    ) || text.match(/(\d+(?:\.\d+)?)\s*(?:元|块钱?)?\s*(?:以内|以下|之内)/);
+      /(?:不超过|最多|低于|少于|小于|预算(?:是|在|为)?|上限|以内)\s*[$¥￥]?\s*(\d+(?:\.\d+)?)/,
+    ) || text.match(/[$¥￥]?\s*(\d+(?:\.\d+)?)\s*(?:元|块钱?|USD|美元)?\s*(?:以内|以下|之内)/i);
   const minimum =
-    text.match(/(?:不低于|至少|高于|大于|最低)\s*[¥￥]?\s*(\d+(?:\.\d+)?)/) ||
-    text.match(/(\d+(?:\.\d+)?)\s*(?:元|块钱?)?\s*(?:以上|起)/);
+    text.match(/(?:不低于|至少|高于|大于|最低)\s*[$¥￥]?\s*(\d+(?:\.\d+)?)/) ||
+    text.match(/[$¥￥]?\s*(\d+(?:\.\d+)?)\s*(?:元|块钱?|USD|美元)?\s*(?:以上|起)/i);
   if (range) {
     filters.min = Math.min(+range[1], +range[2]);
     filters.max = Math.max(+range[1], +range[2]);
@@ -111,7 +121,10 @@ export function filterProducts(products: Product[], filters: QueryFilters): Prod
   return products
     .filter(
       (p) =>
-        p.stock > 0 &&
+        p.status !== 'draft' &&
+        p.status !== 'archived' &&
+        (p.inventoryMode === 'untracked' || p.stock > 0) &&
+        p.price > 0 &&
         (!filters.categories.length || filters.categories.includes(p.category)) &&
         (filters.min === undefined || p.price >= filters.min) &&
         (filters.max === undefined || p.price <= filters.max) &&
@@ -120,7 +133,13 @@ export function filterProducts(products: Product[], filters: QueryFilters): Prod
             .split('|')
             .some(
               (t) =>
-                p.id === t || p.name.includes(t) || p.tags.includes(t) || p.aliases.includes(t),
+                p.id === t ||
+                (t === '绿叶蔬菜'
+                  ? ['spinach', 'bokchoy', 'lettuce'].some((key) => matchesMealIngredient(p, key))
+                  : t === '鱼类'
+                    ? ['seabass', 'carp', 'salmon'].some((key) => matchesMealIngredient(p, key))
+                    : matchesMealIngredient(p, t) ||
+                      (/^[a-z0-9 -]+$/i.test(t) && englishContains(englishProductName(p), t))),
             )),
     )
     .sort((a, b) => (filters.sort === 'price' ? a.price - b.price : 0));
@@ -133,6 +152,8 @@ export function respondToQuery(
   storeCategories: StoreCategory[] = [],
 ): GuideResponse {
   const filters = parseQuery(message, previous, products, storeCategories);
+  const currency = products[0] ? productCurrency(products[0]) : 'CNY';
+  const symbol = currencySymbol(currency);
   const hasIntent =
     filters.categories.length > 0 ||
     !!filters.term ||
@@ -141,7 +162,7 @@ export function respondToQuery(
     /推荐|商品|逛|买|便宜|吃|早餐|晚餐/.test(message);
   if (!hasIntent)
     return {
-      text: '我可以帮你找商品、按价格挑选，再带你到对应货架。试试说“推荐 10 元以内的绿叶蔬菜”或“20 到 40 元的鱼”。也可以点相机上传商品图片。',
+      text: `我可以帮你找商品并带你到货架。当前价格按 ${currency} 目录币种显示，例如“推荐 ${symbol}10 以内的零食”。`,
       products: [],
       filters,
       engine: 'rules',
@@ -162,11 +183,11 @@ export function respondToQuery(
             .join('、') || '商品';
   const range =
     filters.min !== undefined && filters.max !== undefined
-      ? `${filters.min}–${filters.max} 元`
+      ? `${symbol}${filters.min}–${symbol}${filters.max}`
       : filters.max !== undefined
-        ? `${filters.max} 元以内`
+        ? `${symbol}${filters.max} 以内`
         : filters.min !== undefined
-          ? `${filters.min} 元以上`
+          ? `${symbol}${filters.min} 以上`
           : '';
   const text = matches.length
     ? `为你找到 ${matches.length} 款${range ? ` ${range}的` : ''}${subject}。${filters.sort === 'price' ? '已按价格从低到高排列。' : ''}点击“带我去”就能查看路线，也可以加入清单一起逛。价格按每件商品标注的计价单位筛选。`

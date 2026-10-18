@@ -1,3 +1,4 @@
+import { mapBounds } from './map-config';
 import { entrance, extraObstacles, zones } from './catalog';
 import type { Category, Point, Route, Shelf, StoreSection } from './types';
 import { fixedFixtures } from './layout';
@@ -7,9 +8,9 @@ export function isWalkable(p: Point, sections: StoreSection[] = [], fixtures?: S
     Number.isInteger(p.x) &&
     Number.isInteger(p.y) &&
     p.x >= 1 &&
-    p.x <= 31 &&
+    p.x <= mapBounds.maxX &&
     p.y >= 1 &&
-    p.y <= 23 &&
+    p.y <= mapBounds.maxY &&
     !(
       fixtures
         ? [

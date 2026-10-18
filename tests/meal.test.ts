@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { makeSeedProducts } from '../shared/catalog';
 import { buildMealPlan, describeMealPlan } from '../shared/meal-planner';
-import { defaultHomePantry } from '../shared/recipes';
+import { defaultHomePantry, ingredientEnglishTerms, ingredientKey } from '../shared/recipes';
 import { parseMealPreferences, shoppingAgent } from '../server/shopping-agent';
 import {
   cartTotal,
@@ -12,8 +12,12 @@ import {
 } from '../shared/shopping';
 import type { GeneratedMeal, MealPreferences } from '../shared/types';
 
-const products = makeSeedProducts();
-const request = '两个人吃，预算50元，想吃鱼和绿叶菜，家里有葱姜';
+// Retain the price/quantity fixture, with explicit English catalog names.
+const products = makeSeedProducts().map((product) => ({
+  ...product,
+  aliases: [...(ingredientEnglishTerms[product.id] || []), ...product.aliases],
+}));
+const request = '两个人吃，预算50元，想搭配西式鱼餐和沙拉';
 
 function generatedWeek(): GeneratedMeal[] {
   return Array.from({ length: 7 }, (_, offset) => {
@@ -45,15 +49,15 @@ function generatedWeek(): GeneratedMeal[] {
         : [
             {
               id: `rice-${day}-${meal}`,
-              title: '米饭',
+              title: '烤面包',
               kind: 'staple',
               minutes: 35,
-              steps: ['蒸熟米饭。'],
-              ingredients: [{ ingredient: '大米', grams: 180 }],
+              steps: ['面包加热。'],
+              ingredients: [{ ingredient: 'bread', grams: 180 }],
             },
             {
               id: `chicken-${day}-${meal}`,
-              title: `鸡胸炒菜第${day}天${meal}`,
+              title: `烤鸡胸肉第${day}天${meal}`,
               kind: 'protein',
               minutes: 20,
               steps: ['鸡肉完全炒熟。'],
@@ -65,7 +69,7 @@ function generatedWeek(): GeneratedMeal[] {
             },
             {
               id: `spinach-${day}-${meal}`,
-              title: `清炒菠菜第${day}天${meal}`,
+              title: `菠菜沙拉第${day}天${meal}`,
               kind: 'vegetable',
               minutes: 10,
               steps: ['菠菜炒熟。'],
@@ -74,7 +78,18 @@ function generatedWeek(): GeneratedMeal[] {
           ];
       return { id: `generated-${day}-${meal}`, day, meal, dishes };
     });
-  }).flat();
+  })
+    .flat()
+    .map((meal) => ({
+      ...meal,
+      dishes: meal.dishes.map((dish) => ({
+        ...dish,
+        ingredients: dish.ingredients.map((item) => {
+          const key = ingredientKey(item.ingredient || '') || item.ingredient || '';
+          return { ...item, ingredient: ingredientEnglishTerms[key]?.[0] || key, productId: key };
+        }),
+      })),
+    }));
 }
 
 function oneMeal(
@@ -186,11 +201,11 @@ test('家庭常备与临时自备可区分；明确缺油才计入整包装，�
     { ingredient: '鸡胸肉', grams: 200 },
     { ingredient: '食用油', milliliters: 12 },
     { ingredient: '食盐', grams: 2 },
-    { ingredient: '红腐乳', grams: 15 },
+    { ingredient: 'black pepper', grams: 15 },
   ]);
   const defaultPlan = buildMealPlan(base, products, []);
   assert.ok(!defaultPlan.items.some((item) => ['oil', 'salt'].includes(item.product.id)));
-  assert.ok(defaultPlan.items.some((item) => item.product.id === 'red-fermented-tofu'));
+  assert.ok(defaultPlan.items.some((item) => item.product.id === 'black-pepper'));
 
   const noOil = parseMealPreferences('家里没有油盐', base);
   const plan = buildMealPlan(noOil, products, []);
@@ -271,16 +286,15 @@ test('本店缺货、无匹配商品和不可换算单位分别标示，并将�
   assert.ok(nonFoodOnly.unresolved?.some((item) => item.status === 'not_in_store'));
 });
 
-test('明确的同类蔬菜替代会标记说明，不能暗中替换忌口', () => {
+test('缺少菠菜不自动替换生菜，忌口在自备食材之前检查', () => {
   const withoutSpinach = products.filter((item) => item.id !== 'spinach');
   const replaced = buildMealPlan(oneMeal([{ ingredient: '菠菜', grams: 200 }]), withoutSpinach, []);
-  assert.equal(
-    replaced.items.find((item) => item.product.id === 'bokchoy')?.matchStatus,
-    'substitute',
-  );
+  assert.equal(replaced.items.length, 0);
+  assert.ok(replaced.unresolved?.some((item) => item.status === 'not_in_store'));
   const excluded = {
     ...oneMeal([{ ingredient: '菠菜', grams: 200 }]),
     excluded: ['spinach'],
+    owned: ['spinach'],
   };
   const rejected = buildMealPlan(excluded, products, []);
   assert.equal(rejected.canApply, false);
@@ -303,7 +317,7 @@ test('便宜替换保持人数和份量，并包含原清单其他商品的预�
   );
   assert.equal(cheap.preferences.people, 2);
   assert.ok(cheap.total < plan.total);
-  assert.equal(cheap.items.find((item) => item.product.id === 'carp')?.recipeAmount, '1500g');
+  assert.equal(cheap.items.find((item) => item.product.id === 'salmon')?.recipeAmount, '700g');
   const withExisting = buildMealPlan(prefs, products, [
     { productId: 'banana', quantity: 1, checked: false },
   ]);
@@ -411,7 +425,7 @@ test('对话动作能加入称重商品、移除、撤销和推进导航', async
   const confirmation = await shoppingAgent('确认清单', products, {
     cart: [],
     meal: prefs,
-    recipeIds: ['steamed-bass', 'spinach-greens'],
+    recipeIds: ['pan-salmon#1-午餐', 'spinach-salad#1-午餐'],
   });
   assert.equal(confirmation.action?.type, 'apply_plan');
   assert.ok(confirmation.mealPlan?.canApply);

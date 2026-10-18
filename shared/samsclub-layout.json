@@ -1,0 +1,3746 @@
+{
+  "version": 1,
+  "description": "Validated Sam’s Club initial layout. Applied only to an empty database; contains no products, prices, or stock.",
+  "categories": [
+    {
+      "id": "baby",
+      "name": "母婴用品",
+      "kind": "non_food",
+      "active": true,
+      "sectionId": "care-zone"
+    },
+    {
+      "id": "bakery",
+      "name": "烘焙区",
+      "active": true,
+      "sectionId": "bakery",
+      "kind": "food"
+    },
+    {
+      "id": "beverage",
+      "name": "饮料",
+      "kind": "food",
+      "sectionId": "pantry",
+      "active": true
+    },
+    {
+      "id": "beverages",
+      "name": "饮料与冲调",
+      "kind": "food",
+      "active": true,
+      "sectionId": "pantry"
+    },
+    {
+      "id": "canned-preserved",
+      "name": "罐藏与腌渍食品",
+      "kind": "food",
+      "sectionId": "pantry",
+      "active": true
+    },
+    {
+      "id": "cleaning",
+      "name": "日用清洁",
+      "active": true,
+      "sectionId": "household",
+      "kind": "non_food"
+    },
+    {
+      "id": "clothing",
+      "name": "服饰",
+      "active": true,
+      "sectionId": "household",
+      "kind": "non_food"
+    },
+    {
+      "id": "dairy",
+      "name": "乳品区",
+      "active": true,
+      "sectionId": "dairy",
+      "kind": "food"
+    },
+    {
+      "id": "deli",
+      "name": "熟食",
+      "active": true,
+      "sectionId": "deli-service",
+      "kind": "food"
+    },
+    {
+      "id": "frozen",
+      "name": "冷冻食品",
+      "kind": "food",
+      "active": true,
+      "sectionId": "snack-zone"
+    },
+    {
+      "id": "fruit",
+      "name": "水果区",
+      "active": true,
+      "sectionId": "fruit",
+      "kind": "food"
+    },
+    {
+      "id": "grain-legume",
+      "name": "谷物与豆类",
+      "kind": "food",
+      "sectionId": "pantry",
+      "active": true
+    },
+    {
+      "id": "home",
+      "name": "家居",
+      "active": true,
+      "sectionId": "household",
+      "kind": "non_food"
+    },
+    {
+      "id": "meat",
+      "name": "肉禽区",
+      "active": true,
+      "sectionId": "meat",
+      "kind": "food"
+    },
+    {
+      "id": "meat-poultry",
+      "name": "肉禽",
+      "kind": "food",
+      "sectionId": "meat",
+      "active": true
+    },
+    {
+      "id": "non-food-review",
+      "name": "非食品个护",
+      "kind": "non_food",
+      "sectionId": "household",
+      "active": true
+    },
+    {
+      "id": "packaged-other",
+      "name": "其他包装食品",
+      "kind": "food",
+      "sectionId": "pantry",
+      "active": true
+    },
+    {
+      "id": "pantry",
+      "name": "粮油区",
+      "active": true,
+      "sectionId": "pantry",
+      "kind": "food"
+    },
+    {
+      "id": "paper-goods",
+      "name": "纸品与湿巾",
+      "kind": "non_food",
+      "active": true,
+      "sectionId": "paper-zone"
+    },
+    {
+      "id": "pasta-noodle",
+      "name": "意面与面食",
+      "kind": "food",
+      "sectionId": "pantry",
+      "active": true
+    },
+    {
+      "id": "personal-care",
+      "name": "个护",
+      "active": true,
+      "sectionId": "household",
+      "kind": "non_food"
+    },
+    {
+      "id": "pet",
+      "name": "宠物食品与用品",
+      "kind": "non_food",
+      "active": true,
+      "sectionId": "pet-zone"
+    },
+    {
+      "id": "samsclub-1066",
+      "name": "Garage",
+      "active": true,
+      "sectionId": null,
+      "kind": "food"
+    },
+    {
+      "id": "samsclub-1256",
+      "name": "Wedding & Event Planning",
+      "active": true,
+      "sectionId": null,
+      "kind": "food"
+    },
+    {
+      "id": "samsclub-1350101",
+      "name": "easter flowers",
+      "active": true,
+      "sectionId": null,
+      "kind": "food"
+    },
+    {
+      "id": "samsclub-1424",
+      "name": "Storage & Organization",
+      "active": true,
+      "sectionId": null,
+      "kind": "food"
+    },
+    {
+      "id": "samsclub-1445",
+      "name": "Bread & Bakery",
+      "active": true,
+      "sectionId": null,
+      "kind": "food"
+    },
+    {
+      "id": "samsclub-1464",
+      "name": "Cookies",
+      "active": true,
+      "sectionId": null,
+      "kind": "food"
+    },
+    {
+      "id": "samsclub-1484",
+      "name": "Baking Goods & Ingredients",
+      "active": true,
+      "sectionId": null,
+      "kind": "food"
+    },
+    {
+      "id": "samsclub-1537",
+      "name": "Fresh Fruits & Vegetables",
+      "active": true,
+      "sectionId": null,
+      "kind": "food"
+    },
+    {
+      "id": "samsclub-15470116",
+      "name": "valentines day flowers",
+      "active": true,
+      "sectionId": null,
+      "kind": "food"
+    },
+    {
+      "id": "samsclub-1564",
+      "name": "Cleaning Supplies",
+      "active": true,
+      "sectionId": null,
+      "kind": "food"
+    },
+    {
+      "id": "samsclub-1625",
+      "name": "Bath & Body",
+      "active": true,
+      "sectionId": null,
+      "kind": "food"
+    },
+    {
+      "id": "samsclub-16290440",
+      "name": "Candy",
+      "active": true,
+      "sectionId": null,
+      "kind": "food"
+    },
+    {
+      "id": "samsclub-1672",
+      "name": "Premium Beauty",
+      "active": true,
+      "sectionId": null,
+      "kind": "food"
+    },
+    {
+      "id": "samsclub-1893",
+      "name": "mothers day flowers",
+      "active": true,
+      "sectionId": null,
+      "kind": "food"
+    },
+    {
+      "id": "samsclub-1924",
+      "name": "Sports Team Clothing",
+      "active": true,
+      "sectionId": null,
+      "kind": "food"
+    },
+    {
+      "id": "samsclub-1962",
+      "name": "Women's Shoes",
+      "active": true,
+      "sectionId": null,
+      "kind": "food"
+    },
+    {
+      "id": "samsclub-2024",
+      "name": "Pet Accessories",
+      "active": true,
+      "sectionId": null,
+      "kind": "food"
+    },
+    {
+      "id": "samsclub-21010407",
+      "name": "Kitchen Appliances & Electrics",
+      "active": true,
+      "sectionId": null,
+      "kind": "food"
+    },
+    {
+      "id": "samsclub-3450119",
+      "name": "Smart Pet",
+      "active": true,
+      "sectionId": null,
+      "kind": "food"
+    },
+    {
+      "id": "samsclub-3520103",
+      "name": "羊肉",
+      "active": true,
+      "sectionId": null,
+      "kind": "food"
+    },
+    {
+      "id": "samsclub-450199",
+      "name": "Disposable Tableware & Paper Goods",
+      "active": true,
+      "sectionId": null,
+      "kind": "food"
+    },
+    {
+      "id": "samsclub-8065",
+      "name": "CAT",
+      "active": true,
+      "sectionId": null,
+      "kind": "food"
+    },
+    {
+      "id": "sauce-condiment",
+      "name": "酱料与调味",
+      "kind": "food",
+      "sectionId": "pantry",
+      "active": true
+    },
+    {
+      "id": "seafood",
+      "name": "水产区",
+      "active": true,
+      "sectionId": "seafood",
+      "kind": "food"
+    },
+    {
+      "id": "seasoning",
+      "name": "调味",
+      "active": true,
+      "sectionId": "pantry",
+      "kind": "food"
+    },
+    {
+      "id": "snack-sweet",
+      "name": "零食与甜点",
+      "kind": "food",
+      "sectionId": "pantry",
+      "active": true
+    },
+    {
+      "id": "snacks",
+      "name": "零食",
+      "active": true,
+      "sectionId": "pantry",
+      "kind": "food"
+    },
+    {
+      "id": "soup-broth",
+      "name": "汤与高汤",
+      "kind": "food",
+      "sectionId": "pantry",
+      "active": true
+    },
+    {
+      "id": "spices-oils",
+      "name": "香料与油",
+      "kind": "food",
+      "sectionId": "pantry",
+      "active": true
+    },
+    {
+      "id": "supplement",
+      "name": "营养补充品",
+      "kind": "food",
+      "sectionId": "pantry",
+      "active": true
+    },
+    {
+      "id": "sweetener",
+      "name": "蜂蜜与甜味剂",
+      "kind": "food",
+      "sectionId": "pantry",
+      "active": true
+    },
+    {
+      "id": "tea-coffee",
+      "name": "茶与咖啡",
+      "kind": "food",
+      "sectionId": "pantry",
+      "active": true
+    },
+    {
+      "id": "unclassified-review",
+      "name": "分类待确认",
+      "kind": "food",
+      "sectionId": null,
+      "active": true
+    },
+    {
+      "id": "vegetable",
+      "name": "蔬菜",
+      "kind": "food",
+      "sectionId": "vegetables",
+      "active": true
+    },
+    {
+      "id": "vegetables",
+      "name": "蔬菜区",
+      "active": true,
+      "sectionId": "vegetables",
+      "kind": "food"
+    }
+  ],
+  "sections": [
+    {
+      "id": "bakery",
+      "name": "烘焙面包",
+      "code": "F",
+      "color": "#a27d51",
+      "tint": "#faf4e9",
+      "rect": {
+        "x": 2,
+        "y": 2,
+        "w": 8,
+        "h": 4
+      },
+      "location": {
+        "x": 5,
+        "y": 5
+      },
+      "active": true
+    },
+    {
+      "id": "care-zone",
+      "name": "日化与个人护理",
+      "code": "M",
+      "color": "#8c80a4",
+      "tint": "#f3f0f8",
+      "rect": {
+        "x": 42,
+        "y": 2,
+        "w": 5,
+        "h": 8
+      },
+      "location": {
+        "x": 44,
+        "y": 9
+      },
+      "active": true
+    },
+    {
+      "id": "dairy",
+      "name": "乳品冷藏",
+      "code": "E",
+      "color": "#6e829d",
+      "tint": "#f0f4fa",
+      "rect": {
+        "x": 22,
+        "y": 12,
+        "w": 8,
+        "h": 8
+      },
+      "location": {
+        "x": 24,
+        "y": 19
+      },
+      "active": true
+    },
+    {
+      "id": "deli-service",
+      "name": "熟食档口",
+      "code": "J",
+      "color": "#ad7851",
+      "tint": "#fbf1e8",
+      "rect": {
+        "x": 2,
+        "y": 6,
+        "w": 8,
+        "h": 4
+      },
+      "location": {
+        "x": 5,
+        "y": 9
+      },
+      "active": true
+    },
+    {
+      "id": "fruit",
+      "name": "水果",
+      "code": "B",
+      "color": "#a67b32",
+      "tint": "#fbf5e9",
+      "rect": {
+        "x": 2,
+        "y": 16,
+        "w": 8,
+        "h": 4
+      },
+      "location": {
+        "x": 5,
+        "y": 19
+      },
+      "active": true
+    },
+    {
+      "id": "household",
+      "name": "日用 · 清洁 · 家居",
+      "code": "H",
+      "color": "#737f8d",
+      "tint": "#f1f3f6",
+      "rect": {
+        "x": 12,
+        "y": 2,
+        "w": 8,
+        "h": 8
+      },
+      "location": {
+        "x": 14,
+        "y": 9
+      },
+      "active": true
+    },
+    {
+      "id": "meat",
+      "name": "肉禽冷鲜",
+      "code": "D",
+      "color": "#a46e65",
+      "tint": "#faf0ed",
+      "rect": {
+        "x": 22,
+        "y": 7,
+        "w": 8,
+        "h": 5
+      },
+      "location": {
+        "x": 24,
+        "y": 11
+      },
+      "active": true
+    },
+    {
+      "id": "openprices-ambient-north",
+      "name": "常温商品陈列区 · 北排",
+      "code": "P",
+      "color": "#72805a",
+      "tint": "#f2f3e9",
+      "rect": {
+        "x": 49,
+        "y": 1,
+        "w": 19,
+        "h": 9
+      },
+      "location": {
+        "x": 49,
+        "y": 5
+      },
+      "active": true
+    },
+    {
+      "id": "openprices-ambient-south",
+      "name": "常温商品陈列区 · 南排",
+      "code": "Q",
+      "color": "#72805a",
+      "tint": "#f2f3e9",
+      "rect": {
+        "x": 49,
+        "y": 12,
+        "w": 19,
+        "h": 8
+      },
+      "location": {
+        "x": 49,
+        "y": 16
+      },
+      "active": true
+    },
+    {
+      "id": "openprices-frozen",
+      "name": "冷冻商品陈列区",
+      "code": "R",
+      "color": "#5b8390",
+      "tint": "#edf5f7",
+      "rect": {
+        "x": 49,
+        "y": 22,
+        "w": 19,
+        "h": 1
+      },
+      "location": {
+        "x": 49,
+        "y": 21
+      },
+      "active": true
+    },
+    {
+      "id": "pantry",
+      "name": "粮油 · 调味 · 零食",
+      "code": "G",
+      "color": "#7f8059",
+      "tint": "#f5f5ed",
+      "rect": {
+        "x": 12,
+        "y": 12,
+        "w": 8,
+        "h": 8
+      },
+      "location": {
+        "x": 14,
+        "y": 19
+      },
+      "active": true
+    },
+    {
+      "id": "paper-zone",
+      "name": "纸品与一次性用品",
+      "code": "K",
+      "color": "#6e8c87",
+      "tint": "#eff6f3",
+      "rect": {
+        "x": 33,
+        "y": 2,
+        "w": 7,
+        "h": 8
+      },
+      "location": {
+        "x": 35,
+        "y": 9
+      },
+      "active": true
+    },
+    {
+      "id": "pet-zone",
+      "name": "宠物用品",
+      "code": "L",
+      "color": "#9b8061",
+      "tint": "#f8f1e7",
+      "rect": {
+        "x": 33,
+        "y": 12,
+        "w": 7,
+        "h": 8
+      },
+      "location": {
+        "x": 35,
+        "y": 19
+      },
+      "active": true
+    },
+    {
+      "id": "seafood",
+      "name": "水产活鲜",
+      "code": "C",
+      "color": "#397f91",
+      "tint": "#edf6f8",
+      "rect": {
+        "x": 22,
+        "y": 2,
+        "w": 8,
+        "h": 5
+      },
+      "location": {
+        "x": 24,
+        "y": 6
+      },
+      "active": true
+    },
+    {
+      "id": "snack-zone",
+      "name": "零食与冷冻食品",
+      "code": "N",
+      "color": "#ae8859",
+      "tint": "#faf3e8",
+      "rect": {
+        "x": 42,
+        "y": 12,
+        "w": 5,
+        "h": 8
+      },
+      "location": {
+        "x": 44,
+        "y": 19
+      },
+      "active": true
+    },
+    {
+      "id": "vegetables",
+      "name": "蔬菜",
+      "code": "A",
+      "color": "#557749",
+      "tint": "#f2f5ed",
+      "rect": {
+        "x": 2,
+        "y": 12,
+        "w": 8,
+        "h": 4
+      },
+      "location": {
+        "x": 5,
+        "y": 15
+      },
+      "active": true
+    }
+  ],
+  "shelves": [
+    {
+      "id": "bakery-shelf-01",
+      "sectionId": "bakery",
+      "name": "烘焙展示台-01",
+      "position": {
+        "x": 1,
+        "y": 3
+      },
+      "reachable": true,
+      "kind": "display-table",
+      "footprint": {
+        "x": 2,
+        "y": 3,
+        "w": 2,
+        "h": 2
+      },
+      "levels": 1,
+      "accessPoints": {
+        "left": {
+          "x": 1,
+          "y": 3
+        },
+        "right": {
+          "x": 4,
+          "y": 3
+        },
+        "front": {
+          "x": 2,
+          "y": 5
+        },
+        "back": {
+          "x": 2,
+          "y": 2
+        }
+      },
+      "capacityPerSlot": 8,
+      "allowedDisplayGroups": [
+        "ambient-bakery"
+      ]
+    },
+    {
+      "id": "bakery-shelf-02",
+      "sectionId": "bakery",
+      "name": "烘焙展示台-02",
+      "reachable": true,
+      "kind": "display-table",
+      "footprint": {
+        "x": 5,
+        "y": 3,
+        "w": 2,
+        "h": 2
+      },
+      "levels": 1,
+      "accessPoints": {
+        "left": {
+          "x": 4,
+          "y": 3
+        },
+        "right": {
+          "x": 7,
+          "y": 3
+        },
+        "front": {
+          "x": 5,
+          "y": 5
+        },
+        "back": {
+          "x": 5,
+          "y": 2
+        }
+      },
+      "position": {
+        "x": 4,
+        "y": 3
+      },
+      "capacityPerSlot": 8,
+      "allowedDisplayGroups": [
+        "ambient-bakery"
+      ]
+    },
+    {
+      "id": "care-zone-shelf-1",
+      "sectionId": "care-zone",
+      "name": "母婴与个护货架-01",
+      "reachable": true,
+      "kind": "gondola",
+      "footprint": {
+        "x": 42,
+        "y": 3,
+        "w": 1,
+        "h": 5
+      },
+      "levels": 4,
+      "accessPoints": {
+        "left": {
+          "x": 41,
+          "y": 5
+        },
+        "right": {
+          "x": 43,
+          "y": 5
+        },
+        "front": {
+          "x": 42,
+          "y": 8
+        },
+        "back": {
+          "x": 42,
+          "y": 2
+        }
+      },
+      "position": {
+        "x": 41,
+        "y": 5
+      },
+      "capacityPerSlot": 7,
+      "allowedDisplayGroups": [
+        "non-food-baby",
+        "non-food-personal-care"
+      ]
+    },
+    {
+      "id": "care-zone-shelf-2",
+      "sectionId": "care-zone",
+      "name": "母婴与个护货架-02",
+      "reachable": true,
+      "kind": "gondola",
+      "footprint": {
+        "x": 45,
+        "y": 3,
+        "w": 1,
+        "h": 5
+      },
+      "levels": 4,
+      "accessPoints": {
+        "left": {
+          "x": 44,
+          "y": 5
+        },
+        "right": {
+          "x": 46,
+          "y": 5
+        },
+        "front": {
+          "x": 45,
+          "y": 8
+        },
+        "back": {
+          "x": 45,
+          "y": 2
+        }
+      },
+      "position": {
+        "x": 44,
+        "y": 5
+      },
+      "capacityPerSlot": 7,
+      "allowedDisplayGroups": [
+        "non-food-baby",
+        "non-food-personal-care"
+      ]
+    },
+    {
+      "id": "dairy-shelf-01",
+      "sectionId": "dairy",
+      "name": "乳品与蛋类冷藏柜-01",
+      "position": {
+        "x": 21,
+        "y": 15
+      },
+      "reachable": true,
+      "kind": "chiller",
+      "footprint": {
+        "x": 22,
+        "y": 13,
+        "w": 1,
+        "h": 5
+      },
+      "levels": 4,
+      "accessPoints": {
+        "left": {
+          "x": 21,
+          "y": 15
+        },
+        "right": {
+          "x": 23,
+          "y": 15
+        },
+        "front": {
+          "x": 22,
+          "y": 18
+        },
+        "back": {
+          "x": 22,
+          "y": 12
+        }
+      },
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "chilled-dairy",
+        "chilled-eggs",
+        "review-dairy"
+      ]
+    },
+    {
+      "id": "deli-service-shelf-01",
+      "sectionId": "deli-service",
+      "name": "熟食与冷藏即食柜",
+      "reachable": true,
+      "kind": "chiller",
+      "footprint": {
+        "x": 2,
+        "y": 7,
+        "w": 2,
+        "h": 1
+      },
+      "levels": 4,
+      "accessPoints": {
+        "left": {
+          "x": 1,
+          "y": 7
+        },
+        "right": {
+          "x": 4,
+          "y": 7
+        },
+        "front": {
+          "x": 2,
+          "y": 8
+        },
+        "back": {
+          "x": 2,
+          "y": 6
+        }
+      },
+      "position": {
+        "x": 1,
+        "y": 7
+      },
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "chilled-deli",
+        "chilled-deli-prepared",
+        "review-deli-prepared",
+        "chilled-seafood-prepared",
+        "review-seafood-prepared",
+        "chilled-bakery",
+        "chilled-sauces",
+        "chilled-seasoning",
+        "review-seasoning",
+        "chilled-pantry",
+        "chilled-frozen",
+        "chilled-beverages",
+        "review-beverages"
+      ]
+    },
+    {
+      "id": "deli-service-shelf-02",
+      "sectionId": "deli-service",
+      "name": "熟食与冷藏即食柜-02",
+      "reachable": true,
+      "kind": "chiller",
+      "footprint": {
+        "x": 5,
+        "y": 7,
+        "w": 2,
+        "h": 1
+      },
+      "levels": 4,
+      "accessPoints": {
+        "left": {
+          "x": 4,
+          "y": 7
+        },
+        "right": {
+          "x": 7,
+          "y": 7
+        },
+        "front": {
+          "x": 5,
+          "y": 8
+        },
+        "back": {
+          "x": 5,
+          "y": 6
+        }
+      },
+      "position": {
+        "x": 4,
+        "y": 7
+      },
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "chilled-deli",
+        "chilled-deli-prepared",
+        "review-deli-prepared",
+        "chilled-seafood-prepared",
+        "review-seafood-prepared",
+        "chilled-bakery",
+        "chilled-sauces",
+        "chilled-seasoning",
+        "review-seasoning",
+        "chilled-pantry",
+        "chilled-frozen",
+        "chilled-beverages",
+        "review-beverages"
+      ]
+    },
+    {
+      "id": "deli-service-shelf-03",
+      "sectionId": "deli-service",
+      "name": "熟食与冷藏即食柜-03",
+      "reachable": true,
+      "kind": "chiller",
+      "footprint": {
+        "x": 8,
+        "y": 7,
+        "w": 2,
+        "h": 1
+      },
+      "levels": 4,
+      "accessPoints": {
+        "left": {
+          "x": 7,
+          "y": 7
+        },
+        "right": {
+          "x": 10,
+          "y": 7
+        },
+        "front": {
+          "x": 8,
+          "y": 8
+        },
+        "back": {
+          "x": 8,
+          "y": 6
+        }
+      },
+      "position": {
+        "x": 7,
+        "y": 7
+      },
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "chilled-deli",
+        "chilled-deli-prepared",
+        "review-deli-prepared",
+        "chilled-seafood-prepared",
+        "review-seafood-prepared",
+        "chilled-bakery",
+        "chilled-sauces",
+        "chilled-seasoning",
+        "review-seasoning",
+        "chilled-pantry",
+        "chilled-frozen",
+        "chilled-beverages",
+        "review-beverages"
+      ]
+    },
+    {
+      "id": "fruit-shelf-01",
+      "sectionId": "fruit",
+      "name": "水果冷藏柜",
+      "position": {
+        "x": 1,
+        "y": 17
+      },
+      "reachable": true,
+      "kind": "chiller",
+      "footprint": {
+        "x": 2,
+        "y": 17,
+        "w": 2,
+        "h": 2
+      },
+      "levels": 4,
+      "accessPoints": {
+        "left": {
+          "x": 1,
+          "y": 17
+        },
+        "right": {
+          "x": 4,
+          "y": 17
+        },
+        "front": {
+          "x": 2,
+          "y": 19
+        },
+        "back": {
+          "x": 2,
+          "y": 16
+        }
+      },
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "chilled-produce",
+        "chilled-produce-prepared",
+        "review-produce"
+      ]
+    },
+    {
+      "id": "household-shelf-01",
+      "sectionId": "household",
+      "name": "日用清洁货架",
+      "reachable": true,
+      "kind": "gondola",
+      "footprint": {
+        "x": 12,
+        "y": 3,
+        "w": 1,
+        "h": 5
+      },
+      "levels": 4,
+      "accessPoints": {
+        "left": {
+          "x": 11,
+          "y": 5
+        },
+        "right": {
+          "x": 13,
+          "y": 5
+        },
+        "front": {
+          "x": 12,
+          "y": 8
+        },
+        "back": {
+          "x": 12,
+          "y": 2
+        }
+      },
+      "position": {
+        "x": 11,
+        "y": 5
+      },
+      "capacityPerSlot": 7,
+      "allowedDisplayGroups": [
+        "non-food-cleaning"
+      ]
+    },
+    {
+      "id": "household-shelf-02",
+      "sectionId": "household",
+      "name": "家居用品货架",
+      "reachable": true,
+      "kind": "gondola",
+      "footprint": {
+        "x": 15,
+        "y": 3,
+        "w": 1,
+        "h": 5
+      },
+      "levels": 4,
+      "accessPoints": {
+        "left": {
+          "x": 14,
+          "y": 5
+        },
+        "right": {
+          "x": 16,
+          "y": 5
+        },
+        "front": {
+          "x": 15,
+          "y": 8
+        },
+        "back": {
+          "x": 15,
+          "y": 2
+        }
+      },
+      "position": {
+        "x": 14,
+        "y": 5
+      },
+      "capacityPerSlot": 7,
+      "allowedDisplayGroups": [
+        "non-food-home"
+      ]
+    },
+    {
+      "id": "household-shelf-03",
+      "sectionId": "household",
+      "name": "服饰挂架",
+      "reachable": true,
+      "kind": "hanging-rack",
+      "footprint": {
+        "x": 18,
+        "y": 3,
+        "w": 1,
+        "h": 5
+      },
+      "levels": 2,
+      "accessPoints": {
+        "left": {
+          "x": 17,
+          "y": 5
+        },
+        "right": {
+          "x": 19,
+          "y": 5
+        },
+        "front": {
+          "x": 18,
+          "y": 8
+        },
+        "back": {
+          "x": 18,
+          "y": 2
+        }
+      },
+      "position": {
+        "x": 17,
+        "y": 5
+      },
+      "capacityPerSlot": 13,
+      "allowedDisplayGroups": [
+        "non-food-clothing"
+      ]
+    },
+    {
+      "id": "legacy-bakery-18",
+      "name": "烘焙展示台-03",
+      "sectionId": "bakery",
+      "position": {
+        "x": 7,
+        "y": 3
+      },
+      "reachable": true,
+      "kind": "display-table",
+      "footprint": {
+        "x": 8,
+        "y": 3,
+        "w": 2,
+        "h": 2
+      },
+      "levels": 1,
+      "accessPoints": {
+        "left": {
+          "x": 7,
+          "y": 3
+        },
+        "right": {
+          "x": 10,
+          "y": 3
+        },
+        "front": {
+          "x": 8,
+          "y": 5
+        },
+        "back": {
+          "x": 8,
+          "y": 2
+        }
+      },
+      "capacityPerSlot": 8,
+      "allowedDisplayGroups": [
+        "ambient-bakery"
+      ]
+    },
+    {
+      "id": "legacy-dairy-16",
+      "name": "乳品与蛋类冷藏柜-02",
+      "sectionId": "dairy",
+      "position": {
+        "x": 27,
+        "y": 15
+      },
+      "reachable": true,
+      "kind": "chiller",
+      "footprint": {
+        "x": 28,
+        "y": 13,
+        "w": 1,
+        "h": 5
+      },
+      "levels": 4,
+      "accessPoints": {
+        "left": {
+          "x": 27,
+          "y": 15
+        },
+        "right": {
+          "x": 29,
+          "y": 15
+        },
+        "front": {
+          "x": 28,
+          "y": 18
+        },
+        "back": {
+          "x": 28,
+          "y": 12
+        }
+      },
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "chilled-dairy",
+        "chilled-eggs",
+        "review-dairy"
+      ]
+    },
+    {
+      "id": "legacy-dairy-17",
+      "name": "乳品与蛋类冷藏柜-03",
+      "sectionId": "dairy",
+      "position": {
+        "x": 24,
+        "y": 15
+      },
+      "reachable": true,
+      "kind": "chiller",
+      "footprint": {
+        "x": 25,
+        "y": 13,
+        "w": 1,
+        "h": 5
+      },
+      "levels": 4,
+      "accessPoints": {
+        "left": {
+          "x": 24,
+          "y": 15
+        },
+        "right": {
+          "x": 26,
+          "y": 15
+        },
+        "front": {
+          "x": 25,
+          "y": 18
+        },
+        "back": {
+          "x": 25,
+          "y": 12
+        }
+      },
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "chilled-dairy",
+        "chilled-eggs",
+        "review-dairy"
+      ]
+    },
+    {
+      "id": "legacy-fruit-10",
+      "name": "常温水果展示台-01",
+      "sectionId": "fruit",
+      "position": {
+        "x": 4,
+        "y": 17
+      },
+      "reachable": true,
+      "kind": "produce-table",
+      "footprint": {
+        "x": 5,
+        "y": 17,
+        "w": 2,
+        "h": 2
+      },
+      "levels": 1,
+      "accessPoints": {
+        "left": {
+          "x": 4,
+          "y": 17
+        },
+        "right": {
+          "x": 7,
+          "y": 17
+        },
+        "front": {
+          "x": 5,
+          "y": 19
+        },
+        "back": {
+          "x": 5,
+          "y": 16
+        }
+      },
+      "capacityPerSlot": 8,
+      "allowedDisplayGroups": [
+        "ambient-produce"
+      ]
+    },
+    {
+      "id": "legacy-fruit-11",
+      "name": "常温水果展示台-02",
+      "sectionId": "fruit",
+      "position": {
+        "x": 7,
+        "y": 17
+      },
+      "reachable": true,
+      "kind": "produce-table",
+      "footprint": {
+        "x": 8,
+        "y": 17,
+        "w": 2,
+        "h": 2
+      },
+      "levels": 1,
+      "accessPoints": {
+        "left": {
+          "x": 7,
+          "y": 17
+        },
+        "right": {
+          "x": 10,
+          "y": 17
+        },
+        "front": {
+          "x": 8,
+          "y": 19
+        },
+        "back": {
+          "x": 8,
+          "y": 16
+        }
+      },
+      "capacityPerSlot": 8,
+      "allowedDisplayGroups": [
+        "ambient-produce"
+      ]
+    },
+    {
+      "id": "legacy-meat-14",
+      "name": "肉禽生品冷藏柜-02",
+      "sectionId": "meat",
+      "position": {
+        "x": 27,
+        "y": 8
+      },
+      "reachable": true,
+      "kind": "chiller",
+      "footprint": {
+        "x": 28,
+        "y": 8,
+        "w": 2,
+        "h": 2
+      },
+      "levels": 4,
+      "accessPoints": {
+        "left": {
+          "x": 27,
+          "y": 8
+        },
+        "right": {
+          "x": 30,
+          "y": 8
+        },
+        "front": {
+          "x": 28,
+          "y": 10
+        },
+        "back": {
+          "x": 28,
+          "y": 7
+        }
+      },
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "chilled-meat-raw",
+        "review-meat-raw"
+      ]
+    },
+    {
+      "id": "legacy-meat-15",
+      "name": "肉禽熟制品冷藏柜",
+      "sectionId": "meat",
+      "position": {
+        "x": 24,
+        "y": 8
+      },
+      "reachable": true,
+      "kind": "chiller",
+      "footprint": {
+        "x": 25,
+        "y": 8,
+        "w": 2,
+        "h": 2
+      },
+      "levels": 4,
+      "accessPoints": {
+        "left": {
+          "x": 24,
+          "y": 8
+        },
+        "right": {
+          "x": 27,
+          "y": 8
+        },
+        "front": {
+          "x": 25,
+          "y": 10
+        },
+        "back": {
+          "x": 25,
+          "y": 7
+        }
+      },
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "chilled-meat-prepared",
+        "chilled-meat-raw"
+      ]
+    },
+    {
+      "id": "legacy-pantry-19",
+      "name": "常温食品扩展位-01",
+      "sectionId": "pantry",
+      "position": {
+        "x": 14,
+        "y": 15
+      },
+      "reachable": true,
+      "kind": "gondola",
+      "footprint": {
+        "x": 15,
+        "y": 13,
+        "w": 1,
+        "h": 5
+      },
+      "levels": 4,
+      "accessPoints": {
+        "left": {
+          "x": 14,
+          "y": 15
+        },
+        "right": {
+          "x": 16,
+          "y": 15
+        },
+        "front": {
+          "x": 15,
+          "y": 18
+        },
+        "back": {
+          "x": 15,
+          "y": 12
+        }
+      },
+      "capacityPerSlot": 8,
+      "allowedDisplayGroups": [
+        "ambient-pantry",
+        "ambient-seasoning",
+        "ambient-beverages",
+        "ambient-dairy",
+        "ambient-seafood",
+        "ambient-seafood-preserved",
+        "ambient-ready-meals",
+        "ambient-canned-soup",
+        "ambient-canned-produce",
+        "ambient-dry-grain",
+        "ambient-pasta",
+        "ambient-sauces",
+        "ambient-spices",
+        "ambient-snacks"
+      ]
+    },
+    {
+      "id": "legacy-pantry-20",
+      "name": "常温食品扩展位-02",
+      "sectionId": "pantry",
+      "position": {
+        "x": 17,
+        "y": 15
+      },
+      "reachable": true,
+      "kind": "gondola",
+      "footprint": {
+        "x": 18,
+        "y": 13,
+        "w": 1,
+        "h": 5
+      },
+      "levels": 4,
+      "accessPoints": {
+        "left": {
+          "x": 17,
+          "y": 15
+        },
+        "right": {
+          "x": 19,
+          "y": 15
+        },
+        "front": {
+          "x": 18,
+          "y": 18
+        },
+        "back": {
+          "x": 18,
+          "y": 12
+        }
+      },
+      "capacityPerSlot": 8,
+      "allowedDisplayGroups": [
+        "ambient-pantry",
+        "ambient-seasoning",
+        "ambient-beverages",
+        "ambient-dairy",
+        "ambient-seafood",
+        "ambient-seafood-preserved",
+        "ambient-ready-meals",
+        "ambient-canned-soup",
+        "ambient-canned-produce",
+        "ambient-dry-grain",
+        "ambient-pasta",
+        "ambient-sauces",
+        "ambient-spices",
+        "ambient-snacks"
+      ]
+    },
+    {
+      "id": "legacy-seafood-12",
+      "name": "水产生鲜冷藏柜-02",
+      "sectionId": "seafood",
+      "position": {
+        "x": 24,
+        "y": 3
+      },
+      "reachable": true,
+      "kind": "chiller",
+      "footprint": {
+        "x": 25,
+        "y": 3,
+        "w": 2,
+        "h": 2
+      },
+      "levels": 4,
+      "accessPoints": {
+        "left": {
+          "x": 24,
+          "y": 3
+        },
+        "right": {
+          "x": 27,
+          "y": 3
+        },
+        "front": {
+          "x": 25,
+          "y": 5
+        },
+        "back": {
+          "x": 25,
+          "y": 2
+        }
+      },
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "chilled-seafood-raw",
+        "review-seafood-raw"
+      ]
+    },
+    {
+      "id": "legacy-seafood-13",
+      "name": "水产生鲜冷藏柜-03",
+      "sectionId": "seafood",
+      "position": {
+        "x": 27,
+        "y": 3
+      },
+      "reachable": true,
+      "kind": "chiller",
+      "footprint": {
+        "x": 28,
+        "y": 3,
+        "w": 2,
+        "h": 2
+      },
+      "levels": 4,
+      "accessPoints": {
+        "left": {
+          "x": 27,
+          "y": 3
+        },
+        "right": {
+          "x": 30,
+          "y": 3
+        },
+        "front": {
+          "x": 28,
+          "y": 5
+        },
+        "back": {
+          "x": 28,
+          "y": 2
+        }
+      },
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "chilled-seafood-raw",
+        "review-seafood-raw"
+      ]
+    },
+    {
+      "id": "legacy-vegetables-8",
+      "name": "常温蔬菜展示台-01",
+      "sectionId": "vegetables",
+      "position": {
+        "x": 4,
+        "y": 13
+      },
+      "reachable": true,
+      "kind": "produce-table",
+      "footprint": {
+        "x": 5,
+        "y": 13,
+        "w": 2,
+        "h": 2
+      },
+      "levels": 1,
+      "accessPoints": {
+        "left": {
+          "x": 4,
+          "y": 13
+        },
+        "right": {
+          "x": 7,
+          "y": 13
+        },
+        "front": {
+          "x": 5,
+          "y": 15
+        },
+        "back": {
+          "x": 5,
+          "y": 12
+        }
+      },
+      "capacityPerSlot": 8,
+      "allowedDisplayGroups": [
+        "ambient-produce"
+      ]
+    },
+    {
+      "id": "legacy-vegetables-9",
+      "name": "常温蔬菜展示台-02",
+      "sectionId": "vegetables",
+      "position": {
+        "x": 7,
+        "y": 13
+      },
+      "reachable": true,
+      "kind": "produce-table",
+      "footprint": {
+        "x": 8,
+        "y": 13,
+        "w": 2,
+        "h": 2
+      },
+      "levels": 1,
+      "accessPoints": {
+        "left": {
+          "x": 7,
+          "y": 13
+        },
+        "right": {
+          "x": 10,
+          "y": 13
+        },
+        "front": {
+          "x": 8,
+          "y": 15
+        },
+        "back": {
+          "x": 8,
+          "y": 12
+        }
+      },
+      "capacityPerSlot": 8,
+      "allowedDisplayGroups": [
+        "ambient-produce"
+      ]
+    },
+    {
+      "id": "meat-shelf-01",
+      "sectionId": "meat",
+      "name": "肉禽生品冷藏柜-01",
+      "position": {
+        "x": 21,
+        "y": 8
+      },
+      "reachable": true,
+      "kind": "chiller",
+      "footprint": {
+        "x": 22,
+        "y": 8,
+        "w": 2,
+        "h": 2
+      },
+      "levels": 4,
+      "accessPoints": {
+        "left": {
+          "x": 21,
+          "y": 8
+        },
+        "right": {
+          "x": 24,
+          "y": 8
+        },
+        "front": {
+          "x": 22,
+          "y": 10
+        },
+        "back": {
+          "x": 22,
+          "y": 7
+        }
+      },
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "chilled-meat-raw",
+        "review-meat-raw"
+      ]
+    },
+    {
+      "id": "openprices-ambient-shelf-01",
+      "sectionId": "openprices-ambient-north",
+      "name": "常温-01",
+      "kind": "gondola",
+      "footprint": {
+        "x": 50,
+        "y": 2,
+        "w": 1,
+        "h": 3
+      },
+      "levels": 4,
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "ambient-tea-coffee",
+        "ambient-dry-grain",
+        "ambient-snacks",
+        "ambient-seafood-preserved",
+        "ambient-spices",
+        "ambient-beverages",
+        "ambient-bakery",
+        "ambient-sauces",
+        "ambient-canned-produce",
+        "ambient-other",
+        "ambient-pasta",
+        "ambient-dairy",
+        "ambient-ready-meals",
+        "ambient-canned-soup",
+        "ambient-sweetener",
+        "ambient-supplements"
+      ],
+      "accessPoints": {
+        "left": {
+          "x": 49,
+          "y": 3
+        },
+        "right": {
+          "x": 51,
+          "y": 3
+        }
+      },
+      "position": {
+        "x": 49,
+        "y": 3
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-ambient-shelf-02",
+      "sectionId": "openprices-ambient-north",
+      "name": "常温-02",
+      "kind": "gondola",
+      "footprint": {
+        "x": 52,
+        "y": 2,
+        "w": 1,
+        "h": 3
+      },
+      "levels": 4,
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "ambient-tea-coffee",
+        "ambient-dry-grain",
+        "ambient-snacks",
+        "ambient-seafood-preserved",
+        "ambient-spices",
+        "ambient-beverages",
+        "ambient-bakery",
+        "ambient-sauces",
+        "ambient-canned-produce",
+        "ambient-other",
+        "ambient-pasta",
+        "ambient-dairy",
+        "ambient-ready-meals",
+        "ambient-canned-soup",
+        "ambient-sweetener",
+        "ambient-supplements"
+      ],
+      "accessPoints": {
+        "left": {
+          "x": 51,
+          "y": 3
+        },
+        "right": {
+          "x": 53,
+          "y": 3
+        }
+      },
+      "position": {
+        "x": 51,
+        "y": 3
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-ambient-shelf-03",
+      "sectionId": "openprices-ambient-north",
+      "name": "常温-03",
+      "kind": "gondola",
+      "footprint": {
+        "x": 54,
+        "y": 2,
+        "w": 1,
+        "h": 3
+      },
+      "levels": 4,
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "ambient-tea-coffee",
+        "ambient-dry-grain",
+        "ambient-snacks",
+        "ambient-seafood-preserved",
+        "ambient-spices",
+        "ambient-beverages",
+        "ambient-bakery",
+        "ambient-sauces",
+        "ambient-canned-produce",
+        "ambient-other",
+        "ambient-pasta",
+        "ambient-dairy",
+        "ambient-ready-meals",
+        "ambient-canned-soup",
+        "ambient-sweetener",
+        "ambient-supplements"
+      ],
+      "accessPoints": {
+        "left": {
+          "x": 53,
+          "y": 3
+        },
+        "right": {
+          "x": 55,
+          "y": 3
+        }
+      },
+      "position": {
+        "x": 53,
+        "y": 3
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-ambient-shelf-04",
+      "sectionId": "openprices-ambient-north",
+      "name": "常温-04",
+      "kind": "gondola",
+      "footprint": {
+        "x": 56,
+        "y": 2,
+        "w": 1,
+        "h": 3
+      },
+      "levels": 4,
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "ambient-tea-coffee",
+        "ambient-dry-grain",
+        "ambient-snacks",
+        "ambient-seafood-preserved",
+        "ambient-spices",
+        "ambient-beverages",
+        "ambient-bakery",
+        "ambient-sauces",
+        "ambient-canned-produce",
+        "ambient-other",
+        "ambient-pasta",
+        "ambient-dairy",
+        "ambient-ready-meals",
+        "ambient-canned-soup",
+        "ambient-sweetener",
+        "ambient-supplements"
+      ],
+      "accessPoints": {
+        "left": {
+          "x": 55,
+          "y": 3
+        },
+        "right": {
+          "x": 57,
+          "y": 3
+        }
+      },
+      "position": {
+        "x": 55,
+        "y": 3
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-ambient-shelf-05",
+      "sectionId": "openprices-ambient-north",
+      "name": "常温-05",
+      "kind": "gondola",
+      "footprint": {
+        "x": 58,
+        "y": 2,
+        "w": 1,
+        "h": 3
+      },
+      "levels": 4,
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "ambient-tea-coffee",
+        "ambient-dry-grain",
+        "ambient-snacks",
+        "ambient-seafood-preserved",
+        "ambient-spices",
+        "ambient-beverages",
+        "ambient-bakery",
+        "ambient-sauces",
+        "ambient-canned-produce",
+        "ambient-other",
+        "ambient-pasta",
+        "ambient-dairy",
+        "ambient-ready-meals",
+        "ambient-canned-soup",
+        "ambient-sweetener",
+        "ambient-supplements"
+      ],
+      "accessPoints": {
+        "left": {
+          "x": 57,
+          "y": 3
+        },
+        "right": {
+          "x": 59,
+          "y": 3
+        }
+      },
+      "position": {
+        "x": 57,
+        "y": 3
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-ambient-shelf-06",
+      "sectionId": "openprices-ambient-north",
+      "name": "常温-06",
+      "kind": "gondola",
+      "footprint": {
+        "x": 60,
+        "y": 2,
+        "w": 1,
+        "h": 3
+      },
+      "levels": 4,
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "ambient-tea-coffee",
+        "ambient-dry-grain",
+        "ambient-snacks",
+        "ambient-seafood-preserved",
+        "ambient-spices",
+        "ambient-beverages",
+        "ambient-bakery",
+        "ambient-sauces",
+        "ambient-canned-produce",
+        "ambient-other",
+        "ambient-pasta",
+        "ambient-dairy",
+        "ambient-ready-meals",
+        "ambient-canned-soup",
+        "ambient-sweetener",
+        "ambient-supplements"
+      ],
+      "accessPoints": {
+        "left": {
+          "x": 59,
+          "y": 3
+        },
+        "right": {
+          "x": 61,
+          "y": 3
+        }
+      },
+      "position": {
+        "x": 59,
+        "y": 3
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-ambient-shelf-07",
+      "sectionId": "openprices-ambient-north",
+      "name": "常温-07",
+      "kind": "gondola",
+      "footprint": {
+        "x": 62,
+        "y": 2,
+        "w": 1,
+        "h": 3
+      },
+      "levels": 4,
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "ambient-tea-coffee",
+        "ambient-dry-grain",
+        "ambient-snacks",
+        "ambient-seafood-preserved",
+        "ambient-spices",
+        "ambient-beverages",
+        "ambient-bakery",
+        "ambient-sauces",
+        "ambient-canned-produce",
+        "ambient-other",
+        "ambient-pasta",
+        "ambient-dairy",
+        "ambient-ready-meals",
+        "ambient-canned-soup",
+        "ambient-sweetener",
+        "ambient-supplements"
+      ],
+      "accessPoints": {
+        "left": {
+          "x": 61,
+          "y": 3
+        },
+        "right": {
+          "x": 63,
+          "y": 3
+        }
+      },
+      "position": {
+        "x": 61,
+        "y": 3
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-ambient-shelf-08",
+      "sectionId": "openprices-ambient-north",
+      "name": "常温-08",
+      "kind": "gondola",
+      "footprint": {
+        "x": 50,
+        "y": 6,
+        "w": 1,
+        "h": 3
+      },
+      "levels": 4,
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "ambient-tea-coffee",
+        "ambient-dry-grain",
+        "ambient-snacks",
+        "ambient-seafood-preserved",
+        "ambient-spices",
+        "ambient-beverages",
+        "ambient-bakery",
+        "ambient-sauces",
+        "ambient-canned-produce",
+        "ambient-other",
+        "ambient-pasta",
+        "ambient-dairy",
+        "ambient-ready-meals",
+        "ambient-canned-soup",
+        "ambient-sweetener",
+        "ambient-supplements"
+      ],
+      "accessPoints": {
+        "left": {
+          "x": 49,
+          "y": 7
+        },
+        "right": {
+          "x": 51,
+          "y": 7
+        }
+      },
+      "position": {
+        "x": 49,
+        "y": 7
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-ambient-shelf-09",
+      "sectionId": "openprices-ambient-north",
+      "name": "常温-09",
+      "kind": "gondola",
+      "footprint": {
+        "x": 52,
+        "y": 6,
+        "w": 1,
+        "h": 3
+      },
+      "levels": 4,
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "ambient-tea-coffee",
+        "ambient-dry-grain",
+        "ambient-snacks",
+        "ambient-seafood-preserved",
+        "ambient-spices",
+        "ambient-beverages",
+        "ambient-bakery",
+        "ambient-sauces",
+        "ambient-canned-produce",
+        "ambient-other",
+        "ambient-pasta",
+        "ambient-dairy",
+        "ambient-ready-meals",
+        "ambient-canned-soup",
+        "ambient-sweetener",
+        "ambient-supplements"
+      ],
+      "accessPoints": {
+        "left": {
+          "x": 51,
+          "y": 7
+        },
+        "right": {
+          "x": 53,
+          "y": 7
+        }
+      },
+      "position": {
+        "x": 51,
+        "y": 7
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-ambient-shelf-10",
+      "sectionId": "openprices-ambient-north",
+      "name": "常温-10",
+      "kind": "gondola",
+      "footprint": {
+        "x": 54,
+        "y": 6,
+        "w": 1,
+        "h": 3
+      },
+      "levels": 4,
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "ambient-tea-coffee",
+        "ambient-dry-grain",
+        "ambient-snacks",
+        "ambient-seafood-preserved",
+        "ambient-spices",
+        "ambient-beverages",
+        "ambient-bakery",
+        "ambient-sauces",
+        "ambient-canned-produce",
+        "ambient-other",
+        "ambient-pasta",
+        "ambient-dairy",
+        "ambient-ready-meals",
+        "ambient-canned-soup",
+        "ambient-sweetener",
+        "ambient-supplements"
+      ],
+      "accessPoints": {
+        "left": {
+          "x": 53,
+          "y": 7
+        },
+        "right": {
+          "x": 55,
+          "y": 7
+        }
+      },
+      "position": {
+        "x": 53,
+        "y": 7
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-ambient-shelf-11",
+      "sectionId": "openprices-ambient-north",
+      "name": "常温-11",
+      "kind": "gondola",
+      "footprint": {
+        "x": 56,
+        "y": 6,
+        "w": 1,
+        "h": 3
+      },
+      "levels": 4,
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "ambient-tea-coffee",
+        "ambient-dry-grain",
+        "ambient-snacks",
+        "ambient-seafood-preserved",
+        "ambient-spices",
+        "ambient-beverages",
+        "ambient-bakery",
+        "ambient-sauces",
+        "ambient-canned-produce",
+        "ambient-other",
+        "ambient-pasta",
+        "ambient-dairy",
+        "ambient-ready-meals",
+        "ambient-canned-soup",
+        "ambient-sweetener",
+        "ambient-supplements"
+      ],
+      "accessPoints": {
+        "left": {
+          "x": 55,
+          "y": 7
+        },
+        "right": {
+          "x": 57,
+          "y": 7
+        }
+      },
+      "position": {
+        "x": 55,
+        "y": 7
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-ambient-shelf-12",
+      "sectionId": "openprices-ambient-north",
+      "name": "常温-12",
+      "kind": "gondola",
+      "footprint": {
+        "x": 58,
+        "y": 6,
+        "w": 1,
+        "h": 3
+      },
+      "levels": 4,
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "ambient-tea-coffee",
+        "ambient-dry-grain",
+        "ambient-snacks",
+        "ambient-seafood-preserved",
+        "ambient-spices",
+        "ambient-beverages",
+        "ambient-bakery",
+        "ambient-sauces",
+        "ambient-canned-produce",
+        "ambient-other",
+        "ambient-pasta",
+        "ambient-dairy",
+        "ambient-ready-meals",
+        "ambient-canned-soup",
+        "ambient-sweetener",
+        "ambient-supplements"
+      ],
+      "accessPoints": {
+        "left": {
+          "x": 57,
+          "y": 7
+        },
+        "right": {
+          "x": 59,
+          "y": 7
+        }
+      },
+      "position": {
+        "x": 57,
+        "y": 7
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-ambient-shelf-13",
+      "sectionId": "openprices-ambient-north",
+      "name": "常温-13",
+      "kind": "gondola",
+      "footprint": {
+        "x": 60,
+        "y": 6,
+        "w": 1,
+        "h": 3
+      },
+      "levels": 4,
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "ambient-tea-coffee",
+        "ambient-dry-grain",
+        "ambient-snacks",
+        "ambient-seafood-preserved",
+        "ambient-spices",
+        "ambient-beverages",
+        "ambient-bakery",
+        "ambient-sauces",
+        "ambient-canned-produce",
+        "ambient-other",
+        "ambient-pasta",
+        "ambient-dairy",
+        "ambient-ready-meals",
+        "ambient-canned-soup",
+        "ambient-sweetener",
+        "ambient-supplements"
+      ],
+      "accessPoints": {
+        "left": {
+          "x": 59,
+          "y": 7
+        },
+        "right": {
+          "x": 61,
+          "y": 7
+        }
+      },
+      "position": {
+        "x": 59,
+        "y": 7
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-ambient-shelf-14",
+      "sectionId": "openprices-ambient-north",
+      "name": "常温-14",
+      "kind": "gondola",
+      "footprint": {
+        "x": 62,
+        "y": 6,
+        "w": 1,
+        "h": 3
+      },
+      "levels": 4,
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "ambient-tea-coffee",
+        "ambient-dry-grain",
+        "ambient-snacks",
+        "ambient-seafood-preserved",
+        "ambient-spices",
+        "ambient-beverages",
+        "ambient-bakery",
+        "ambient-sauces",
+        "ambient-canned-produce",
+        "ambient-other",
+        "ambient-pasta",
+        "ambient-dairy",
+        "ambient-ready-meals",
+        "ambient-canned-soup",
+        "ambient-sweetener",
+        "ambient-supplements"
+      ],
+      "accessPoints": {
+        "left": {
+          "x": 61,
+          "y": 7
+        },
+        "right": {
+          "x": 63,
+          "y": 7
+        }
+      },
+      "position": {
+        "x": 61,
+        "y": 7
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-ambient-shelf-15",
+      "sectionId": "openprices-ambient-south",
+      "name": "常温-15",
+      "kind": "gondola",
+      "footprint": {
+        "x": 50,
+        "y": 13,
+        "w": 1,
+        "h": 3
+      },
+      "levels": 4,
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "ambient-tea-coffee",
+        "ambient-dry-grain",
+        "ambient-snacks",
+        "ambient-seafood-preserved",
+        "ambient-spices",
+        "ambient-beverages",
+        "ambient-bakery",
+        "ambient-sauces",
+        "ambient-canned-produce",
+        "ambient-other",
+        "ambient-pasta",
+        "ambient-dairy",
+        "ambient-ready-meals",
+        "ambient-canned-soup",
+        "ambient-sweetener",
+        "ambient-supplements"
+      ],
+      "accessPoints": {
+        "left": {
+          "x": 49,
+          "y": 14
+        },
+        "right": {
+          "x": 51,
+          "y": 14
+        }
+      },
+      "position": {
+        "x": 49,
+        "y": 14
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-ambient-shelf-16",
+      "sectionId": "openprices-ambient-south",
+      "name": "常温-16",
+      "kind": "gondola",
+      "footprint": {
+        "x": 52,
+        "y": 13,
+        "w": 1,
+        "h": 3
+      },
+      "levels": 4,
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "ambient-tea-coffee",
+        "ambient-dry-grain",
+        "ambient-snacks",
+        "ambient-seafood-preserved",
+        "ambient-spices",
+        "ambient-beverages",
+        "ambient-bakery",
+        "ambient-sauces",
+        "ambient-canned-produce",
+        "ambient-other",
+        "ambient-pasta",
+        "ambient-dairy",
+        "ambient-ready-meals",
+        "ambient-canned-soup",
+        "ambient-sweetener",
+        "ambient-supplements"
+      ],
+      "accessPoints": {
+        "left": {
+          "x": 51,
+          "y": 14
+        },
+        "right": {
+          "x": 53,
+          "y": 14
+        }
+      },
+      "position": {
+        "x": 51,
+        "y": 14
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-ambient-shelf-17",
+      "sectionId": "openprices-ambient-south",
+      "name": "常温-17",
+      "kind": "gondola",
+      "footprint": {
+        "x": 54,
+        "y": 13,
+        "w": 1,
+        "h": 3
+      },
+      "levels": 4,
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "ambient-tea-coffee",
+        "ambient-dry-grain",
+        "ambient-snacks",
+        "ambient-seafood-preserved",
+        "ambient-spices",
+        "ambient-beverages",
+        "ambient-bakery",
+        "ambient-sauces",
+        "ambient-canned-produce",
+        "ambient-other",
+        "ambient-pasta",
+        "ambient-dairy",
+        "ambient-ready-meals",
+        "ambient-canned-soup",
+        "ambient-sweetener",
+        "ambient-supplements"
+      ],
+      "accessPoints": {
+        "left": {
+          "x": 53,
+          "y": 14
+        },
+        "right": {
+          "x": 55,
+          "y": 14
+        }
+      },
+      "position": {
+        "x": 53,
+        "y": 14
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-ambient-shelf-18",
+      "sectionId": "openprices-ambient-south",
+      "name": "常温-18",
+      "kind": "gondola",
+      "footprint": {
+        "x": 56,
+        "y": 13,
+        "w": 1,
+        "h": 3
+      },
+      "levels": 4,
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "ambient-tea-coffee",
+        "ambient-dry-grain",
+        "ambient-snacks",
+        "ambient-seafood-preserved",
+        "ambient-spices",
+        "ambient-beverages",
+        "ambient-bakery",
+        "ambient-sauces",
+        "ambient-canned-produce",
+        "ambient-other",
+        "ambient-pasta",
+        "ambient-dairy",
+        "ambient-ready-meals",
+        "ambient-canned-soup",
+        "ambient-sweetener",
+        "ambient-supplements"
+      ],
+      "accessPoints": {
+        "left": {
+          "x": 55,
+          "y": 14
+        },
+        "right": {
+          "x": 57,
+          "y": 14
+        }
+      },
+      "position": {
+        "x": 55,
+        "y": 14
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-ambient-shelf-19",
+      "sectionId": "openprices-ambient-south",
+      "name": "常温-19",
+      "kind": "gondola",
+      "footprint": {
+        "x": 58,
+        "y": 13,
+        "w": 1,
+        "h": 3
+      },
+      "levels": 4,
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "ambient-tea-coffee",
+        "ambient-dry-grain",
+        "ambient-snacks",
+        "ambient-seafood-preserved",
+        "ambient-spices",
+        "ambient-beverages",
+        "ambient-bakery",
+        "ambient-sauces",
+        "ambient-canned-produce",
+        "ambient-other",
+        "ambient-pasta",
+        "ambient-dairy",
+        "ambient-ready-meals",
+        "ambient-canned-soup",
+        "ambient-sweetener",
+        "ambient-supplements"
+      ],
+      "accessPoints": {
+        "left": {
+          "x": 57,
+          "y": 14
+        },
+        "right": {
+          "x": 59,
+          "y": 14
+        }
+      },
+      "position": {
+        "x": 57,
+        "y": 14
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-ambient-shelf-20",
+      "sectionId": "openprices-ambient-south",
+      "name": "常温-20",
+      "kind": "gondola",
+      "footprint": {
+        "x": 60,
+        "y": 13,
+        "w": 1,
+        "h": 3
+      },
+      "levels": 4,
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "ambient-tea-coffee",
+        "ambient-dry-grain",
+        "ambient-snacks",
+        "ambient-seafood-preserved",
+        "ambient-spices",
+        "ambient-beverages",
+        "ambient-bakery",
+        "ambient-sauces",
+        "ambient-canned-produce",
+        "ambient-other",
+        "ambient-pasta",
+        "ambient-dairy",
+        "ambient-ready-meals",
+        "ambient-canned-soup",
+        "ambient-sweetener",
+        "ambient-supplements"
+      ],
+      "accessPoints": {
+        "left": {
+          "x": 59,
+          "y": 14
+        },
+        "right": {
+          "x": 61,
+          "y": 14
+        }
+      },
+      "position": {
+        "x": 59,
+        "y": 14
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-ambient-shelf-21",
+      "sectionId": "openprices-ambient-south",
+      "name": "常温-21",
+      "kind": "gondola",
+      "footprint": {
+        "x": 62,
+        "y": 13,
+        "w": 1,
+        "h": 3
+      },
+      "levels": 4,
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "ambient-tea-coffee",
+        "ambient-dry-grain",
+        "ambient-snacks",
+        "ambient-seafood-preserved",
+        "ambient-spices",
+        "ambient-beverages",
+        "ambient-bakery",
+        "ambient-sauces",
+        "ambient-canned-produce",
+        "ambient-other",
+        "ambient-pasta",
+        "ambient-dairy",
+        "ambient-ready-meals",
+        "ambient-canned-soup",
+        "ambient-sweetener",
+        "ambient-supplements"
+      ],
+      "accessPoints": {
+        "left": {
+          "x": 61,
+          "y": 14
+        },
+        "right": {
+          "x": 63,
+          "y": 14
+        }
+      },
+      "position": {
+        "x": 61,
+        "y": 14
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-ambient-shelf-22",
+      "sectionId": "openprices-ambient-south",
+      "name": "常温-22",
+      "kind": "gondola",
+      "footprint": {
+        "x": 50,
+        "y": 17,
+        "w": 1,
+        "h": 3
+      },
+      "levels": 4,
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "ambient-tea-coffee",
+        "ambient-dry-grain",
+        "ambient-snacks",
+        "ambient-seafood-preserved",
+        "ambient-spices",
+        "ambient-beverages",
+        "ambient-bakery",
+        "ambient-sauces",
+        "ambient-canned-produce",
+        "ambient-other",
+        "ambient-pasta",
+        "ambient-dairy",
+        "ambient-ready-meals",
+        "ambient-canned-soup",
+        "ambient-sweetener",
+        "ambient-supplements"
+      ],
+      "accessPoints": {
+        "left": {
+          "x": 49,
+          "y": 18
+        },
+        "right": {
+          "x": 51,
+          "y": 18
+        }
+      },
+      "position": {
+        "x": 49,
+        "y": 18
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-ambient-shelf-23",
+      "sectionId": "openprices-ambient-south",
+      "name": "常温-23",
+      "kind": "gondola",
+      "footprint": {
+        "x": 52,
+        "y": 17,
+        "w": 1,
+        "h": 3
+      },
+      "levels": 4,
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "ambient-tea-coffee",
+        "ambient-dry-grain",
+        "ambient-snacks",
+        "ambient-seafood-preserved",
+        "ambient-spices",
+        "ambient-beverages",
+        "ambient-bakery",
+        "ambient-sauces",
+        "ambient-canned-produce",
+        "ambient-other",
+        "ambient-pasta",
+        "ambient-dairy",
+        "ambient-ready-meals",
+        "ambient-canned-soup",
+        "ambient-sweetener",
+        "ambient-supplements"
+      ],
+      "accessPoints": {
+        "left": {
+          "x": 51,
+          "y": 18
+        },
+        "right": {
+          "x": 53,
+          "y": 18
+        }
+      },
+      "position": {
+        "x": 51,
+        "y": 18
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-ambient-shelf-24",
+      "sectionId": "openprices-ambient-south",
+      "name": "常温-24",
+      "kind": "gondola",
+      "footprint": {
+        "x": 54,
+        "y": 17,
+        "w": 1,
+        "h": 3
+      },
+      "levels": 4,
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "ambient-tea-coffee",
+        "ambient-dry-grain",
+        "ambient-snacks",
+        "ambient-seafood-preserved",
+        "ambient-spices",
+        "ambient-beverages",
+        "ambient-bakery",
+        "ambient-sauces",
+        "ambient-canned-produce",
+        "ambient-other",
+        "ambient-pasta",
+        "ambient-dairy",
+        "ambient-ready-meals",
+        "ambient-canned-soup",
+        "ambient-sweetener",
+        "ambient-supplements"
+      ],
+      "accessPoints": {
+        "left": {
+          "x": 53,
+          "y": 18
+        },
+        "right": {
+          "x": 55,
+          "y": 18
+        }
+      },
+      "position": {
+        "x": 53,
+        "y": 18
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-ambient-shelf-25",
+      "sectionId": "openprices-ambient-south",
+      "name": "常温-25",
+      "kind": "gondola",
+      "footprint": {
+        "x": 56,
+        "y": 17,
+        "w": 1,
+        "h": 3
+      },
+      "levels": 4,
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "ambient-tea-coffee",
+        "ambient-dry-grain",
+        "ambient-snacks",
+        "ambient-seafood-preserved",
+        "ambient-spices",
+        "ambient-beverages",
+        "ambient-bakery",
+        "ambient-sauces",
+        "ambient-canned-produce",
+        "ambient-other",
+        "ambient-pasta",
+        "ambient-dairy",
+        "ambient-ready-meals",
+        "ambient-canned-soup",
+        "ambient-sweetener",
+        "ambient-supplements"
+      ],
+      "accessPoints": {
+        "left": {
+          "x": 55,
+          "y": 18
+        },
+        "right": {
+          "x": 57,
+          "y": 18
+        }
+      },
+      "position": {
+        "x": 55,
+        "y": 18
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-ambient-shelf-26",
+      "sectionId": "openprices-ambient-south",
+      "name": "常温-26",
+      "kind": "gondola",
+      "footprint": {
+        "x": 58,
+        "y": 17,
+        "w": 1,
+        "h": 3
+      },
+      "levels": 4,
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "ambient-tea-coffee",
+        "ambient-dry-grain",
+        "ambient-snacks",
+        "ambient-seafood-preserved",
+        "ambient-spices",
+        "ambient-beverages",
+        "ambient-bakery",
+        "ambient-sauces",
+        "ambient-canned-produce",
+        "ambient-other",
+        "ambient-pasta",
+        "ambient-dairy",
+        "ambient-ready-meals",
+        "ambient-canned-soup",
+        "ambient-sweetener",
+        "ambient-supplements"
+      ],
+      "accessPoints": {
+        "left": {
+          "x": 57,
+          "y": 18
+        },
+        "right": {
+          "x": 59,
+          "y": 18
+        }
+      },
+      "position": {
+        "x": 57,
+        "y": 18
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-ambient-shelf-27",
+      "sectionId": "openprices-ambient-south",
+      "name": "常温-27",
+      "kind": "gondola",
+      "footprint": {
+        "x": 60,
+        "y": 17,
+        "w": 1,
+        "h": 3
+      },
+      "levels": 4,
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "ambient-tea-coffee",
+        "ambient-dry-grain",
+        "ambient-snacks",
+        "ambient-seafood-preserved",
+        "ambient-spices",
+        "ambient-beverages",
+        "ambient-bakery",
+        "ambient-sauces",
+        "ambient-canned-produce",
+        "ambient-other",
+        "ambient-pasta",
+        "ambient-dairy",
+        "ambient-ready-meals",
+        "ambient-canned-soup",
+        "ambient-sweetener",
+        "ambient-supplements"
+      ],
+      "accessPoints": {
+        "left": {
+          "x": 59,
+          "y": 18
+        },
+        "right": {
+          "x": 61,
+          "y": 18
+        }
+      },
+      "position": {
+        "x": 59,
+        "y": 18
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-freezer-01",
+      "sectionId": "openprices-frozen",
+      "name": "肉禽生品冷冻柜-01",
+      "kind": "freezer",
+      "footprint": {
+        "x": 50,
+        "y": 22,
+        "w": 3,
+        "h": 1
+      },
+      "levels": 2,
+      "capacityPerSlot": 6,
+      "allowedDisplayGroups": [
+        "frozen-meat-raw"
+      ],
+      "accessPoints": {
+        "left": {
+          "x": 49,
+          "y": 22
+        },
+        "front": {
+          "x": 51,
+          "y": 23
+        },
+        "back": {
+          "x": 51,
+          "y": 21
+        }
+      },
+      "position": {
+        "x": 49,
+        "y": 22
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-freezer-02",
+      "sectionId": "openprices-frozen",
+      "name": "肉禽生品冷冻柜-02",
+      "kind": "freezer",
+      "footprint": {
+        "x": 53,
+        "y": 22,
+        "w": 3,
+        "h": 1
+      },
+      "levels": 2,
+      "capacityPerSlot": 6,
+      "allowedDisplayGroups": [
+        "frozen-meat-raw"
+      ],
+      "accessPoints": {
+        "front": {
+          "x": 54,
+          "y": 23
+        },
+        "back": {
+          "x": 54,
+          "y": 21
+        }
+      },
+      "position": {
+        "x": 54,
+        "y": 23
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-freezer-03",
+      "sectionId": "openprices-frozen",
+      "name": "肉禽熟制品冷冻柜",
+      "kind": "freezer",
+      "footprint": {
+        "x": 56,
+        "y": 22,
+        "w": 3,
+        "h": 1
+      },
+      "levels": 2,
+      "capacityPerSlot": 6,
+      "allowedDisplayGroups": [
+        "frozen-meat-prepared"
+      ],
+      "accessPoints": {
+        "front": {
+          "x": 57,
+          "y": 23
+        },
+        "back": {
+          "x": 57,
+          "y": 21
+        }
+      },
+      "position": {
+        "x": 57,
+        "y": 23
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-freezer-04",
+      "sectionId": "openprices-frozen",
+      "name": "水产生鲜冷冻柜-01",
+      "kind": "freezer",
+      "footprint": {
+        "x": 59,
+        "y": 22,
+        "w": 3,
+        "h": 1
+      },
+      "levels": 2,
+      "capacityPerSlot": 7,
+      "allowedDisplayGroups": [
+        "frozen-seafood-raw"
+      ],
+      "accessPoints": {
+        "front": {
+          "x": 60,
+          "y": 23
+        },
+        "back": {
+          "x": 60,
+          "y": 21
+        }
+      },
+      "position": {
+        "x": 60,
+        "y": 23
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-freezer-05",
+      "sectionId": "openprices-frozen",
+      "name": "水产生鲜冷冻柜-02",
+      "kind": "freezer",
+      "footprint": {
+        "x": 62,
+        "y": 22,
+        "w": 3,
+        "h": 1
+      },
+      "levels": 2,
+      "capacityPerSlot": 7,
+      "allowedDisplayGroups": [
+        "frozen-seafood-raw"
+      ],
+      "accessPoints": {
+        "front": {
+          "x": 63,
+          "y": 23
+        },
+        "back": {
+          "x": 63,
+          "y": 21
+        }
+      },
+      "position": {
+        "x": 63,
+        "y": 23
+      },
+      "reachable": true
+    },
+    {
+      "id": "openprices-freezer-06",
+      "sectionId": "openprices-frozen",
+      "name": "熟制水产与冷冻食品柜",
+      "kind": "freezer",
+      "footprint": {
+        "x": 65,
+        "y": 22,
+        "w": 3,
+        "h": 1
+      },
+      "levels": 2,
+      "capacityPerSlot": 8,
+      "allowedDisplayGroups": [
+        "frozen-seafood-prepared",
+        "freezer-produce",
+        "freezer-savory",
+        "freezer-dessert",
+        "frozen-bakery",
+        "frozen-deli-prepared",
+        "review-frozen"
+      ],
+      "accessPoints": {
+        "front": {
+          "x": 66,
+          "y": 23
+        },
+        "back": {
+          "x": 66,
+          "y": 21
+        }
+      },
+      "position": {
+        "x": 66,
+        "y": 23
+      },
+      "reachable": true
+    },
+    {
+      "id": "pantry-shelf-01",
+      "sectionId": "pantry",
+      "name": "粮油调味与饮品-01",
+      "position": {
+        "x": 11,
+        "y": 15
+      },
+      "reachable": true,
+      "kind": "gondola",
+      "footprint": {
+        "x": 12,
+        "y": 13,
+        "w": 1,
+        "h": 5
+      },
+      "levels": 4,
+      "accessPoints": {
+        "left": {
+          "x": 11,
+          "y": 15
+        },
+        "right": {
+          "x": 13,
+          "y": 15
+        },
+        "front": {
+          "x": 12,
+          "y": 18
+        },
+        "back": {
+          "x": 12,
+          "y": 12
+        }
+      },
+      "capacityPerSlot": 6,
+      "allowedDisplayGroups": [
+        "ambient-pantry",
+        "ambient-seasoning",
+        "ambient-beverages",
+        "ambient-dairy",
+        "ambient-seafood",
+        "ambient-seafood-preserved",
+        "ambient-ready-meals",
+        "ambient-canned-soup",
+        "ambient-canned-produce",
+        "ambient-dry-grain",
+        "ambient-pasta",
+        "ambient-sauces",
+        "ambient-spices",
+        "ambient-snacks"
+      ]
+    },
+    {
+      "id": "paper-zone-shelf-1",
+      "sectionId": "paper-zone",
+      "name": "纸品货架",
+      "reachable": true,
+      "kind": "gondola",
+      "footprint": {
+        "x": 33,
+        "y": 3,
+        "w": 1,
+        "h": 5
+      },
+      "levels": 4,
+      "accessPoints": {
+        "left": {
+          "x": 32,
+          "y": 5
+        },
+        "right": {
+          "x": 34,
+          "y": 5
+        },
+        "front": {
+          "x": 33,
+          "y": 8
+        },
+        "back": {
+          "x": 33,
+          "y": 2
+        }
+      },
+      "position": {
+        "x": 32,
+        "y": 5
+      },
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "non-food-paper-goods"
+      ]
+    },
+    {
+      "id": "paper-zone-shelf-2",
+      "sectionId": "paper-zone",
+      "name": "纸品货架-02",
+      "reachable": true,
+      "kind": "gondola",
+      "footprint": {
+        "x": 36,
+        "y": 3,
+        "w": 1,
+        "h": 5
+      },
+      "levels": 4,
+      "accessPoints": {
+        "left": {
+          "x": 35,
+          "y": 5
+        },
+        "right": {
+          "x": 37,
+          "y": 5
+        },
+        "front": {
+          "x": 36,
+          "y": 8
+        },
+        "back": {
+          "x": 36,
+          "y": 2
+        }
+      },
+      "position": {
+        "x": 35,
+        "y": 5
+      },
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "non-food-paper-goods"
+      ]
+    },
+    {
+      "id": "paper-zone-shelf-3",
+      "sectionId": "paper-zone",
+      "name": "纸品货架-03",
+      "reachable": true,
+      "kind": "gondola",
+      "footprint": {
+        "x": 39,
+        "y": 3,
+        "w": 1,
+        "h": 5
+      },
+      "levels": 4,
+      "accessPoints": {
+        "left": {
+          "x": 38,
+          "y": 5
+        },
+        "right": {
+          "x": 40,
+          "y": 5
+        },
+        "front": {
+          "x": 39,
+          "y": 8
+        },
+        "back": {
+          "x": 39,
+          "y": 2
+        }
+      },
+      "position": {
+        "x": 38,
+        "y": 5
+      },
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "non-food-paper-goods"
+      ]
+    },
+    {
+      "id": "pet-zone-shelf-1",
+      "sectionId": "pet-zone",
+      "name": "宠物用品货架",
+      "reachable": true,
+      "kind": "gondola",
+      "footprint": {
+        "x": 33,
+        "y": 13,
+        "w": 1,
+        "h": 5
+      },
+      "levels": 4,
+      "accessPoints": {
+        "left": {
+          "x": 32,
+          "y": 15
+        },
+        "right": {
+          "x": 34,
+          "y": 15
+        },
+        "front": {
+          "x": 33,
+          "y": 18
+        },
+        "back": {
+          "x": 33,
+          "y": 12
+        }
+      },
+      "position": {
+        "x": 32,
+        "y": 15
+      },
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "non-food-pet"
+      ]
+    },
+    {
+      "id": "pet-zone-shelf-2",
+      "sectionId": "pet-zone",
+      "name": "宠物用品货架-02",
+      "reachable": true,
+      "kind": "gondola",
+      "footprint": {
+        "x": 36,
+        "y": 13,
+        "w": 1,
+        "h": 5
+      },
+      "levels": 4,
+      "accessPoints": {
+        "left": {
+          "x": 35,
+          "y": 15
+        },
+        "right": {
+          "x": 37,
+          "y": 15
+        },
+        "front": {
+          "x": 36,
+          "y": 18
+        },
+        "back": {
+          "x": 36,
+          "y": 12
+        }
+      },
+      "position": {
+        "x": 35,
+        "y": 15
+      },
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "non-food-pet"
+      ]
+    },
+    {
+      "id": "pet-zone-shelf-3",
+      "sectionId": "pet-zone",
+      "name": "宠物用品货架-03",
+      "reachable": true,
+      "kind": "gondola",
+      "footprint": {
+        "x": 39,
+        "y": 13,
+        "w": 1,
+        "h": 5
+      },
+      "levels": 4,
+      "accessPoints": {
+        "left": {
+          "x": 38,
+          "y": 15
+        },
+        "right": {
+          "x": 40,
+          "y": 15
+        },
+        "front": {
+          "x": 39,
+          "y": 18
+        },
+        "back": {
+          "x": 39,
+          "y": 12
+        }
+      },
+      "position": {
+        "x": 38,
+        "y": 15
+      },
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "non-food-pet"
+      ]
+    },
+    {
+      "id": "seafood-shelf-01",
+      "sectionId": "seafood",
+      "name": "水产生鲜冷藏柜-01",
+      "position": {
+        "x": 21,
+        "y": 3
+      },
+      "reachable": true,
+      "kind": "chiller",
+      "footprint": {
+        "x": 22,
+        "y": 3,
+        "w": 2,
+        "h": 2
+      },
+      "levels": 4,
+      "accessPoints": {
+        "left": {
+          "x": 21,
+          "y": 3
+        },
+        "right": {
+          "x": 24,
+          "y": 3
+        },
+        "front": {
+          "x": 22,
+          "y": 5
+        },
+        "back": {
+          "x": 22,
+          "y": 2
+        }
+      },
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "chilled-seafood-raw",
+        "review-seafood-raw"
+      ]
+    },
+    {
+      "id": "snack-zone-shelf-1",
+      "sectionId": "snack-zone",
+      "name": "零食货架-01",
+      "reachable": true,
+      "kind": "gondola",
+      "footprint": {
+        "x": 42,
+        "y": 13,
+        "w": 1,
+        "h": 5
+      },
+      "levels": 4,
+      "accessPoints": {
+        "left": {
+          "x": 41,
+          "y": 15
+        },
+        "right": {
+          "x": 43,
+          "y": 15
+        },
+        "front": {
+          "x": 42,
+          "y": 18
+        },
+        "back": {
+          "x": 42,
+          "y": 12
+        }
+      },
+      "position": {
+        "x": 41,
+        "y": 15
+      },
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "ambient-snacks"
+      ]
+    },
+    {
+      "id": "snack-zone-shelf-2",
+      "sectionId": "snack-zone",
+      "name": "冷冻即食与甜品柜",
+      "reachable": true,
+      "kind": "freezer",
+      "footprint": {
+        "x": 44,
+        "y": 18,
+        "w": 3,
+        "h": 1
+      },
+      "levels": 2,
+      "accessPoints": {
+        "left": {
+          "x": 43,
+          "y": 18
+        },
+        "right": {
+          "x": 47,
+          "y": 18
+        },
+        "front": {
+          "x": 45,
+          "y": 19
+        },
+        "back": {
+          "x": 45,
+          "y": 17
+        }
+      },
+      "position": {
+        "x": 43,
+        "y": 18
+      },
+      "capacityPerSlot": 7,
+      "allowedDisplayGroups": [
+        "freezer-savory",
+        "freezer-dessert",
+        "freezer-produce",
+        "frozen-bakery",
+        "frozen-deli-prepared",
+        "review-frozen"
+      ]
+    },
+    {
+      "id": "vegetables-shelf-01",
+      "sectionId": "vegetables",
+      "name": "蔬菜冷藏柜",
+      "position": {
+        "x": 1,
+        "y": 13
+      },
+      "reachable": true,
+      "kind": "chiller",
+      "footprint": {
+        "x": 2,
+        "y": 13,
+        "w": 2,
+        "h": 2
+      },
+      "levels": 4,
+      "accessPoints": {
+        "left": {
+          "x": 1,
+          "y": 13
+        },
+        "right": {
+          "x": 4,
+          "y": 13
+        },
+        "front": {
+          "x": 2,
+          "y": 15
+        },
+        "back": {
+          "x": 2,
+          "y": 12
+        }
+      },
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "chilled-produce",
+        "chilled-produce-prepared",
+        "review-produce"
+      ]
+    }
+  ]
+}

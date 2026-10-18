@@ -1,0 +1,51 @@
+{
+  "meals": [
+    {
+      "day": 1,
+      "meal": "晚餐",
+      "dishes": [
+        {
+          "title": "香煎三文鱼配蒜香西兰花与烤土豆",
+          "kind": "mixed",
+          "minutes": 35,
+          "steps": [
+            "将冷冻三文鱼柳按包装说明彻底解冻，用厨房纸吸干表面水分；土豆洗净切块，西兰花从冷冻袋取出备用。",
+            "土豆块拌入1汤匙橄榄油和少许盐，铺在烤盘上，200°C烤约25分钟至金黄。",
+            "平底锅加1汤匙橄榄油，中火将三文鱼两面各煎3-4分钟至熟透，出锅前撒盐调味。",
+            "同一锅中加入西兰花和蒜粉，翻炒5-6分钟至热透，与三文鱼和烤土豆一同装盘。"
+          ],
+          "ingredients": [
+            {
+              "ingredient": "Member's Mark Skinless and Boneless Atlantic Salmon Fillet Portions, Frozen",
+              "productId": "samsclub-980181678",
+              "grams": 300
+            },
+            {
+              "ingredient": "Member's Mark Steamable Broccoli Florets 1 lb., 4 pk.",
+              "productId": "samsclub-980092509",
+              "grams": 300
+            },
+            {
+              "ingredient": "Russet Potatoes",
+              "productId": "samsclub-63129",
+              "grams": 400
+            },
+            {
+              "ingredient": "Member's Mark Organic Granulated Garlic",
+              "productId": "samsclub-990304384",
+              "grams": 3
+            },
+            {
+              "ingredient": "olive oil",
+              "grams": 30
+            },
+            {
+              "ingredient": "salt",
+              "grams": 3
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

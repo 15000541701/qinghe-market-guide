@@ -1,10 +1,12 @@
 import 'dotenv/config';
+import { configureNetworkProxy } from '../server/network-proxy';
 import sharp from 'sharp';
 import { aiConfigured, guide, identifyImage } from '../server/ai';
 import { makeSeedProducts } from '../shared/catalog';
 
+configureNetworkProxy();
 if (!aiConfigured()) {
-  console.error('请先在 .env 填写 AI_BASE_URL、AI_API_KEY 和 AI_MODEL。');
+  console.error('请先在 .env 填写所选服务商的 GEMINI_* 或 DEEPSEEK_* 配置，并检查模型设置。');
   process.exitCode = 1;
 } else {
   const products = makeSeedProducts();
