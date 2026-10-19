@@ -19,7 +19,7 @@
     "test:mini": "npm run build:mini && node --import tsx --test tests/miniprogram.test.mjs",
     "test:mini:e2e": "node tests/miniprogram-e2e.mjs",
     "start": "tsx server/index.ts",
-    "test": "node --import tsx --test tests/core.test.ts tests/market.test.ts tests/meal.test.ts tests/western-meal.test.ts tests/catalog-review.test.ts",
+    "test": "node --import tsx --test tests/core.test.ts tests/market.test.ts tests/meal.test.ts tests/western-meal.test.ts tests/catalog-review.test.ts tests/product-search.test.ts",
     "test:models": "node --import tsx --test tests/model-providers.test.ts",
     "test:samsclub:poc": "node --test tests/samsclub-poc.test.mjs",
     "test:samsclub:import": "node --import tsx --test tests/samsclub-import.test.ts",

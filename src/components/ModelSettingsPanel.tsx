@@ -8,13 +8,25 @@ import {
 } from '../../shared/model-options';
 import { api } from '../lib';
 
-export default function ModelSettingsPanel() {
+export type ProviderReadiness = Partial<Record<ModelProvider, boolean>>;
+
+/** Store-side model settings; addresses and keys stay in the server .env. */
+export default function ModelSettingsPanel({
+  providers,
+  onSaved,
+}: {
+  providers?: ProviderReadiness;
+  onSaved?: () => void | Promise<void>;
+}) {
   const [settings, setSettings] = useState<ModelSettings | null>(null);
   const [saved, setSaved] = useState<ModelSettings | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const options = modelOptions.filter((option) => option.provider === settings?.provider);
+  const savedOption = modelOptions.find((option) => option.id === saved?.model);
+  const savedProvider = modelProviders.find((provider) => provider.id === saved?.provider);
+  const ready = saved ? providers?.[saved.provider] : undefined;
   const load = async () => {
     setError('');
     try {
@@ -41,6 +53,7 @@ export default function ModelSettingsPanel() {
       setSettings(value);
       setSaved(value);
       setMessage('已保存，后续请求使用新模型；正在进行的请求不受影响。');
+      await onSaved?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : '保存失败');
     } finally {
@@ -48,14 +61,26 @@ export default function ModelSettingsPanel() {
     }
   };
   return (
-    <details style={{ margin: '12px auto', padding: '0 20px', maxWidth: 1280 }}>
-      <summary style={{ cursor: 'pointer' }}>模型设置 · {saved?.model || '未配置'}</summary>
-      <div
-        style={{ display: 'flex', gap: 12, flexWrap: 'wrap', paddingTop: 12, alignItems: 'end' }}
-      >
+    <section className="inventory model-settings" aria-labelledby="model-settings-title">
+      <div className="section-heading">
+        <div>
+          <h2 id="model-settings-title">模型与服务设置</h2>
+          <span className="muted compact">
+            {saved
+              ? `${savedProvider?.label || saved.provider} · ${savedOption?.label || saved.model || '未选择模型'}`
+              : '读取中'}
+          </span>
+          {ready !== undefined && (
+            <span className={`settings-state ${ready ? 'ready' : 'missing'}`}>
+              {ready ? '密钥已配置' : '未配置密钥'}
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="model-settings-fields">
         {settings && (
           <>
-            <label className="field" style={{ flex: '1 1 160px', minWidth: 0 }}>
+            <label className="field">
               模型服务商
               <select
                 value={settings.provider}
@@ -73,11 +98,16 @@ export default function ModelSettingsPanel() {
                 {modelProviders.map((provider) => (
                   <option key={provider.id} value={provider.id}>
                     {provider.label}
+                    {providers?.[provider.id] === undefined
+                      ? ''
+                      : providers[provider.id]
+                        ? ' · 已配置'
+                        : ' · 未配置密钥'}
                   </option>
                 ))}
               </select>
             </label>
-            <label className="field" style={{ flex: '1 1 220px', minWidth: 0 }}>
+            <label className="field">
               模型
               <select
                 value={settings.model}
@@ -116,9 +146,11 @@ export default function ModelSettingsPanel() {
         )}
       </div>
       <p className="field-note">
-        使用所选服务商在服务端配置的地址与密钥，应用于对话、餐食规划和图片识别。DeepSeek V4 Pro
-        仅支持文字，图片识别请选择 Flash 或 Gemini。设置在当前服务中共享并保存；保存不调用模型。修改
-        .env 后请重启后端。
+        {ready === false
+          ? '所选服务商尚未在服务端 .env 配置地址和密钥：文字导购使用规则模式，图片识别不可用。填写后重启后端生效。'
+          : '对话、餐食规划和图片识别共用所选模型；地址与密钥保存在服务端 .env，按服务商成组切换。'}
+        保存只记录选择，不调用模型，也不检查余额。DeepSeek V4 Pro 仅支持文字，图片识别请选择 Flash
+        或 Gemini。
       </p>
       {message && <p role="status">{message}</p>}
       {error && (
@@ -126,6 +158,6 @@ export default function ModelSettingsPanel() {
           {error}
         </p>
       )}
-    </details>
+    </section>
   );
 }

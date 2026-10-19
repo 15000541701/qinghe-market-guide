@@ -18,6 +18,7 @@ import samsClubLayout from '../shared/samsclub-layout.json';
 import {
   openPricesMerchandisingFamilies,
 } from '../shared/open-prices-merchandising';
+import { storeCategoryRenames } from '../shared/merchandising-display';
 import {
   DEFAULT_CAPACITY_PER_SLOT,
   shelfSlotCapacity,
@@ -1210,6 +1211,11 @@ try {
     for (const shelf of samsClubLayout.shelves) shelfInsert.run(shelf.id, JSON.stringify(shelf));
   }
   for (const category of samsClubCategories(getCategories())) saveCategory(category);
+  // Rename categories that still carry an earlier seeded default; staff names stay.
+  for (const category of getCategories()) {
+    const rename = storeCategoryRenames[category.id];
+    if (rename?.from.includes(category.name)) saveCategory({ ...category, name: rename.name });
+  }
   for (const shelf of getShelves()) {
     const groups = shelf.allowedDisplayGroups || [];
     if (!groups.length) continue;

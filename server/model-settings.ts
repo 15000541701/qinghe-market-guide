@@ -4,6 +4,7 @@ import { z } from 'zod';
 import {
   defaultModels,
   modelOptions,
+  modelProviders,
   providerForModel,
   type ModelProvider,
   type ModelSettings,
@@ -65,6 +66,16 @@ export function saveModelSettings(settings: ModelSettings): ModelSettings {
   writeFileSync(`${filename}.tmp`, JSON.stringify(validated, null, 2), { mode: 0o600 });
   renameSync(`${filename}.tmp`, filename);
   return validated;
+}
+
+/** Whether each provider has an address and key in .env; booleans only, never the values. */
+export function modelProviderReadiness(): Record<ModelProvider, boolean> {
+  return Object.fromEntries(
+    modelProviders.map(({ id }) => {
+      const connection = getModelConnection({ provider: id, model: defaultModels[id] });
+      return [id, !!(connection.baseUrl && connection.apiKey)];
+    }),
+  ) as Record<ModelProvider, boolean>;
 }
 
 export function getModelConnection(settings = getModelSettings()) {

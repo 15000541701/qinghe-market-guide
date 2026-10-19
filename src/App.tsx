@@ -42,16 +42,19 @@ import type {
 } from '../shared/types';
 import { api, money } from './lib';
 import Admin from './components/Admin';
-import ModelSettingsPanel from './components/ModelSettingsPanel';
+import type { ProviderReadiness } from './components/ModelSettingsPanel';
 import ChatPanel from './components/ChatPanel';
 import ProductCard from './components/ProductCard';
+import ProductImage from './components/ProductImage';
 import ProductDetail from './components/ProductDetail';
 import StoreMap from './components/StoreMap';
 import MealPanel from './components/MealPanel';
 import { buildMealPlan } from '../shared/meal-planner';
+import { productSearch, productSearchScore } from '../shared/product-search';
 import { defaultHomePantry } from '../shared/recipes';
 import { currencySymbol, productCurrency } from '../shared/currency';
 import {
+  categoryDisplayRank,
   merchandisingFamilyLabel,
   productCategoryLabel,
   productHasNavigableShelf,
@@ -158,6 +161,7 @@ export default function App() {
   const [storeSections, setStoreSections] = useState<StoreSection[]>([]);
   const [shelves, setShelves] = useState<Shelf[]>([]);
   const [ai, setAi] = useState(false);
+  const [providers, setProviders] = useState<ProviderReadiness>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [category, setCategory] = useState<Category | 'all'>('all');
@@ -290,7 +294,7 @@ export default function App() {
     try {
       const [data, status, places, categoryData, sectionData] = await Promise.all([
         api<Product[]>('/products'),
-        api<{ ai: boolean }>('/status'),
+        api<{ ai: boolean; providers?: ProviderReadiness }>('/status'),
         api<Shelf[]>('/shelves'),
         api<StoreCategory[]>('/categories'),
         api<StoreSection[]>('/sections'),
@@ -300,11 +304,18 @@ export default function App() {
       setStoreCategories(categoryData);
       setStoreSections(sectionData);
       setAi(status.ai);
+      setProviders(status.providers || {});
     } catch {
       setError('暂时无法连接门店服务，请确认服务已启动后重试。');
     } finally {
       setLoading(false);
     }
+  };
+  // Saving another provider changes whether the guide can use the model.
+  const refreshStatus = async () => {
+    const status = await api<{ ai: boolean; providers?: ProviderReadiness }>('/status');
+    setAi(status.ai);
+    setProviders(status.providers || {});
   };
   useEffect(() => {
     void load();
@@ -604,15 +615,23 @@ export default function App() {
           .map((p) => currencyProducts.find((current) => current.id === p.id))
           .filter((p): p is Product => !!p)
       : currencyProducts;
+    // English catalog names are searched case-insensitively; Chinese words map to English terms.
+    const search = productSearch(query);
+    const scores = new Map<string, number>();
     return source
-      .filter(
-        (p) =>
-          p.status !== 'archived' &&
-          (collection === 'all' || p.sourceRetailer === 'Sam’s Club US') &&
-          (p.inventoryMode === 'untracked' || availableForSale(p) || p.status === 'draft') &&
-          (category === 'all' || p.category === category) &&
-          `${p.name}${p.tags.join('')}${p.aliases.join('')}`.includes(query),
-      )
+      .filter((p) => {
+        if (
+          p.status === 'archived' ||
+          (collection !== 'all' && p.sourceRetailer !== 'Sam’s Club US') ||
+          !(p.inventoryMode === 'untracked' || availableForSale(p) || p.status === 'draft') ||
+          (category !== 'all' && p.category !== category)
+        )
+          return false;
+        if (!search) return true;
+        const score = productSearchScore(p, search, categoryName(p.category));
+        scores.set(p.id, score);
+        return score > 0;
+      })
       .sort((a, b) => {
         if (sort === 'asc') return a.price - b.price;
         if (sort === 'desc') return b.price - a.price;
@@ -621,11 +640,33 @@ export default function App() {
           Number(product.price > 0) * 2 +
           Number(!!product.image);
         return (
+          (scores.get(b.id) || 0) - (scores.get(a.id) || 0) ||
           Number(b.sourceRetailer === 'Sam’s Club US') -
-            Number(a.sourceRetailer === 'Sam’s Club US') || catalogPriority(b) - catalogPriority(a)
+            Number(a.sourceRetailer === 'Sam’s Club US') ||
+          catalogPriority(b) - catalogPriority(a)
         );
       });
-  }, [currencyProducts, recommendations, category, query, sort, collection]);
+  }, [currencyProducts, recommendations, category, query, sort, collection, storeCategories]);
+  const onSale = useMemo(() => products.filter((p) => p.status !== 'archived'), [products]);
+  // Toggles appear only when they change the result: a second currency or a non-Sam’s source.
+  const otherCurrencyOnSale = onSale.some((p) => productCurrency(p) !== currencyMode);
+  const currentCurrencyOnSale = onSale.some((p) => productCurrency(p) === currencyMode);
+  const mixedSources = currencyProducts.some(
+    (p) => p.status !== 'archived' && p.sourceRetailer !== 'Sam’s Club US',
+  );
+  const categoryCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const product of currencyProducts)
+      if (product.status !== 'archived')
+        counts.set(product.category, (counts.get(product.category) || 0) + 1);
+    return counts;
+  }, [currencyProducts]);
+  const categoryTabs = storeCategories
+    .filter((item) => item.active && categoryCounts.has(item.id))
+    .sort(
+      (a, b) =>
+        categoryDisplayRank(a.id) - categoryDisplayRank(b.id) || a.name.localeCompare(b.name, 'zh'),
+    );
   useEffect(() => setShownLimit(48), [category, query, sort, recommendations]);
   const visibleProducts = shown.slice(0, shownLimit);
   const handleResults = (results: Product[], title: string) => {
@@ -741,7 +782,6 @@ export default function App() {
           </div>
         </div>
       </header>
-      <ModelSettingsPanel />
       <div id="main-content" tabIndex={-1}>
         {detailId && (
           <ProductDetail
@@ -769,7 +809,14 @@ export default function App() {
               </div>
             </main>
           ) : role === 'store' ? (
-            <Admin products={products} onRefresh={refresh} onToast={notify} ai={ai} />
+            <Admin
+              products={products}
+              onRefresh={refresh}
+              onToast={notify}
+              ai={ai}
+              providers={providers}
+              onSettingsSaved={refreshStatus}
+            />
           ) : (
             <main className={`main-container ${displayTab === 'guide' ? 'guide-main' : ''}`}>
               <div className="page-heading">
@@ -880,12 +927,12 @@ export default function App() {
                       <input
                         value={query}
                         onChange={(event) => setQuery(event.target.value)}
-                        placeholder="搜索商品"
+                        placeholder="搜索商品，如 牛奶、鸡肉、chicken"
                         aria-label="搜索顾客商品"
                       />
                     </label>
                   </div>
-                  {currencyMode === 'USD' && (
+                  {currencyMode === 'USD' && mixedSources && (
                     <div className="catalog-source-switch" role="group" aria-label="商品来源">
                       <button
                         className={collection === 'all' ? 'active' : ''}
@@ -910,6 +957,7 @@ export default function App() {
                     </div>
                   )}
                   <div className="product-toolbar">
+                    {(otherCurrencyOnSale || !currentCurrencyOnSale) && (
                     <div className="currency-toggle" role="group" aria-label="目录币种">
                       <button
                         className={currencyMode === 'USD' ? 'active' : ''}
@@ -926,6 +974,7 @@ export default function App() {
                         CNY 人民币
                       </button>
                     </div>
+                    )}
                     <div className="category-tabs" role="group" aria-label="商品分区">
                       <button
                         className={category === 'all' ? 'active' : ''}
@@ -934,21 +983,16 @@ export default function App() {
                         <LayoutGrid size={15} />
                         全部好物
                       </button>
-                      {storeCategories
-                        .filter(
-                          (item) =>
-                            item.active &&
-                            currencyProducts.some((product) => product.category === item.id),
-                        )
-                        .map((zone) => (
-                          <button
-                            key={zone.id}
-                            className={category === zone.id ? 'active' : ''}
-                            onClick={() => setCategory(zone.id)}
-                          >
-                            {zone.name}
-                          </button>
-                        ))}
+                      {categoryTabs.map((zone) => (
+                        <button
+                          key={zone.id}
+                          className={category === zone.id ? 'active' : ''}
+                          onClick={() => setCategory(zone.id)}
+                        >
+                          {zone.name}
+                          <span className="category-count">{categoryCounts.get(zone.id)}</span>
+                        </button>
+                      ))}
                     </div>
                     <label className="sort-label">
                       <SlidersHorizontal size={14} />
@@ -1091,7 +1135,12 @@ export default function App() {
                                 )
                               }
                             />
-                            <img src={item.product.image} alt="" />
+                            <ProductImage
+                              src={item.product.image}
+                              fallbackSrc={item.product.sourceImageUrl}
+                              alt=""
+                              size="list"
+                            />
                             <div className="shopping-item-name">
                               <strong>
                                 <button

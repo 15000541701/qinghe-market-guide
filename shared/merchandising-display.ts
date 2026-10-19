@@ -156,3 +156,47 @@ export function productHasNavigableShelf(product: Product) {
     );
   return !!(product.shelfId || product.shelf);
 }
+
+// Customer-facing category order: fresh food, then groceries, then household goods.
+const categoryOrder = [
+  'vegetables',
+  'fruit',
+  'meat',
+  'seafood',
+  'dairy',
+  'deli',
+  'bakery',
+  'frozen',
+  'pantry',
+  'seasoning',
+  'snacks',
+  'beverages',
+  'paper-goods',
+  'cleaning',
+  'personal-care',
+  'baby',
+  'pet',
+  'home',
+  'clothing',
+];
+
+export function categoryDisplayRank(id: string) {
+  const index = categoryOrder.indexOf(id);
+  return index < 0 ? categoryOrder.length : index;
+}
+
+/** Short customer-facing names (as in the weekly reports), replacing earlier seeded defaults. */
+export const storeCategoryRenames: Record<string, { name: string; from: string[] }> = {
+  vegetables: { name: '蔬菜', from: ['蔬菜区'] },
+  fruit: { name: '水果', from: ['水果区'] },
+  meat: { name: '肉禽', from: ['肉禽区'] },
+  seafood: { name: '水产', from: ['水产区'] },
+  dairy: { name: '乳品蛋类', from: ['乳品区'] },
+  bakery: { name: '烘焙', from: ['烘焙区'] },
+  pantry: { name: '粮油', from: ['粮油区'] },
+  beverages: { name: '饮料', from: ['饮料与冲调'] },
+  'paper-goods': { name: '纸品', from: ['纸品与湿巾'] },
+  cleaning: { name: '清洁', from: ['日用清洁'] },
+  baby: { name: '母婴', from: ['母婴用品'] },
+  pet: { name: '宠物', from: ['宠物食品与用品'] },
+};
