@@ -2,6 +2,7 @@ import type { Product, StoreCategory } from './types';
 import { ingredientEnglishTerms, ingredientKey } from './recipes';
 import { availableForSale } from './catalog-status';
 import { packageSize, type MeasureUnit } from './shopping';
+import { packageSizeReliable } from './package-size';
 
 const foodCategories = new Set([
   'vegetables',
@@ -87,6 +88,9 @@ export function mealMeasureReliable(product: Product) {
     size.unit === 'package'
   )
     return false;
+  // Reviewed sizes carry their source basis (spec line, listing or unit price); weighed goods
+  // use the page estimate and are flagged as estimated.
+  if (product.packageSize.basis) return packageSizeReliable(product.packageSize);
   const name = englishProductName(product);
   if (/priced per pound/i.test(name) && product.saleMode !== 'weight') return false;
   const multiple = name.match(
@@ -209,7 +213,11 @@ export function mealCatalogRows(products: Product[]) {
     id: p.id,
     name: englishProductName(p),
     category: p.category,
-    contents: packageSize(p),
+    contents: (({ quantity, unit, estimated }) => ({
+      quantity,
+      unit,
+      ...(estimated ? { estimated } : {}),
+    }))(packageSize(p)),
     price: p.price,
     currency: p.currency || 'USD',
     preparation: preparationState(p),

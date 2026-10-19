@@ -13,7 +13,7 @@ import { fixtureAccessPoints } from '../shared/layout';
 import { mapBounds } from '../shared/map-config';
 import { realCatalogProducts } from '../shared/real-catalog';
 import { openPricesUsdCatalog } from '../shared/open-prices-usd-catalog';
-import { samsClubCategories, samsClubProducts } from './samsclub-catalog';
+import { samsClubCategories, samsClubProducts, syncSamsClubProducts } from './samsclub-catalog';
 import samsClubLayout from '../shared/samsclub-layout.json';
 import {
   openPricesMerchandisingFamilies,
@@ -1210,14 +1210,33 @@ try {
     for (const shelf of samsClubLayout.shelves) shelfInsert.run(shelf.id, JSON.stringify(shelf));
   }
   for (const category of samsClubCategories(getCategories())) saveCategory(category);
-  for (const shelf of getShelves().filter((shelf) => shelf.kind === 'chiller' && shelf.sectionId === 'meat')) {
-    const allowedDisplayGroups = [...new Set([...(shelf.allowedDisplayGroups || []), 'chilled-meat-raw'])];
-    if (allowedDisplayGroups.length !== shelf.allowedDisplayGroups?.length)
+  for (const shelf of getShelves()) {
+    const groups = shelf.allowedDisplayGroups || [];
+    if (!groups.length) continue;
+    let allowedDisplayGroups = groups;
+    if (shelf.kind === 'chiller' && shelf.sectionId === 'meat')
+      // Raw-meat chillers take chilled raw meat; the ready-to-eat chiller stays separate.
+      allowedDisplayGroups = groups.includes('chilled-meat-prepared') && !groups.includes('review-meat-raw')
+        ? groups.filter((group) => group !== 'chilled-meat-raw')
+        : [...new Set([...groups, 'chilled-meat-raw'])];
+    // Shelf-stable meat and reviewed condiments use the general ambient food fixtures.
+    else if (groups.includes('ambient-pantry')) allowedDisplayGroups = [...new Set([...groups, 'ambient-meat'])];
+    else if (groups.includes('ambient-sauces'))
+      allowedDisplayGroups = [...new Set([...groups, 'ambient-seasoning', 'ambient-pantry', 'ambient-meat'])];
+    if (allowedDisplayGroups.join('|') !== groups.join('|'))
       db.prepare('UPDATE shelves SET data=? WHERE id=?').run(JSON.stringify({ ...shelf, allowedDisplayGroups }), shelf.id);
   }
+  // Reviewed catalog fields (category, storage, package size, archive) reach existing stores
+  // unless staff changed them; categories emptied by the review are hidden.
+  for (const product of syncSamsClubProducts(getProducts(), getShelves()))
+    db.prepare('UPDATE products SET data=? WHERE id=?').run(JSON.stringify(product), product.id);
+  const usedCategories = new Set(getProducts().filter((product) => product.status !== 'archived').map((product) => product.category));
+  for (const category of getCategories())
+    if (category.id.startsWith('samsclub-') && category.active && !usedCategories.has(category.id))
+      saveCategory({ ...category, active: false });
   const current = getProducts();
   const layoutShelves = getShelves();
-  const retryPlacement = current.filter((product) => product.sourceRetailer === 'Sam’s Club US' && (
+  const retryPlacement = current.filter((product) => product.sourceRetailer === 'Sam’s Club US' && product.status !== 'archived' && (
     product.merchandisingState !== 'placed' ||
     (product.category === 'meat' && ['chilled-confirmed', 'chilled-or-frozen-confirmed'].includes(product.storageCondition || '') && product.shelfId && layoutShelves.find((shelf) => shelf.id === product.shelfId)?.sectionId !== 'meat')
   ));

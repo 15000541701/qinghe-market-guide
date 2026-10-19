@@ -167,7 +167,7 @@ function shelfCandidates(product: AnyProduct): string[] {
   if (storage === 'ambient-likely') {
     if (group === 'ambient-snacks' && category === 'snacks') return ['snack-zone-shelf-1', 'legacy-pantry-19', 'legacy-pantry-20'];
     if (group === 'ambient-bakery' && category === 'bakery') return ['bakery-shelf-01', 'bakery-shelf-02'];
-    if (['ambient-pantry', 'ambient-seasoning', 'ambient-beverages', 'ambient-dairy', 'ambient-seafood', 'ambient-seafood-preserved', 'ambient-ready-meals', 'ambient-canned-soup', 'ambient-canned-produce', 'ambient-dry-grain', 'ambient-pasta', 'ambient-sauces', 'ambient-spices'].includes(group))
+    if (['ambient-pantry', 'ambient-seasoning', 'ambient-beverages', 'ambient-dairy', 'ambient-meat', 'ambient-seafood', 'ambient-seafood-preserved', 'ambient-ready-meals', 'ambient-canned-soup', 'ambient-canned-produce', 'ambient-dry-grain', 'ambient-pasta', 'ambient-sauces', 'ambient-spices'].includes(group))
       return ['pantry-shelf-01', 'legacy-pantry-19', 'legacy-pantry-20'];
     if (group === 'non-food-cleaning' && category === 'cleaning') return ['household-shelf-01'];
     if (group === 'non-food-home' && category === 'home') return ['household-shelf-02'];
@@ -215,6 +215,9 @@ async function main(): Promise<void> {
     if (main) counts.set(main, (counts.get(main) || 0) + 1);
   }
   const overCap = [...counts.entries()].filter(([, count]) => count > categoryLimit).map(([category, count]) => ({ category, count, cap: categoryLimit }));
+  // The 100-item cap limits collection. Food the catalog review moved into a full category
+  // stays on sale (decision 2026-10-19), so placement plans for the actual active count.
+  const placementLimit = (category: string) => Math.max(categoryLimit, counts.get(category) || 0);
 
   const shelvesById = new Map<string, Shelf>(shelves.map((shelf) => [shelf.id, clone(shelf)]));
   const shelfPatches = new Map<string, Shelf>();
@@ -274,7 +277,7 @@ async function main(): Promise<void> {
   table('legacy-bakery-18', ['ambient-bakery'], '烘焙展示台-03');
 
   // Ambient food and non-food remain in separate areas; the third household fixture becomes a rack.
-  const ambientFoodGroups = ['ambient-pantry', 'ambient-seasoning', 'ambient-beverages', 'ambient-dairy', 'ambient-seafood', 'ambient-seafood-preserved', 'ambient-ready-meals', 'ambient-canned-soup', 'ambient-canned-produce', 'ambient-dry-grain', 'ambient-pasta', 'ambient-sauces', 'ambient-spices', 'ambient-snacks'];
+  const ambientFoodGroups = ['ambient-pantry', 'ambient-seasoning', 'ambient-beverages', 'ambient-dairy', 'ambient-meat', 'ambient-seafood', 'ambient-seafood-preserved', 'ambient-ready-meals', 'ambient-canned-soup', 'ambient-canned-produce', 'ambient-dry-grain', 'ambient-pasta', 'ambient-sauces', 'ambient-spices', 'ambient-snacks'];
   gondola('pantry-shelf-01', ambientFoodGroups, '粮油调味与饮品-01');
   gondola('legacy-pantry-19', ambientFoodGroups, '常温食品扩展位-01');
   gondola('legacy-pantry-20', ambientFoodGroups, '常温食品扩展位-02');
@@ -422,7 +425,7 @@ async function main(): Promise<void> {
     if (!category) continue;
     const ordinal = (capOrdinalByCategory.get(category) || 0) + 1;
     capOrdinalByCategory.set(category, ordinal);
-    if (ordinal > categoryLimit || !isKnownStorage(product.storageCondition) || rawMeatDisplayConflict(product)) continue;
+    if (ordinal > placementLimit(category) || !isKnownStorage(product.storageCondition) || rawMeatDisplayConflict(product)) continue;
     const shelfIds = compatibleCandidates(product);
     if (!shelfIds.length) continue;
     const normalizedIds = [...new Set(shelfIds)].sort();
@@ -451,9 +454,9 @@ async function main(): Promise<void> {
       for (let i = 0; i < left; i++) shares[i % shares.length].assigned++;
       for (const share of shares) share.pool[targetField].set(category, share.assigned);
     };
-    const projected = Math.min(categoryLimit, total + Math.ceil(total * growthHeadroom));
+    const projected = Math.min(placementLimit(category), total + Math.ceil(total * growthHeadroom));
     allocate(projected, 'targetByCategory');
-    allocate(categoryLimit, 'futureTargetByCategory');
+    allocate(placementLimit(category), 'futureTargetByCategory');
   }
 
   const slotsPerShelf = (shelfId: string): number => {
@@ -561,7 +564,7 @@ async function main(): Promise<void> {
     }
     const ordinal = (seenPerCategory.get(category) || 0) + 1;
     seenPerCategory.set(category, ordinal);
-    if (ordinal > categoryLimit) {
+    if (ordinal > placementLimit(category)) {
       overflowIds.add(product.id);
       placementReasons.set(product.id, 'main-category-cap-100');
       product.merchandisingState = 'pending-review';
@@ -710,7 +713,7 @@ async function main(): Promise<void> {
     cap: categoryLimit,
     plannedPlaced: placedByCategory.get(category) || 0,
     unknownStoragePending: pendingUnknownByCategory.get(category) || 0,
-    overflowPending: Math.max(0, (counts.get(category) || 0) - categoryLimit),
+    overflowPending: Math.max(0, (counts.get(category) || 0) - placementLimit(category)),
   }]));
   const report: Record<string, any> = {
     generatedAt: new Date().toISOString(),

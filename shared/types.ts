@@ -86,6 +86,12 @@ export type Product = {
     | 'unknown';
   classificationConfidence?:
     'taxonomy-confirmed' | 'manual-name-review' | 'candidate' | 'needs-review';
+  storageBasis?: StorageBasis;
+  archiveReason?: string;
+  /** Catalog-owned values as last written from the source catalog; staff edits differ from it. */
+  catalogSnapshot?: Partial<
+    Pick<Product, 'category' | 'storageCondition' | 'displayGroup' | 'packageSize' | 'status'>
+  >;
   merchandisingState?: 'placed' | 'pending-review' | 'unplaced';
   displayGroup?: string;
   status?: 'draft' | 'active' | 'archived';
@@ -136,7 +142,16 @@ export type Product = {
   createdAt: string;
   saleMode?: 'weight' | 'pack';
   /** Net contents of one sold unit. `unit` remains the display/legacy source. */
-  packageSize?: { quantity: number; unit: 'g' | 'ml' | 'piece' | 'package' };
+  packageSize?: {
+    quantity: number;
+    unit: 'g' | 'ml' | 'piece' | 'package';
+    /** Weighed goods: quantity is the source estimate; checkout weight decides the price. */
+    estimated?: boolean;
+    /** Multi-pack contents that the listing and unit price could not confirm. */
+    ambiguous?: boolean;
+    /** Source text behind the quantity, shown to staff. */
+    basis?: string;
+  };
 };
 export type ProductGalleryImage = {
   url: string;
@@ -195,6 +210,25 @@ export type SamsClubCatalogRecord = {
   highlights: string[];
   specifications: string[];
   prices: RetailPriceObservation[];
+  /** Reviewed out-of-scope records stay in the source catalog but are not sold or placed. */
+  status?: 'archived';
+  archiveReason?: string;
+  storageBasis?: StorageBasis;
+  /** Reviewer note when the category differs from the ingest classification. */
+  categoryNote?: string;
+  /** Ingest values replaced by the review pass; existing databases sync only untouched fields. */
+  reviewPrevious?: Partial<Pick<SamsClubCatalogRecord, CatalogReviewField>>;
+};
+export type CatalogReviewField =
+  | 'category'
+  | 'categoryName'
+  | 'storageCondition'
+  | 'displayGroup'
+  | 'packageSize';
+export type StorageBasis = {
+  /** `source-text`: quoted from the retailer page; `manual-review`: reviewer decision. */
+  kind: 'source-text' | 'title' | 'manual-review';
+  text: string;
 };
 export type QueryFilters = {
   categories: Category[];

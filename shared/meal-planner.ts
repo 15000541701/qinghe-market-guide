@@ -412,7 +412,7 @@ function evaluate(
       unavailableProducts.add(product.id);
     }
     const size = packageSize(product);
-    const packDescription = `${size.quantity}${size.unit === 'g' ? 'g' : size.unit === 'ml' ? 'mL' : size.unit === 'piece' ? '个' : '份'}`;
+    const packDescription = `${size.estimated ? '约' : ''}${size.quantity}${size.unit === 'g' ? 'g' : size.unit === 'ml' ? 'mL' : size.unit === 'piece' ? '个' : '份'}${size.estimated ? '（估重）' : ''}`;
     items.push({
       product,
       quantity,
@@ -511,6 +511,9 @@ function evaluate(
       '大蒜、黑胡椒、酱料等不默认已有；规格不明确或缺货的商品不作完整预算承诺。',
       '包装采购先合并全周期需求、扣除已购和清单数量，再按完整包装向上取整。',
       '西式餐食搭配仅供参考；生熟状态不明时以包装说明为准，不提供精确营养值或减重承诺。',
+      ...(items.some((item) => item.quantity > 0 && packageSize(item.product).estimated)
+        ? ['含按磅称重的商品：每份重量与金额按页面估价计算，实际以门店称重结算为准。']
+        : []),
       ...(pricedPart ? [pricedPart] : []),
     ],
     recipeCost: recipeCostCents / 100,

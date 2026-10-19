@@ -190,10 +190,16 @@ test('食品名录排除非食品、缺货、未知称重规格与错误多包�
     ),
   );
   assert.ok(!catalog.some((product) => product.id === 'samsclub-66846'));
-  assert.equal(
-    mealMeasureReliable(products.find((product) => product.id === 'samsclub-990422756')!),
-    false,
-  );
+  // The catalog review replaced the per-stick “4 oz.” with the 24 oz. spec-table net weight.
+  const butter = products.find((product) => product.id === 'samsclub-990422756')!;
+  assert.deepEqual([butter.packageSize?.quantity, butter.packageSize?.unit], [680, 'g']);
+  assert.equal(mealMeasureReliable(butter), true);
+  // Unreviewed rows still reject a single-unit weight on a multi-pack listing.
+  assert.equal(mealMeasureReliable({ ...butter, packageSize: { quantity: 113, unit: 'g' } }), false);
+  // Weighed goods join the catalog with the page estimate, flagged as estimated.
+  const groundBeef = catalog.find((product) => product.id === 'samsclub-980314853');
+  assert.equal(groundBeef?.packageSize?.estimated, true);
+  assert.ok(Math.abs(groundBeef!.packageSize!.quantity - (18.94 / 5.92) * 453.59237) < 1);
   assert.equal(mealCatalog(products.map((p) => ({ ...p, stock: 0 }))).length, 0);
   assert.equal(buildMealPlan(prefs, [], []).canApply, false);
 });
