@@ -2,7 +2,7 @@
 // Sam's Club layout planner. Default mode is read-only; --apply uses a backup,
 // an immediate transaction, and whitelisted layout-field updates.
 import { DatabaseSync, backup } from 'node:sqlite';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { mkdir, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { findPath, isWalkable } from '../shared/navigation.ts';
@@ -10,7 +10,7 @@ import { entrance } from '../shared/catalog.ts';
 import { fixtureAccessPoints, fixedFixtures, mainAisles } from '../shared/layout.ts';
 import { mapBounds } from '../shared/map-config.ts';
 import { MAX_CAPACITY_PER_SLOT, shelfSlotCapacity, shelfSlotPlacementError } from '../shared/shelf-capacity.ts';
-import type { Product, Shelf, StoreSection } from '../shared/types.ts';
+import type { Product, SamsClubCatalogRecord, Shelf, StoreSection } from '../shared/types.ts';
 
 type JsonRow = { id: string; data: string };
 type AnyProduct = Product & Record<string, any>;
@@ -214,9 +214,20 @@ async function main(): Promise<void> {
     const main = mainClass(product);
     if (main) counts.set(main, (counts.get(main) || 0) + 1);
   }
-  const overCap = [...counts.entries()].filter(([, count]) => count > categoryLimit).map(([category, count]) => ({ category, count, cap: categoryLimit }));
-  // The 100-item cap limits collection. Food the catalog review moved into a full category
-  // stays on sale (decision 2026-10-19), so placement plans for the actual active count.
+  // The 100-item cap limits collection, so it counts each product under the category it was
+  // collected in. Food the catalog review moved into a full category stays on sale (decision
+  // 2026-10-19), and placement plans for the actual active count.
+  const catalog = JSON.parse(readFileSync(path.join(root, 'shared/samsclub-catalog.json'), 'utf8')) as SamsClubCatalogRecord[];
+  const collectedCategory = new Map(
+    catalog.map((record) => [`samsclub-${record.itemId}`, record.reviewPrevious?.category ?? record.category]),
+  );
+  const collectedCounts = new Map<string, number>();
+  for (const product of activeSam) {
+    const main = mainClass(product);
+    if (main && (collectedCategory.get(product.id) ?? product.category) === product.category)
+      collectedCounts.set(main, (collectedCounts.get(main) || 0) + 1);
+  }
+  const overCap = [...collectedCounts.entries()].filter(([, count]) => count > categoryLimit).map(([category, count]) => ({ category, count, cap: categoryLimit }));
   const placementLimit = (category: string) => Math.max(categoryLimit, counts.get(category) || 0);
 
   const shelvesById = new Map<string, Shelf>(shelves.map((shelf) => [shelf.id, clone(shelf)]));
@@ -658,6 +669,10 @@ async function main(): Promise<void> {
     if (nonFoodCategories.has(product.category)) return !nonFoodSections.has(sectionId);
     const main = mainClass(product);
     if (!main) return true;
+    // Shelf-stable dairy and meat (UHT milk, grated parmesan, shelf-stable bacon) have no ambient
+    // fixture in their cold-only sections and use the ambient pantry gondolas.
+    if (product.storageCondition === 'ambient-likely' && ['dairy', 'meat'].includes(main) && sectionId === 'pantry')
+      return false;
     if (['bakery', 'deli'].includes(main) && product.storageCondition === 'frozen-confirmed')
       return !['openprices-frozen', 'snack-zone'].includes(sectionId);
     if (
