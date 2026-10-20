@@ -4,7 +4,10 @@ import { readFileSync } from 'node:fs';
 import { resolveStorage, storageFindings, type StorageText } from '../shared/storage-evidence';
 import { packageSizeFromSource, packageSizeReliable } from '../shared/package-size';
 import { reviewCatalogRecord, type ReviewFile } from '../shared/catalog-review';
-import type { SamsClubCatalogRecord } from '../shared/types';
+import { shelfSlotPlacementError } from '../shared/shelf-capacity';
+import { productLocationLabel } from '../shared/layout';
+import layout from '../shared/samsclub-layout.json';
+import type { Product, SamsClubCatalogRecord, Shelf } from '../shared/types';
 
 const storage = (text: StorageText, family = 'dairy') =>
   resolveStorage(storageFindings(text), family);
@@ -214,5 +217,51 @@ test('复核可重复执行：人工复核只补来源未写明的储存条件�
   assert.deepEqual(
     [overridden.storageCondition, overridden.storageBasis?.kind],
     ['ambient-likely', 'source-text'],
+  );
+});
+
+test('现做热食只在熟食档口的服务柜台点单，柜台不接收其他陈列分组', () => {
+  const records: SamsClubCatalogRecord[] = JSON.parse(
+    readFileSync('shared/samsclub-catalog.json', 'utf8'),
+  );
+  const hot = records.filter((record) => record.storageCondition === 'served-hot');
+  assert.deepEqual(hot.map((record) => record.itemId).sort(), ['72187', '980175942']);
+  assert.ok(
+    hot.every(
+      (record) =>
+        record.displayGroup === 'hot-deli-prepared' &&
+        record.storageBasis?.kind === 'manual-review',
+    ),
+  );
+  const shelves = layout.shelves as Shelf[];
+  const counter = shelves.find((shelf) => shelf.id === 'deli-hot-counter')!;
+  const chiller = shelves.find((shelf) => shelf.id === 'deli-service-shelf-01')!;
+  assert.equal(counter.kind, 'service-counter');
+  const pizza = {
+    id: 'pizza',
+    name: 'Cafe Pizza',
+    displayGroup: 'hot-deli-prepared',
+    storageCondition: 'served-hot' as const,
+  };
+  assert.equal(shelfSlotPlacementError(counter, pizza, [], 'front', 1), undefined);
+  assert.match(
+    shelfSlotPlacementError({ ...chiller, allowedDisplayGroups: [] }, pizza, [], 'front', 1) || '',
+    /服务柜台/,
+  );
+  const salad = {
+    id: 'salad',
+    name: 'Chicken Salad',
+    displayGroup: 'chilled-deli-prepared',
+    storageCondition: 'chilled-confirmed' as const,
+  };
+  assert.ok(shelfSlotPlacementError(counter, salad, [], 'front', 1));
+  assert.equal(
+    productLocationLabel({
+      storageCondition: 'served-hot',
+      shelf: '现做热食档口',
+      shelfSide: 'front',
+      shelfLevel: 1,
+    } as Product),
+    '现做热食档口 · 柜台点单',
   );
 });

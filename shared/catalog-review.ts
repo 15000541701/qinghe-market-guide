@@ -82,6 +82,7 @@ export function displayGroupFor(input: {
         : 'freezer-savory'
       : `frozen-${family}${suffix}`;
   if (input.storage === 'ambient-likely') return `ambient-${family}`;
+  if (input.storage === 'served-hot') return `hot-${family}${suffix}`;
   return `review-${family}${suffix}`;
 }
 

@@ -1,6 +1,6 @@
 # 山姆目录复核记录
 
-复核日期：2026-10-19。由 `npm run catalog:samsclub:review -- --write` 根据 `shared/samsclub-review.json` 与商品自身来源文字生成；请勿手工修改本文件。
+复核日期：2026-10-20。由 `npm run catalog:samsclub:review -- --write` 根据 `shared/samsclub-review.json` 与商品自身来源文字生成；请勿手工修改本文件。
 
 “来源原文证实”只采用商品页面中的储存说明原句；“人工复核”是来源页没有写明时按品类常识作出的判断，逐条注明理由，可在复核文件中修改或删除后重新生成。
 
@@ -10,10 +10,10 @@
 | --- | ---: |
 | 本轮前储存条件待确认 | 249 |
 | 来源原文证实储存条件 | 68 |
-| 人工复核储存条件 | 60 |
+| 人工复核储存条件 | 62 |
 | 修正分类（继续销售） | 35 |
 | 修正分类后归档 | 116 |
-| 仍待确认 | 5 |
+| 仍待确认 | 3 |
 | 在售食品 | 1051 |
 | 净含量可用于采购换算 | 1026 |
 | 其中称重商品按估重换算 | 139 |
@@ -125,7 +125,9 @@
 | 980153711 El Viajero Panela Basket Cheese 3 lbs. | 冷藏 | 未熟成鲜奶酪，需冷藏陈列；来源页未写储存说明。 |
 | 980092998 Member's Mark Broccoli Normandy 4 lbs. | 冷冻 | 来源分类为冷冻食品的西兰花什锦冷冻蔬菜，需冷冻陈列。 |
 | 538511 Member's Mark Manchego Wedge Cheese, priced per pound | 冷藏 | 天然奶酪（切片、块状或碎丝），需冷藏陈列；来源页未写储存说明。 |
+| 980175942 Member's Mark 16" Hot Baked Cafe Pizza | 现做热食（柜台点单） | 咖啡档现做热食（16 英寸整只披萨），2026-10-20 决定在熟食档口新设现做热食柜台，顾客在柜台点单取餐。 |
 | 504331 Broccoli Florets 2 lbs. | 冷藏 | 鲜切西兰花小朵，需冷藏陈列。 |
+| 72187 Hot Dog Combo | 现做热食（柜台点单） | 咖啡档热狗套餐（热狗配饮料），2026-10-20 决定在熟食档口新设现做热食柜台，顾客在柜台点单取餐。 |
 | 626340 Member's Mark Pepper Jack Cheese Slices 2 lbs. | 冷藏 | 天然奶酪（切片、块状或碎丝），需冷藏陈列；来源页未写储存说明。 |
 | 980043835 Member's Mark Five Cheese Tortellini (24 oz., 2 pk.) | 冷藏 | 冷藏鲜意面；来源说明可冷冻备用、冷冻后无需解冻直接煮，可见售卖时为冷藏。 |
 | 31912 Member's Mark Foodservice Honey Mustard, 128 oz. | 常温 | 瓶装调味酱料，属于调味而非蔬菜；开封前常温，同类 Member’s Mark Ranch Dressing 页注明 Refrigerate after opening。 |
@@ -325,8 +327,6 @@
 | 商品 | 分类 | 原因 |
 | --- | --- | --- |
 | 633467 Member's Mark Fresh Cilantro Pico De Gallo Style Salsa, 48 oz. | 调味 | 来源称 uncooked、garden-fresh，无法判断是常温瓶装还是冷藏鲜莎莎，待确认。 |
-| 980175942 Member's Mark 16" Hot Baked Cafe Pizza | 熟食 | 咖啡档现做热食，不适用货架陈列；需先确定是否设置熟食档口。 |
-| 72187 Hot Dog Combo | 熟食 | 咖啡档现做热食，不适用货架陈列；需先确定是否设置熟食档口。 |
 | 990440113 Gadré Wild Caught Surimi Snow Leg Style, 16 oz., 2 pk. | 水产 | 来源同时写 thaw & serve 与 60-day refrigerated，无法判断以冷冻还是冷藏售卖，待确认。 |
 | 980010593 Member's Mark Real Crumbled Bacon, 20 oz. | 肉禽 | 熟制培根碎，属于肉禽熟制品而非蔬菜；来源未写明开封前是否需冷藏，储存条件仍待确认。 |
 

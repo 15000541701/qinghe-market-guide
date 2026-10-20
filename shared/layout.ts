@@ -183,6 +183,9 @@ export function defaultFixture(
   };
 }
 export function productLocationLabel(product: Product): string {
+  // Hot café food is ordered from staff at the counter; side and level do not apply.
+  if (product.storageCondition === 'served-hot' && product.shelf)
+    return `${product.shelf} · 柜台点单`;
   return [
     product.shelf,
     product.shelfSide && fixtureSideLabels[product.shelfSide],

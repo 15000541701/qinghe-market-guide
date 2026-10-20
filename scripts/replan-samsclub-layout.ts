@@ -101,13 +101,15 @@ function configureShelf(
   shelvesById.set(id, next);
 }
 function isKnownStorage(value: unknown): boolean {
-  return ['ambient-likely', 'chilled-confirmed', 'frozen-confirmed', 'chilled-or-frozen-confirmed'].includes(String(value));
+  return ['ambient-likely', 'chilled-confirmed', 'frozen-confirmed', 'chilled-or-frozen-confirmed', 'served-hot'].includes(String(value));
 }
 function shelfCandidates(product: AnyProduct): string[] {
   const category = product.category === 'meat-poultry' ? 'meat' : String(product.category || '');
   const group = String(product.displayGroup || '');
   const storage = String(product.storageCondition || '');
   if (storage === 'unknown' || !isKnownStorage(storage)) return [];
+  // Café hot food is ordered at the deli's service counter, never stocked on a shelf.
+  if (storage === 'served-hot') return ['deli-hot-counter'];
 
   if (category === 'meat') {
     if (group === 'chilled-meat-prepared') return ['legacy-meat-15'];
@@ -412,6 +414,7 @@ async function main(): Promise<void> {
       if (!(shelf.allowedDisplayGroups || []).includes(group)) return false;
       const storage = String(product.storageCondition || '');
       if (storage === 'chilled-confirmed' && shelf.kind !== 'chiller') return false;
+      if (storage === 'served-hot' && shelf.kind !== 'service-counter') return false;
       if (storage === 'frozen-confirmed' && shelf.kind !== 'freezer') return false;
       if (storage === 'chilled-or-frozen-confirmed' && shelf.kind !== 'chiller' && shelf.kind !== 'freezer') return false;
       if (storage === 'ambient-likely' && (shelf.kind === 'chiller' || shelf.kind === 'freezer')) return false;

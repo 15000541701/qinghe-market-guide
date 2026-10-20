@@ -76,6 +76,7 @@ const chineseTerms: Record<string, string[]> = {
   莎莎酱: ['salsa'],
   蜂蜜: ['honey'],
   披萨: ['pizza'],
+  热狗: ['hot dog'],
   冰淇淋: ['ice cream'],
   汤: ['soup'],
   纸巾: ['tissues', 'paper towels', 'napkins'],

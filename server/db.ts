@@ -4,11 +4,17 @@ import path from 'node:path';
 import { makeSeedProducts } from '../shared/catalog';
 import type { Product } from '../shared/types';
 import { zones } from '../shared/catalog';
-import type { Shelf, StoreCategory, StoreSection } from '../shared/types';
+import type { Point, Shelf, StoreCategory, StoreSection } from '../shared/types';
 import { packageSize as inferPackageSize } from '../shared/shopping';
 import { findPath, isWalkable } from '../shared/navigation';
 import { entrance } from '../shared/catalog';
-import { defaultFixture, legacyDefaultRects, realisticSections } from '../shared/layout';
+import {
+  defaultFixture,
+  fixedFixtures,
+  legacyDefaultRects,
+  mainAisles,
+  realisticSections,
+} from '../shared/layout';
 import { fixtureAccessPoints } from '../shared/layout';
 import { mapBounds } from '../shared/map-config';
 import { realCatalogProducts } from '../shared/real-catalog';
@@ -341,7 +347,12 @@ export function getProduct(id: string): Product | undefined {
   return row ? withCurrentShelf(normalizeProduct(JSON.parse(row.data))) : undefined;
 }
 export function saveProduct(product: Product) {
-  const normalized = normalizeProduct({ ...product, packageSize: undefined });
+  // Only a changed unit redefines the package (manually entered goods use units such as “500g”).
+  // Otherwise keep parsed net contents such as Sam’s Club sizes, which no form or SKU file edits.
+  const stored = getProduct(product.id);
+  const normalized = normalizeProduct(
+    stored?.unit === product.unit ? product : { ...product, packageSize: undefined },
+  );
   db.prepare(
     'INSERT INTO products (id, data) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET data=excluded.data',
   ).run(normalized.id, JSON.stringify(normalized));
@@ -1231,6 +1242,61 @@ try {
       allowedDisplayGroups = [...new Set([...groups, 'ambient-seasoning', 'ambient-pantry', 'ambient-meat'])];
     if (allowedDisplayGroups.join('|') !== groups.join('|'))
       db.prepare('UPDATE shelves SET data=? WHERE id=?').run(JSON.stringify({ ...shelf, allowedDisplayGroups }), shelf.id);
+  }
+  // Café hot food is ordered at a service counter in the deli section (added 2026-10-20). Existing
+  // stores get it only where it fits: inside its section, clear of fixtures and main aisles, and
+  // without its staff band cutting off a pickup point that customers can reach today.
+  const hotCounter = samsClubLayout.shelves.find((shelf) => shelf.id === 'deli-hot-counter') as
+    | Shelf
+    | undefined;
+  const shelvesBeforeCounter = getShelves();
+  if (hotCounter?.footprint && !shelvesBeforeCounter.some((shelf) => shelf.id === hotCounter.id)) {
+    type Rect = NonNullable<Shelf['footprint']>;
+    const sections = getSections();
+    const section = sections.find((item) => item.id === hotCounter.sectionId && item.active);
+    const footprint = hotCounter.footprint;
+    const band = { ...footprint, y: footprint.y - 1, h: 1 };
+    const overlap = (a: Rect, b: Rect) =>
+      a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+    const key = (point: Point) => `${point.x},${point.y}`;
+    const reachableCells = (fixtures: Shelf[]) => {
+      const seen = new Set([key(entrance)]);
+      const queue: Point[] = [entrance];
+      for (let i = 0; i < queue.length; i++)
+        for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const next = { x: queue[i].x + dx, y: queue[i].y + dy };
+          if (!seen.has(key(next)) && isWalkable(next, sections, fixtures)) {
+            seen.add(key(next));
+            queue.push(next);
+          }
+        }
+      return seen;
+    };
+    const before = reachableCells(shelvesBeforeCounter);
+    const after = reachableCells([...shelvesBeforeCounter, hotCounter]);
+    const pickupPoints = [
+      ...shelvesBeforeCounter
+        .filter((shelf) => shelf.reachable)
+        .flatMap((shelf) => Object.values(shelf.accessPoints || {})),
+      ...sections.filter((item) => item.active).map((item) => item.location),
+    ].filter((point): point is Point => !!point && before.has(key(point)));
+    const fits =
+      !!section &&
+      footprint.x >= section.rect.x &&
+      footprint.y >= section.rect.y &&
+      footprint.x + footprint.w <= section.rect.x + section.rect.w &&
+      footprint.y + footprint.h <= section.rect.y + section.rect.h &&
+      !shelvesBeforeCounter.some((shelf) => shelf.footprint && overlap(shelf.footprint, footprint)) &&
+      ![...fixedFixtures.map((fixture) => fixture.rect), ...mainAisles].some(
+        (rect) => overlap(rect, footprint) || overlap(rect, band),
+      ) &&
+      Object.values(hotCounter.accessPoints || {}).every((point) => !!point && after.has(key(point))) &&
+      pickupPoints.every((point) => after.has(key(point)));
+    if (fits) shelfInsert.run(hotCounter.id, JSON.stringify(hotCounter));
+    else
+      console.warn(
+        '现做热食档口与现有门店布局冲突，未自动添加；请在超市端为熟食档口新增服务柜台，陈列分组填写 hot-deli-prepared。',
+      );
   }
   // Reviewed catalog fields (category, storage, package size, archive) reach existing stores
   // unless staff changed them; categories emptied by the review are hidden.

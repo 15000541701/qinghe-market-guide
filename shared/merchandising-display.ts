@@ -72,6 +72,7 @@ const storageLabels: Record<NonNullable<Product['storageCondition']>, string> = 
   'chilled-confirmed': '冷藏保存',
   'frozen-confirmed': '冷冻保存',
   'chilled-or-frozen-confirmed': '冷藏或冷冻',
+  'served-hot': '现做热食',
   unknown: '保存条件待确认',
 };
 
@@ -119,7 +120,8 @@ export function productPlacementStatus(product: Product) {
 export function productMerchandisingSummary(product: Product) {
   if (product.catalogOrigin !== 'open-prices') {
     return product.sourceRetailer === 'Sam’s Club US' &&
-      product.storageCondition === 'chilled-or-frozen-confirmed'
+      (product.storageCondition === 'chilled-or-frozen-confirmed' ||
+        product.storageCondition === 'served-hot')
       ? storageLabels[product.storageCondition]
       : '';
   }

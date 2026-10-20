@@ -1054,6 +1054,34 @@
       ]
     },
     {
+      "id": "deli-hot-counter",
+      "sectionId": "deli-service",
+      "name": "现做热食档口",
+      "reachable": true,
+      "kind": "service-counter",
+      "footprint": {
+        "x": 6,
+        "y": 9,
+        "w": 2,
+        "h": 1
+      },
+      "levels": 1,
+      "accessPoints": {
+        "front": {
+          "x": 6,
+          "y": 10
+        }
+      },
+      "position": {
+        "x": 6,
+        "y": 10
+      },
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "hot-deli-prepared"
+      ]
+    },
+    {
       "id": "fruit-shelf-01",
       "sectionId": "fruit",
       "name": "水果冷藏柜",

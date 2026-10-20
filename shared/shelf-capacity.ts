@@ -51,6 +51,8 @@ export function shelfSlotPlacementError(
       return `“${product.name}”的陈列分组“${displayGroup}”不适用于设施“${shelf.name}”。`;
   }
 
+  if (product.storageCondition === 'served-hot' && shelf.kind !== 'service-counter')
+    return `“${product.name}”为现做热食，请安排在服务柜台点单。`;
   if (product.storageCondition === 'frozen-confirmed' && shelf.kind !== 'freezer')
     return `“${product.name}”已确认需冷冻保存，请放入冷冻柜。`;
   if (product.storageCondition === 'chilled-confirmed' && shelf.kind !== 'chiller')

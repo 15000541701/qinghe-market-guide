@@ -73393,8 +73393,8 @@
     "name": "Member's Mark 16\" Hot Baked Cafe Pizza",
     "category": "deli",
     "categoryName": "熟食",
-    "storageCondition": "unknown",
-    "displayGroup": "review-deli-prepared",
+    "storageCondition": "served-hot",
+    "displayGroup": "hot-deli-prepared",
     "unit": "件",
     "packageSize": {
       "quantity": 1,
@@ -73488,7 +73488,13 @@
         "finalCostByWeight": false
       }
     ],
+    "storageBasis": {
+      "kind": "manual-review",
+      "text": "咖啡档现做热食（16 英寸整只披萨），2026-10-20 决定在熟食档口新设现做热食柜台，顾客在柜台点单取餐。"
+    },
     "reviewPrevious": {
+      "storageCondition": "unknown",
+      "displayGroup": "review-deli-prepared",
       "packageSize": {
         "quantity": 1,
         "unit": "package"
@@ -82657,8 +82663,8 @@
     "name": "Hot Dog Combo",
     "category": "deli",
     "categoryName": "熟食",
-    "storageCondition": "unknown",
-    "displayGroup": "review-deli-prepared",
+    "storageCondition": "served-hot",
+    "displayGroup": "hot-deli-prepared",
     "unit": "件",
     "packageSize": {
       "quantity": 1,
@@ -82714,7 +82720,13 @@
         "finalCostByWeight": false
       }
     ],
+    "storageBasis": {
+      "kind": "manual-review",
+      "text": "咖啡档热狗套餐（热狗配饮料），2026-10-20 决定在熟食档口新设现做热食柜台，顾客在柜台点单取餐。"
+    },
     "reviewPrevious": {
+      "storageCondition": "unknown",
+      "displayGroup": "review-deli-prepared",
       "packageSize": {
         "quantity": 1814,
         "unit": "g"

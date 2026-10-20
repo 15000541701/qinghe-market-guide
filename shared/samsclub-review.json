@@ -1,5 +1,5 @@
 {
-  "reviewedAt": "2026-10-19",
+  "reviewedAt": "2026-10-20",
   "reviewer": "人工复核：来源页未写明时按品类常识判断，逐条注明理由",
   "decisions": {
     "21636": {
@@ -33,7 +33,8 @@
       "note": "鲜花花艺（来源分类 mothers day flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
     },
     "72187": {
-      "note": "咖啡档现做热食，不适用货架陈列；需先确定是否设置熟食档口。"
+      "storageCondition": "served-hot",
+      "note": "咖啡档热狗套餐（热狗配饮料），2026-10-20 决定在熟食档口新设现做热食柜台，顾客在柜台点单取餐。"
     },
     "85633": {
       "category": "meat",
@@ -460,7 +461,8 @@
       "note": "瓶装调味酱料，属于调味而非蔬菜；开封前常温，同类 Member’s Mark Ranch Dressing 页注明 Refrigerate after opening。"
     },
     "980175942": {
-      "note": "咖啡档现做热食，不适用货架陈列；需先确定是否设置熟食档口。"
+      "storageCondition": "served-hot",
+      "note": "咖啡档现做热食（16 英寸整只披萨），2026-10-20 决定在熟食档口新设现做热食柜台，顾客在柜台点单取餐。"
     },
     "980178938": {
       "category": "floral",

@@ -26,6 +26,7 @@ const storageLabels: Record<string, string> = {
   'chilled-confirmed': '冷藏',
   'frozen-confirmed': '冷冻',
   'chilled-or-frozen-confirmed': '冷藏或冷冻',
+  'served-hot': '现做热食（柜台点单）',
   unknown: '待确认',
 };
 

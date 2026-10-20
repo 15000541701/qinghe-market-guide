@@ -83,6 +83,8 @@ export type Product = {
     | 'chilled-confirmed'
     | 'frozen-confirmed'
     | 'chilled-or-frozen-confirmed'
+    /** Café food made to order and served hot from a service counter; never shelf-stocked. */
+    | 'served-hot'
     | 'unknown';
   classificationConfidence?:
     'taxonomy-confirmed' | 'manual-name-review' | 'candidate' | 'needs-review';

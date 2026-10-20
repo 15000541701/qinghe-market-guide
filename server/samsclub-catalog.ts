@@ -79,7 +79,12 @@ export function syncSamsClubProducts(products: Product[], shelves: Shelf[]): Pro
     let next: Product = { ...product };
     const snapshot: CatalogOwned = {};
     for (const field of catalogOwnedFields) {
-      const untouched = same(product[field], base[field]) || same(product[field], target[field]);
+      // No form or SKU file edits package sizes. A bare {1, package} is the placeholder that
+      // earlier saves inferred from a unit word such as “件”, so the reviewed size replaces it.
+      const placeholder =
+        field === 'packageSize' && same(product.packageSize, { quantity: 1, unit: 'package' });
+      const untouched =
+        placeholder || same(product[field], base[field]) || same(product[field], target[field]);
       if (untouched) Object.assign(next, { [field]: target[field] });
       Object.assign(snapshot, { [field]: untouched ? target[field] : base[field] });
     }
@@ -174,18 +179,20 @@ export function samsClubProducts(
     products.push(product);
     if (record.status === 'archived') continue;
     const kind =
-      record.storageCondition === 'frozen-confirmed'
-        ? 'freezer'
-        : record.storageCondition === 'chilled-confirmed' || record.storageCondition === 'chilled-or-frozen-confirmed' ||
-            record.displayGroup.startsWith('chilled-')
-          ? 'chiller'
-          : record.category === 'bakery'
-            ? 'display-table'
-            : record.category === 'clothing'
-              ? 'hanging-rack'
-              : displayGroup === 'ambient-produce'
-                ? 'produce-table'
-                : 'gondola';
+      record.storageCondition === 'served-hot'
+        ? 'service-counter'
+        : record.storageCondition === 'frozen-confirmed'
+          ? 'freezer'
+          : record.storageCondition === 'chilled-confirmed' || record.storageCondition === 'chilled-or-frozen-confirmed' ||
+              record.displayGroup.startsWith('chilled-')
+            ? 'chiller'
+            : record.category === 'bakery'
+              ? 'display-table'
+              : record.category === 'clothing'
+                ? 'hanging-rack'
+                : displayGroup === 'ambient-produce'
+                  ? 'produce-table'
+                  : 'gondola';
     const sectionsByCategory: Record<string, string> = { fruit: 'fruit', vegetables: 'vegetables', seafood: 'seafood', deli: 'deli-service', frozen: 'openprices-frozen', 'paper-goods': 'paper-zone', cleaning: 'household', home: 'household', 'personal-care': 'care-zone', baby: 'care-zone', pet: 'pet-zone', clothing: 'household', snacks: 'snack-zone', seasoning: 'pantry', pantry: 'pantry' };
     const nonFoodSections = ['household', 'paper-zone', 'care-zone', 'pet-zone'];
     const nonFood = ['paper-goods', 'cleaning', 'home', 'personal-care', 'baby', 'pet', 'clothing'].includes(record.category);

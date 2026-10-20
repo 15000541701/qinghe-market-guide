@@ -485,7 +485,7 @@ export default function Admin({
           ? p.status !== 'archived' && p.storageCondition === 'unknown'
           : p.status !== 'archived' && p.merchandisingState !== 'placed' && !p.shelfId)) &&
       (!inventorySearch ||
-        p.shelf.toLowerCase().includes(search.trim().toLowerCase()) ||
+        (p.shelf || '').toLowerCase().includes(search.trim().toLowerCase()) ||
         productSearchScore(p, inventorySearch) > 0),
   );
   // Rendering 1,800 rows with images at once made the store view slow; show a page at a time.
