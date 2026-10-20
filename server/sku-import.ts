@@ -142,7 +142,10 @@ export function importSkus(
         'fresh-whole', 'canned', 'dried', 'smoked', 'marinated', 'fermented', 'frozen',
         'prepared', 'pickled', 'preserved', 'instant-ready', 'packaged', 'unknown',
       ];
-      const storageConditions = ['ambient-likely', 'chilled-confirmed', 'frozen-confirmed', 'unknown'];
+      const storageConditions = [
+        'ambient-likely', 'chilled-confirmed', 'frozen-confirmed', 'chilled-or-frozen-confirmed',
+        'served-hot', 'unknown',
+      ];
       const classificationConfidences = [
         'taxonomy-confirmed', 'manual-name-review', 'candidate', 'needs-review',
       ];

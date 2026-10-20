@@ -1079,6 +1079,11 @@ img {
   background: var(--green);
   color: #fff;
 }
+.category-count {
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.65;
+}
 .sort-label {
   display: flex;
   align-items: center;
@@ -1363,7 +1368,8 @@ img {
   text-decoration: line-through;
   color: #606f56;
 }
-.shopping-item.is-checked > img {
+.shopping-item.is-checked > img,
+.shopping-item.is-checked > .product-image {
   opacity: 0.5;
 }
 .quantity-control {
@@ -1790,6 +1796,42 @@ img {
 .inventory > .section-heading {
   margin-bottom: 19px;
 }
+.model-settings {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+}
+.model-settings > .section-heading {
+  margin-bottom: 14px;
+}
+.model-settings > .section-heading > div {
+  flex-wrap: wrap;
+}
+.model-settings-fields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+}
+.model-settings-fields > .field {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.settings-state {
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 500;
+}
+.settings-state.ready {
+  background: #e8f0dc;
+  color: #36542b;
+}
+.settings-state.missing {
+  background: #fff7f2;
+  color: #a15b38;
+}
 .area-add-shortcut {
   margin-left: auto;
   white-space: nowrap;
@@ -1990,9 +2032,11 @@ td {
   align-items: center;
   gap: 12px;
 }
-.inventory-product > img {
+.inventory-product > img,
+.inventory-product > .product-image--admin {
   width: 43px;
   height: 43px;
+  flex-basis: 43px;
   object-fit: cover;
   border-radius: 7px;
 }
@@ -2088,9 +2132,11 @@ td {
   .shopping-item {
     gap: 10px;
   }
-  .shopping-item > img {
+  .shopping-item > img,
+  .shopping-item > .product-image--list {
     width: 55px;
     height: 60px;
+    flex-basis: 55px;
   }
   .shopping-item-name > span {
     font-size: 9px;

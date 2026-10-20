@@ -31,6 +31,7 @@ function purchaseText(item: MealPlan['items'][number]) {
   if (isWeighed(item.product)) return amountLabel(item.product, item.quantity);
   const size = packageSize(item.product);
   const count = Math.round(item.quantity);
+  if (size.estimated) return `买${count}份（每份约${size.quantity}g，按称重结算）`;
   const noun =
     size.unit === 'ml' ? '瓶' : size.unit === 'piece' ? '盒' : size.unit === 'g' ? '袋' : '份';
   return `买${count}${noun}（${item.product.unit}）`;

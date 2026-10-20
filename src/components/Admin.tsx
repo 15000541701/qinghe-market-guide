@@ -38,6 +38,9 @@ import { isWeighed } from '../../shared/shopping';
 import FacilityEditor from './FacilityEditor';
 import SkuTransferPanel from './SkuTransferPanel';
 import MerchandisingBoard from './MerchandisingBoard';
+import ModelSettingsPanel, { type ProviderReadiness } from './ModelSettingsPanel';
+import ProductImage from './ProductImage';
+import { productSearch, productSearchScore } from '../../shared/product-search';
 import './SkuManagement.css';
 import { inventoryLabel } from '../../shared/catalog-status';
 import { currencySymbol, formatCurrency, productCurrency } from '../../shared/currency';
@@ -52,6 +55,8 @@ interface Props {
   onRefresh: () => Promise<void>;
   onToast: (message: string) => void;
   ai: boolean;
+  providers: ProviderReadiness;
+  onSettingsSaved: () => Promise<void>;
 }
 const today = marketToday;
 type MapRect = { x: number; y: number; w: number; h: number };
@@ -153,7 +158,14 @@ function findOpenArea(sections: StoreSection[], shelves: Shelf[]) {
     }
   return { rect: { x: 11, y: 8, w: 2, h: 2 }, location: { x: 13, y: 8 } };
 }
-export default function Admin({ products, onRefresh, onToast, ai }: Props) {
+export default function Admin({
+  products,
+  onRefresh,
+  onToast,
+  ai,
+  providers,
+  onSettingsSaved,
+}: Props) {
   const [categories, setCategories] = useState<StoreCategory[]>([]);
   const [sections, setSections] = useState<StoreSection[]>([]);
   const [shelves, setShelves] = useState<Shelf[]>([]);
@@ -201,6 +213,8 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
   const [search, setSearch] = useState('');
   const [showArchived, setShowArchived] = useState(false);
   const [filter, setFilter] = useState('all');
+  const [stateFilter, setStateFilter] = useState<'all' | 'pending' | 'unplaced'>('all');
+  const [inventoryLimit, setInventoryLimit] = useState(60);
   const inputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const busyRef = useRef(false);
@@ -461,12 +475,21 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
       setSaving(false);
     }
   };
+  const inventorySearch = useMemo(() => productSearch(search), [search]);
   const filtered = products.filter(
     (p) =>
       (showArchived || p.status !== 'archived') &&
       (filter === 'all' || p.category === filter) &&
-      `${p.name}${p.shelf}${p.sku || p.id}${p.brand || ''}`.includes(search),
+      (stateFilter === 'all' ||
+        (stateFilter === 'pending'
+          ? p.status !== 'archived' && p.storageCondition === 'unknown'
+          : p.status !== 'archived' && p.merchandisingState !== 'placed' && !p.shelfId)) &&
+      (!inventorySearch ||
+        (p.shelf || '').toLowerCase().includes(search.trim().toLowerCase()) ||
+        productSearchScore(p, inventorySearch) > 0),
   );
+  // Rendering 1,800 rows with images at once made the store view slow; show a page at a time.
+  useEffect(() => setInventoryLimit(60), [search, filter, stateFilter, showArchived]);
   const sectionMapSections =
     sections.filter((section) => section.active).length > 0
       ? sections.filter((section) => section.active)
@@ -531,6 +554,7 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
           {products.filter((p) => p.status !== 'archived').length} 个 SKU · 门店商品库
         </span>
       </div>
+      <ModelSettingsPanel providers={providers} onSaved={onSettingsSaved} />
       <SkuTransferPanel onRefresh={onRefresh} onToast={onToast} />
       <MerchandisingBoard
         products={products}
@@ -762,7 +786,7 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
                     setSectionError('');
                   }}
                   maxLength={8}
-                  pattern="[A-Za-z0-9-]+"
+                  pattern="[A-Za-z0-9\-]+"
                   required
                   placeholder="例如：H"
                 />
@@ -1504,6 +1528,15 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
             <span className="muted compact">当前 {filtered.length} 个 SKU</span>
           </div>
           <div className="inventory-tools">
+            <select
+              value={stateFilter}
+              onChange={(event) => setStateFilter(event.target.value as typeof stateFilter)}
+              aria-label="筛选陈列状态"
+            >
+              <option value="all">全部状态</option>
+              <option value="pending">储存条件待确认</option>
+              <option value="unplaced">尚未安排陈列</option>
+            </select>
             <label>
               <input
                 type="checkbox"
@@ -1549,11 +1582,16 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
               </tr>
             </thead>
             <tbody>
-              {filtered.map((product) => (
+              {filtered.slice(0, inventoryLimit).map((product) => (
                 <tr key={product.id}>
                   <td>
                     <div className="inventory-product">
-                      <img src={product.image} alt="" />
+                      <ProductImage
+                        src={product.image}
+                        fallbackSrc={product.sourceImageUrl}
+                        alt=""
+                        size="admin"
+                      />
                       <span>
                         {product.name}
                         <small>{product.unit}</small>
@@ -1590,6 +1628,22 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
                     {productMerchandisingSummary(product) && (
                       <small className="table-sub">{productMerchandisingSummary(product)}</small>
                     )}
+                    {product.status === 'archived' && product.archiveReason ? (
+                      <small className="table-sub" title={product.archiveReason}>
+                        归档原因：{product.archiveReason}
+                      </small>
+                    ) : product.storageCondition === 'unknown' ? (
+                      <small className="table-sub">储存条件待确认，确认后才安排陈列</small>
+                    ) : (
+                      product.storageBasis && (
+                        <small className="table-sub" title={product.storageBasis.text}>
+                          储存依据：
+                          {product.storageBasis.kind === 'manual-review'
+                            ? `人工复核 · ${product.storageBasis.text}`
+                            : `来源原文 · ${product.storageBasis.text}`}
+                        </small>
+                      )
+                    )}
                   </td>
                   <td className="table-price">
                     {product.price > 0 ? formatCurrency(product.price, productCurrency(product)) : '报价暂未获取'}
@@ -1616,6 +1670,16 @@ export default function Admin({ products, onRefresh, onToast, ai }: Props) {
             </div>
           )}
         </div>
+        {inventoryLimit < filtered.length && (
+          <div className="product-load-more">
+            <button
+              className="button secondary"
+              onClick={() => setInventoryLimit((limit) => limit + 60)}
+            >
+              加载更多（{inventoryLimit}/{filtered.length}）
+            </button>
+          </div>
+        )}
       </section>
     </main>
   );

@@ -29,7 +29,7 @@ export function unitGrams(unit: string): number | null {
   );
 }
 export type MeasureUnit = 'g' | 'ml' | 'piece' | 'package';
-export function packageSize(product: Product): { quantity: number; unit: MeasureUnit } {
+export function packageSize(product: Product): NonNullable<Product['packageSize']> {
   if (product.packageSize && product.packageSize.quantity > 0) return product.packageSize;
   const text = product.unit.trim().toLowerCase();
   const weight = unitGrams(text);

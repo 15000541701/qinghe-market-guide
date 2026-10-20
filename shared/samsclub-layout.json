@@ -4,14 +4,14 @@
   "categories": [
     {
       "id": "baby",
-      "name": "母婴用品",
+      "name": "母婴",
       "kind": "non_food",
       "active": true,
       "sectionId": "care-zone"
     },
     {
       "id": "bakery",
-      "name": "烘焙区",
+      "name": "烘焙",
       "active": true,
       "sectionId": "bakery",
       "kind": "food"
@@ -25,7 +25,7 @@
     },
     {
       "id": "beverages",
-      "name": "饮料与冲调",
+      "name": "饮料",
       "kind": "food",
       "active": true,
       "sectionId": "pantry"
@@ -39,7 +39,7 @@
     },
     {
       "id": "cleaning",
-      "name": "日用清洁",
+      "name": "清洁",
       "active": true,
       "sectionId": "household",
       "kind": "non_food"
@@ -53,7 +53,7 @@
     },
     {
       "id": "dairy",
-      "name": "乳品区",
+      "name": "乳品蛋类",
       "active": true,
       "sectionId": "dairy",
       "kind": "food"
@@ -74,7 +74,7 @@
     },
     {
       "id": "fruit",
-      "name": "水果区",
+      "name": "水果",
       "active": true,
       "sectionId": "fruit",
       "kind": "food"
@@ -95,7 +95,7 @@
     },
     {
       "id": "meat",
-      "name": "肉禽区",
+      "name": "肉禽",
       "active": true,
       "sectionId": "meat",
       "kind": "food"
@@ -123,14 +123,14 @@
     },
     {
       "id": "pantry",
-      "name": "粮油区",
+      "name": "粮油",
       "active": true,
       "sectionId": "pantry",
       "kind": "food"
     },
     {
       "id": "paper-goods",
-      "name": "纸品与湿巾",
+      "name": "纸品",
       "kind": "non_food",
       "active": true,
       "sectionId": "paper-zone"
@@ -151,7 +151,7 @@
     },
     {
       "id": "pet",
-      "name": "宠物食品与用品",
+      "name": "宠物",
       "kind": "non_food",
       "active": true,
       "sectionId": "pet-zone"
@@ -319,7 +319,7 @@
     },
     {
       "id": "seafood",
-      "name": "水产区",
+      "name": "水产",
       "active": true,
       "sectionId": "seafood",
       "kind": "food"
@@ -396,7 +396,7 @@
     },
     {
       "id": "vegetables",
-      "name": "蔬菜区",
+      "name": "蔬菜",
       "active": true,
       "sectionId": "vegetables",
       "kind": "food"
@@ -1054,6 +1054,34 @@
       ]
     },
     {
+      "id": "deli-hot-counter",
+      "sectionId": "deli-service",
+      "name": "现做热食档口",
+      "reachable": true,
+      "kind": "service-counter",
+      "footprint": {
+        "x": 6,
+        "y": 9,
+        "w": 2,
+        "h": 1
+      },
+      "levels": 1,
+      "accessPoints": {
+        "front": {
+          "x": 6,
+          "y": 10
+        }
+      },
+      "position": {
+        "x": 6,
+        "y": 10
+      },
+      "capacityPerSlot": 4,
+      "allowedDisplayGroups": [
+        "hot-deli-prepared"
+      ]
+    },
+    {
       "id": "fruit-shelf-01",
       "sectionId": "fruit",
       "name": "水果冷藏柜",
@@ -1497,8 +1525,7 @@
       },
       "capacityPerSlot": 4,
       "allowedDisplayGroups": [
-        "chilled-meat-prepared",
-        "chilled-meat-raw"
+        "chilled-meat-prepared"
       ]
     },
     {
@@ -1551,7 +1578,8 @@
         "ambient-pasta",
         "ambient-sauces",
         "ambient-spices",
-        "ambient-snacks"
+        "ambient-snacks",
+        "ambient-meat"
       ]
     },
     {
@@ -1604,7 +1632,8 @@
         "ambient-pasta",
         "ambient-sauces",
         "ambient-spices",
-        "ambient-snacks"
+        "ambient-snacks",
+        "ambient-meat"
       ]
     },
     {
@@ -1839,7 +1868,10 @@
         "ambient-ready-meals",
         "ambient-canned-soup",
         "ambient-sweetener",
-        "ambient-supplements"
+        "ambient-supplements",
+        "ambient-seasoning",
+        "ambient-pantry",
+        "ambient-meat"
       ],
       "accessPoints": {
         "left": {
@@ -1886,7 +1918,10 @@
         "ambient-ready-meals",
         "ambient-canned-soup",
         "ambient-sweetener",
-        "ambient-supplements"
+        "ambient-supplements",
+        "ambient-seasoning",
+        "ambient-pantry",
+        "ambient-meat"
       ],
       "accessPoints": {
         "left": {
@@ -1933,7 +1968,10 @@
         "ambient-ready-meals",
         "ambient-canned-soup",
         "ambient-sweetener",
-        "ambient-supplements"
+        "ambient-supplements",
+        "ambient-seasoning",
+        "ambient-pantry",
+        "ambient-meat"
       ],
       "accessPoints": {
         "left": {
@@ -1980,7 +2018,10 @@
         "ambient-ready-meals",
         "ambient-canned-soup",
         "ambient-sweetener",
-        "ambient-supplements"
+        "ambient-supplements",
+        "ambient-seasoning",
+        "ambient-pantry",
+        "ambient-meat"
       ],
       "accessPoints": {
         "left": {
@@ -2027,7 +2068,10 @@
         "ambient-ready-meals",
         "ambient-canned-soup",
         "ambient-sweetener",
-        "ambient-supplements"
+        "ambient-supplements",
+        "ambient-seasoning",
+        "ambient-pantry",
+        "ambient-meat"
       ],
       "accessPoints": {
         "left": {
@@ -2074,7 +2118,10 @@
         "ambient-ready-meals",
         "ambient-canned-soup",
         "ambient-sweetener",
-        "ambient-supplements"
+        "ambient-supplements",
+        "ambient-seasoning",
+        "ambient-pantry",
+        "ambient-meat"
       ],
       "accessPoints": {
         "left": {
@@ -2121,7 +2168,10 @@
         "ambient-ready-meals",
         "ambient-canned-soup",
         "ambient-sweetener",
-        "ambient-supplements"
+        "ambient-supplements",
+        "ambient-seasoning",
+        "ambient-pantry",
+        "ambient-meat"
       ],
       "accessPoints": {
         "left": {
@@ -2168,7 +2218,10 @@
         "ambient-ready-meals",
         "ambient-canned-soup",
         "ambient-sweetener",
-        "ambient-supplements"
+        "ambient-supplements",
+        "ambient-seasoning",
+        "ambient-pantry",
+        "ambient-meat"
       ],
       "accessPoints": {
         "left": {
@@ -2215,7 +2268,10 @@
         "ambient-ready-meals",
         "ambient-canned-soup",
         "ambient-sweetener",
-        "ambient-supplements"
+        "ambient-supplements",
+        "ambient-seasoning",
+        "ambient-pantry",
+        "ambient-meat"
       ],
       "accessPoints": {
         "left": {
@@ -2262,7 +2318,10 @@
         "ambient-ready-meals",
         "ambient-canned-soup",
         "ambient-sweetener",
-        "ambient-supplements"
+        "ambient-supplements",
+        "ambient-seasoning",
+        "ambient-pantry",
+        "ambient-meat"
       ],
       "accessPoints": {
         "left": {
@@ -2309,7 +2368,10 @@
         "ambient-ready-meals",
         "ambient-canned-soup",
         "ambient-sweetener",
-        "ambient-supplements"
+        "ambient-supplements",
+        "ambient-seasoning",
+        "ambient-pantry",
+        "ambient-meat"
       ],
       "accessPoints": {
         "left": {
@@ -2356,7 +2418,10 @@
         "ambient-ready-meals",
         "ambient-canned-soup",
         "ambient-sweetener",
-        "ambient-supplements"
+        "ambient-supplements",
+        "ambient-seasoning",
+        "ambient-pantry",
+        "ambient-meat"
       ],
       "accessPoints": {
         "left": {
@@ -2403,7 +2468,10 @@
         "ambient-ready-meals",
         "ambient-canned-soup",
         "ambient-sweetener",
-        "ambient-supplements"
+        "ambient-supplements",
+        "ambient-seasoning",
+        "ambient-pantry",
+        "ambient-meat"
       ],
       "accessPoints": {
         "left": {
@@ -2450,7 +2518,10 @@
         "ambient-ready-meals",
         "ambient-canned-soup",
         "ambient-sweetener",
-        "ambient-supplements"
+        "ambient-supplements",
+        "ambient-seasoning",
+        "ambient-pantry",
+        "ambient-meat"
       ],
       "accessPoints": {
         "left": {
@@ -2497,7 +2568,10 @@
         "ambient-ready-meals",
         "ambient-canned-soup",
         "ambient-sweetener",
-        "ambient-supplements"
+        "ambient-supplements",
+        "ambient-seasoning",
+        "ambient-pantry",
+        "ambient-meat"
       ],
       "accessPoints": {
         "left": {
@@ -2544,7 +2618,10 @@
         "ambient-ready-meals",
         "ambient-canned-soup",
         "ambient-sweetener",
-        "ambient-supplements"
+        "ambient-supplements",
+        "ambient-seasoning",
+        "ambient-pantry",
+        "ambient-meat"
       ],
       "accessPoints": {
         "left": {
@@ -2591,7 +2668,10 @@
         "ambient-ready-meals",
         "ambient-canned-soup",
         "ambient-sweetener",
-        "ambient-supplements"
+        "ambient-supplements",
+        "ambient-seasoning",
+        "ambient-pantry",
+        "ambient-meat"
       ],
       "accessPoints": {
         "left": {
@@ -2638,7 +2718,10 @@
         "ambient-ready-meals",
         "ambient-canned-soup",
         "ambient-sweetener",
-        "ambient-supplements"
+        "ambient-supplements",
+        "ambient-seasoning",
+        "ambient-pantry",
+        "ambient-meat"
       ],
       "accessPoints": {
         "left": {
@@ -2685,7 +2768,10 @@
         "ambient-ready-meals",
         "ambient-canned-soup",
         "ambient-sweetener",
-        "ambient-supplements"
+        "ambient-supplements",
+        "ambient-seasoning",
+        "ambient-pantry",
+        "ambient-meat"
       ],
       "accessPoints": {
         "left": {
@@ -2732,7 +2818,10 @@
         "ambient-ready-meals",
         "ambient-canned-soup",
         "ambient-sweetener",
-        "ambient-supplements"
+        "ambient-supplements",
+        "ambient-seasoning",
+        "ambient-pantry",
+        "ambient-meat"
       ],
       "accessPoints": {
         "left": {
@@ -2779,7 +2868,10 @@
         "ambient-ready-meals",
         "ambient-canned-soup",
         "ambient-sweetener",
-        "ambient-supplements"
+        "ambient-supplements",
+        "ambient-seasoning",
+        "ambient-pantry",
+        "ambient-meat"
       ],
       "accessPoints": {
         "left": {
@@ -2826,7 +2918,10 @@
         "ambient-ready-meals",
         "ambient-canned-soup",
         "ambient-sweetener",
-        "ambient-supplements"
+        "ambient-supplements",
+        "ambient-seasoning",
+        "ambient-pantry",
+        "ambient-meat"
       ],
       "accessPoints": {
         "left": {
@@ -2873,7 +2968,10 @@
         "ambient-ready-meals",
         "ambient-canned-soup",
         "ambient-sweetener",
-        "ambient-supplements"
+        "ambient-supplements",
+        "ambient-seasoning",
+        "ambient-pantry",
+        "ambient-meat"
       ],
       "accessPoints": {
         "left": {
@@ -2920,7 +3018,10 @@
         "ambient-ready-meals",
         "ambient-canned-soup",
         "ambient-sweetener",
-        "ambient-supplements"
+        "ambient-supplements",
+        "ambient-seasoning",
+        "ambient-pantry",
+        "ambient-meat"
       ],
       "accessPoints": {
         "left": {
@@ -2967,7 +3068,10 @@
         "ambient-ready-meals",
         "ambient-canned-soup",
         "ambient-sweetener",
-        "ambient-supplements"
+        "ambient-supplements",
+        "ambient-seasoning",
+        "ambient-pantry",
+        "ambient-meat"
       ],
       "accessPoints": {
         "left": {
@@ -3014,7 +3118,10 @@
         "ambient-ready-meals",
         "ambient-canned-soup",
         "ambient-sweetener",
-        "ambient-supplements"
+        "ambient-supplements",
+        "ambient-seasoning",
+        "ambient-pantry",
+        "ambient-meat"
       ],
       "accessPoints": {
         "left": {
@@ -3061,7 +3168,10 @@
         "ambient-ready-meals",
         "ambient-canned-soup",
         "ambient-sweetener",
-        "ambient-supplements"
+        "ambient-supplements",
+        "ambient-seasoning",
+        "ambient-pantry",
+        "ambient-meat"
       ],
       "accessPoints": {
         "left": {
@@ -3331,7 +3441,8 @@
         "ambient-pasta",
         "ambient-sauces",
         "ambient-spices",
-        "ambient-snacks"
+        "ambient-snacks",
+        "ambient-meat"
       ]
     },
     {

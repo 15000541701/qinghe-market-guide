@@ -1,0 +1,927 @@
+{
+  "reviewedAt": "2026-10-20",
+  "reviewer": "人工复核：来源页未写明时按品类常识判断，逐条注明理由",
+  "decisions": {
+    "21636": {
+      "category": "paper-goods",
+      "archive": true,
+      "note": "一次性餐具与食品容器（来源分类 Disposable Tableware & Paper Goods），应属「纸品与湿巾」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "21643": {
+      "category": "paper-goods",
+      "archive": true,
+      "note": "一次性餐具与食品容器（来源分类 Disposable Tableware & Paper Goods），应属「纸品与湿巾」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "21650": {
+      "category": "paper-goods",
+      "archive": true,
+      "note": "一次性餐具与食品容器（来源分类 Disposable Tableware & Paper Goods），应属「纸品与湿巾」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "31912": {
+      "category": "seasoning",
+      "storageCondition": "ambient-likely",
+      "note": "瓶装调味酱料，属于调味而非蔬菜；开封前常温，同类 Member’s Mark Ranch Dressing 页注明 Refrigerate after opening。"
+    },
+    "61167": {
+      "category": "seasoning",
+      "storageCondition": "ambient-likely",
+      "note": "瓶装调味酱料，属于调味而非蔬菜；开封前常温，同类 Member’s Mark Ranch Dressing 页注明 Refrigerate after opening。"
+    },
+    "64414": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 mothers day flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "72187": {
+      "storageCondition": "served-hot",
+      "note": "咖啡档热狗套餐（热狗配饮料），2026-10-20 决定在熟食档口新设现做热食柜台，顾客在柜台点单取餐。"
+    },
+    "85633": {
+      "category": "meat",
+      "note": "全熟火鸡香肠饼，属于肉禽而非水产（原分类误把冷冻肉品归入水产）。"
+    },
+    "86102": {
+      "category": "bakery",
+      "storageCondition": "ambient-likely",
+      "note": "热狗面包，属于烘焙而非肉禽；常温包装面包。"
+    },
+    "112004": {
+      "storageCondition": "chilled-confirmed",
+      "note": "鲜牛肉生品，按磅称重、真空包装或门店分切，需冷藏陈列；同系列 Member’s Mark USDA Choice Angus 商品页注明 Fresh, never frozen。"
+    },
+    "144885": {
+      "category": "bakery",
+      "storageCondition": "ambient-likely",
+      "note": "热狗面包，属于烘焙而非肉禽；常温包装面包。"
+    },
+    "184108": {
+      "category": "meat",
+      "note": "冷冻牛肉饼，属于肉禽而非水产（原分类误把冷冻肉品归入水产）。"
+    },
+    "184366": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "195020": {
+      "category": "paper-goods",
+      "archive": true,
+      "note": "一次性餐具与食品容器（来源分类 Disposable Tableware & Paper Goods），应属「纸品与湿巾」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "195027": {
+      "category": "paper-goods",
+      "archive": true,
+      "note": "一次性餐具与食品容器（来源分类 Disposable Tableware & Paper Goods），应属「纸品与湿巾」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "207445": {
+      "category": "meat",
+      "note": "冷冻牛肉饼，属于肉禽而非水产（原分类误把冷冻肉品归入水产）。"
+    },
+    "219752": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 easter flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "272514": {
+      "category": "paper-goods",
+      "archive": true,
+      "note": "一次性餐具与食品容器（来源分类 Disposable Tableware & Paper Goods），应属「纸品与湿巾」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "281710": {
+      "category": "seasoning",
+      "storageCondition": "ambient-likely",
+      "note": "瓶装调味酱料，属于调味而非蔬菜；开封前常温，同类 Member’s Mark Ranch Dressing 页注明 Refrigerate after opening。"
+    },
+    "306561": {
+      "storageCondition": "ambient-likely",
+      "note": "瓶装或罐装莎莎酱、芝士蘸酱，开封前常温货架商品；来源页未写储存说明。"
+    },
+    "309203": {
+      "category": "paper-goods",
+      "archive": true,
+      "note": "一次性餐具与食品容器（来源分类 Disposable Tableware & Paper Goods），应属「纸品与湿巾」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "319761": {
+      "storageCondition": "chilled-confirmed",
+      "note": "鲜牛肉生品，按磅称重、真空包装或门店分切，需冷藏陈列；同系列 Member’s Mark USDA Choice Angus 商品页注明 Fresh, never frozen。"
+    },
+    "319908": {
+      "storageCondition": "chilled-confirmed",
+      "note": "鲜牛肉生品，按磅称重、真空包装或门店分切，需冷藏陈列；同系列 Member’s Mark USDA Choice Angus 商品页注明 Fresh, never frozen。"
+    },
+    "320174": {
+      "storageCondition": "chilled-confirmed",
+      "note": "鲜牛肉生品，按磅称重、真空包装或门店分切，需冷藏陈列；同系列 Member’s Mark USDA Choice Angus 商品页注明 Fresh, never frozen。"
+    },
+    "334378": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "337375": {
+      "category": "paper-goods",
+      "archive": true,
+      "note": "一次性餐具与食品容器（来源分类 Disposable Tableware & Paper Goods），应属「纸品与湿巾」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "343289": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 mothers day flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "355966": {
+      "storageCondition": "chilled-confirmed",
+      "note": "天然奶酪（切片、块状或碎丝），需冷藏陈列；来源页未写储存说明。"
+    },
+    "360954": {
+      "category": "seasoning",
+      "storageCondition": "ambient-likely",
+      "note": "瓶装调味酱料，属于调味而非蔬菜；开封前常温，同类 Member’s Mark Ranch Dressing 页注明 Refrigerate after opening。"
+    },
+    "399345": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 easter flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "443896": {
+      "storageCondition": "chilled-confirmed",
+      "note": "鲜牛肉生品，按磅称重、真空包装或门店分切，需冷藏陈列；同系列 Member’s Mark USDA Choice Angus 商品页注明 Fresh, never frozen。"
+    },
+    "448056": {
+      "category": "meat",
+      "note": "冷冻调味牛肉饼，属于肉禽而非水产（原分类误把冷冻肉品归入水产）。"
+    },
+    "504331": {
+      "storageCondition": "chilled-confirmed",
+      "note": "鲜切西兰花小朵，需冷藏陈列。"
+    },
+    "516279": {
+      "category": "seasoning",
+      "storageCondition": "ambient-likely",
+      "note": "瓶装调味酱料，属于调味而非蔬菜；开封前常温，同类 Member’s Mark Ranch Dressing 页注明 Refrigerate after opening。"
+    },
+    "516401": {
+      "category": "seasoning",
+      "storageCondition": "ambient-likely",
+      "note": "瓶装调味酱料，属于调味而非蔬菜；开封前常温，同类 Member’s Mark Ranch Dressing 页注明 Refrigerate after opening。"
+    },
+    "538511": {
+      "storageCondition": "chilled-confirmed",
+      "note": "天然奶酪（切片、块状或碎丝），需冷藏陈列；来源页未写储存说明。"
+    },
+    "566777": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "566798": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "567060": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "621016": {
+      "storageCondition": "chilled-confirmed",
+      "note": "天然奶酪（切片、块状或碎丝），需冷藏陈列；来源页未写储存说明。"
+    },
+    "626297": {
+      "storageCondition": "chilled-confirmed",
+      "note": "天然奶酪（切片、块状或碎丝），需冷藏陈列；来源页未写储存说明。"
+    },
+    "626333": {
+      "storageCondition": "chilled-confirmed",
+      "note": "天然奶酪（切片、块状或碎丝），需冷藏陈列；来源页未写储存说明。"
+    },
+    "626340": {
+      "storageCondition": "chilled-confirmed",
+      "note": "天然奶酪（切片、块状或碎丝），需冷藏陈列；来源页未写储存说明。"
+    },
+    "626598": {
+      "storageCondition": "chilled-confirmed",
+      "note": "天然奶酪（切片、块状或碎丝），需冷藏陈列；来源页未写储存说明。"
+    },
+    "633467": {
+      "note": "来源称 uncooked、garden-fresh，无法判断是常温瓶装还是冷藏鲜莎莎，待确认。"
+    },
+    "637948": {
+      "storageCondition": "chilled-confirmed",
+      "note": "鲜牛肉生品，按磅称重、真空包装或门店分切，需冷藏陈列；同系列 Member’s Mark USDA Choice Angus 商品页注明 Fresh, never frozen。"
+    },
+    "681926": {
+      "storageCondition": "chilled-confirmed",
+      "note": "天然奶酪（切片、块状或碎丝），需冷藏陈列；来源页未写储存说明。"
+    },
+    "702376": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "716617": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 easter flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "717820": {
+      "category": "seasoning",
+      "storageCondition": "ambient-likely",
+      "note": "瓶装调味酱料，属于调味而非蔬菜；开封前常温，同类 Member’s Mark Ranch Dressing 页注明 Refrigerate after opening。"
+    },
+    "766545": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "784785": {
+      "storageCondition": "chilled-confirmed",
+      "note": "烟熏熟香肠，需冷藏陈列。"
+    },
+    "799419": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 easter flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "807102": {
+      "category": "meat",
+      "note": "烤鸡排，属于肉禽而非水产（原分类误把冷冻肉品归入水产）。"
+    },
+    "821981": {
+      "category": "paper-goods",
+      "archive": true,
+      "note": "一次性餐具与食品容器（来源分类 Disposable Tableware & Paper Goods），应属「纸品与湿巾」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "835891": {
+      "storageCondition": "ambient-likely",
+      "note": "整只菠萝，常温陈列。"
+    },
+    "859370": {
+      "category": "bakery",
+      "note": "黄油可颂，属于烘焙而非乳品；来源页注明 No refrigeration required。"
+    },
+    "886473": {
+      "storageCondition": "ambient-likely",
+      "note": "瓶装或罐装莎莎酱、芝士蘸酱，开封前常温货架商品；来源页未写储存说明。"
+    },
+    "898118": {
+      "storageCondition": "chilled-confirmed",
+      "note": "天然奶酪（切片、块状或碎丝），需冷藏陈列；来源页未写储存说明。"
+    },
+    "925457": {
+      "category": "seasoning",
+      "storageCondition": "ambient-likely",
+      "note": "瓶装调味酱料，属于调味而非蔬菜；开封前常温，同类 Member’s Mark Ranch Dressing 页注明 Refrigerate after opening。"
+    },
+    "929155": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "929219": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "929264": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "948658": {
+      "storageCondition": "chilled-confirmed",
+      "note": "鲜浆果，需冷藏陈列；同类 Raspberries、Strawberries 页注明 Keep refrigerated。"
+    },
+    "952333": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "952340": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "952463": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "961995": {
+      "category": "bakery",
+      "storageCondition": "ambient-likely",
+      "note": "热狗面包，属于烘焙而非肉禽；常温包装面包。"
+    },
+    "966014": {
+      "category": "paper-goods",
+      "archive": true,
+      "note": "一次性餐具与食品容器（来源分类 Disposable Tableware & Paper Goods），应属「纸品与湿巾」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "980001889": {
+      "storageCondition": "chilled-confirmed",
+      "note": "天然奶酪（切片、块状或碎丝），需冷藏陈列；来源页未写储存说明。"
+    },
+    "980003825": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 easter flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "980010593": {
+      "category": "meat",
+      "processing": "prepared",
+      "note": "熟制培根碎，属于肉禽熟制品而非蔬菜；来源未写明开封前是否需冷藏，储存条件仍待确认。"
+    },
+    "980043830": {
+      "storageCondition": "chilled-confirmed",
+      "note": "冷藏鲜意面；来源说明可冷冻备用、冷冻后无需解冻直接煮，可见售卖时为冷藏。"
+    },
+    "980043835": {
+      "storageCondition": "chilled-confirmed",
+      "note": "冷藏鲜意面；来源说明可冷冻备用、冷冻后无需解冻直接煮，可见售卖时为冷藏。"
+    },
+    "980045005": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "980061581": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "980061582": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "980078950": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "980079609": {
+      "category": "seasoning",
+      "storageCondition": "ambient-likely",
+      "note": "瓶装调味酱料，属于调味而非蔬菜；开封前常温，同类 Member’s Mark Ranch Dressing 页注明 Refrigerate after opening。"
+    },
+    "980079611": {
+      "category": "seasoning",
+      "note": "瓶装田园沙拉酱，属于调味而非蔬菜；来源页注明 Refrigerate after opening。"
+    },
+    "980082141": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 mothers day flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "980082148": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 mothers day flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "980092513": {
+      "storageCondition": "chilled-confirmed",
+      "note": "服务柜台冰鲜陈列的虾生品，需冷藏。"
+    },
+    "980092998": {
+      "storageCondition": "frozen-confirmed",
+      "note": "来源分类为冷冻食品的西兰花什锦冷冻蔬菜，需冷冻陈列。"
+    },
+    "980110097": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "980110098": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "980110150": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "980110158": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "980110170": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "980110213": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "980122883": {
+      "category": "meat",
+      "note": "冷冻鸡块，属于肉禽而非水产（原分类误把冷冻肉品归入水产）。"
+    },
+    "980134611": {
+      "category": "cleaning",
+      "archive": true,
+      "note": "拖把、清洁布与清洁剂（来源分类 Cleaning Supplies），应属「日用清洁」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "980137251": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "980139626": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "980140837": {
+      "storageCondition": "ambient-likely",
+      "note": "瓶装或罐装莎莎酱、芝士蘸酱，开封前常温货架商品；来源页未写储存说明。"
+    },
+    "980141382": {
+      "storageCondition": "ambient-likely",
+      "note": "瓶装或罐装莎莎酱、芝士蘸酱，开封前常温货架商品；来源页未写储存说明。"
+    },
+    "980145724": {
+      "storageCondition": "chilled-confirmed",
+      "note": "天然奶酪（切片、块状或碎丝），需冷藏陈列；来源页未写储存说明。"
+    },
+    "980153709": {
+      "storageCondition": "chilled-confirmed",
+      "note": "未熟成鲜奶酪，需冷藏陈列；来源页未写储存说明。"
+    },
+    "980153711": {
+      "storageCondition": "chilled-confirmed",
+      "note": "未熟成鲜奶酪，需冷藏陈列；来源页未写储存说明。"
+    },
+    "980175808": {
+      "category": "seasoning",
+      "storageCondition": "ambient-likely",
+      "note": "瓶装调味酱料，属于调味而非蔬菜；开封前常温，同类 Member’s Mark Ranch Dressing 页注明 Refrigerate after opening。"
+    },
+    "980175942": {
+      "storageCondition": "served-hot",
+      "note": "咖啡档现做热食（16 英寸整只披萨），2026-10-20 决定在熟食档口新设现做热食柜台，顾客在柜台点单取餐。"
+    },
+    "980178938": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 mothers day flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "980184164": {
+      "storageCondition": "chilled-confirmed",
+      "note": "未熟制的生培根，需冷藏陈列。"
+    },
+    "980196546": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "980231514": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "980241457": {
+      "storageCondition": "chilled-confirmed",
+      "note": "鲜蘑菇，需冷藏陈列；同类 Whole White Mushrooms 页建议冷藏。"
+    },
+    "980244625": {
+      "category": "paper-goods",
+      "archive": true,
+      "note": "一次性餐具与食品容器（来源分类 Disposable Tableware & Paper Goods），应属「纸品与湿巾」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "980248903": {
+      "storageCondition": "ambient-likely",
+      "note": "瓶装或罐装莎莎酱、芝士蘸酱，开封前常温货架商品；来源页未写储存说明。"
+    },
+    "980250083": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 easter flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "980250890": {
+      "storageCondition": "chilled-confirmed",
+      "note": "服务柜台冰鲜陈列的龙虾尾生品，需冷藏。"
+    },
+    "980253229": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 mothers day flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "980253276": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 mothers day flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "980253311": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 mothers day flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "980253363": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 easter flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "980265724": {
+      "category": "cleaning",
+      "archive": true,
+      "note": "拖把、清洁布与清洁剂（来源分类 Cleaning Supplies），应属「日用清洁」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "980307140": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 mothers day flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "980307155": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 mothers day flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "980331752": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 easter flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "980346777": {
+      "category": "meat",
+      "note": "冷冻裹粉鸡柳，属于肉禽而非水产（原分类误把冷冻肉品归入水产）。"
+    },
+    "980355530": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "980366988": {
+      "storageCondition": "ambient-likely",
+      "note": "洋葱，常温陈列；同类 Sweet Onions、Red Onions 页注明 Store in a cool, dry place。"
+    },
+    "980372149": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 mothers day flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "980388010": {
+      "category": "home",
+      "archive": true,
+      "note": "Caterpillar 品牌五金劳保用品（绑带、护膝、手套、拖车带），不是猫用品（来源分类 CAT），应属「家居」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "984233054": {
+      "category": "bakery",
+      "note": "奶油奶酪丹麦酥，属于烘焙而非乳品；来源页注明 No refrigeration required。"
+    },
+    "984294317": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 valentines day flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "984307944": {
+      "category": "bakery",
+      "note": "南瓜奶油奶酪布朗尼，属于烘焙而非乳品；来源页注明 No refrigeration required。"
+    },
+    "984318128": {
+      "storageCondition": "ambient-likely",
+      "note": "瓶装或罐装莎莎酱、芝士蘸酱，开封前常温货架商品；来源页未写储存说明。"
+    },
+    "984318790": {
+      "storageCondition": "chilled-confirmed",
+      "note": "天然奶酪（切片、块状或碎丝），需冷藏陈列；来源页未写储存说明。"
+    },
+    "984323852": {
+      "category": "seasoning",
+      "storageCondition": "ambient-likely",
+      "note": "罐装玉米片芝士酱，属于调味蘸酱而非乳品；罐头食品开罐前常温，来源称其为 addition to your pantry。"
+    },
+    "990004607": {
+      "category": "meat",
+      "note": "冷冻牛肉薄片，属于肉禽而非水产（原分类误把冷冻肉品归入水产）。"
+    },
+    "990006099": {
+      "storageCondition": "chilled-confirmed",
+      "note": "切片熟牛肉（熟食冷切），开袋即食，需冷藏陈列。"
+    },
+    "990006405": {
+      "category": "pantry",
+      "storageCondition": "ambient-likely",
+      "note": "调味面包丁（干货），属于粮油调味而非蔬菜；常温。"
+    },
+    "990098310": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "990106771": {
+      "category": "home",
+      "archive": true,
+      "note": "车库收纳与搬运用品（来源分类 Garage），应属「家居」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "990283505": {
+      "category": "meat",
+      "note": "冷冻裹粉鸡胸条，属于肉禽而非水产（原分类误把冷冻肉品归入水产）。"
+    },
+    "990283566": {
+      "category": "pet",
+      "archive": true,
+      "note": "宠物围栏与狗屋（来源分类 Pet Accessories），应属「宠物食品与用品」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "990290437": {
+      "category": "meat",
+      "note": "炭烤牛肉饼，属于肉禽而非水产（原分类误把冷冻肉品归入水产）。"
+    },
+    "990321574": {
+      "category": "seasoning",
+      "storageCondition": "ambient-likely",
+      "note": "瓶装调味酱料，属于调味而非蔬菜；开封前常温，同类 Member’s Mark Ranch Dressing 页注明 Refrigerate after opening。"
+    },
+    "990334655": {
+      "category": "meat",
+      "note": "冷冻去骨鸡胸，属于肉禽而非水产（原分类误把冷冻肉品归入水产）。"
+    },
+    "990338052": {
+      "category": "home",
+      "archive": true,
+      "note": "Caterpillar 品牌五金劳保用品（绑带、护膝、手套、拖车带），不是猫用品（来源分类 CAT），应属「家居」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "990340011": {
+      "category": "home",
+      "archive": true,
+      "note": "果蔬保鲜吸附包，属于厨房用品而非生鲜（来源分类 Fresh Fruits & Vegetables），应属「家居」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "990342119": {
+      "category": "cleaning",
+      "archive": true,
+      "note": "拖把、清洁布与清洁剂（来源分类 Cleaning Supplies），应属「日用清洁」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "990349941": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "990354069": {
+      "category": "cleaning",
+      "archive": true,
+      "note": "拖把、清洁布与清洁剂（来源分类 Cleaning Supplies），应属「日用清洁」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "990360578": {
+      "category": "home",
+      "archive": true,
+      "note": "车库收纳与搬运用品（来源分类 Garage），应属「家居」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "990360579": {
+      "category": "home",
+      "archive": true,
+      "note": "车库收纳与搬运用品（来源分类 Garage），应属「家居」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "990366948": {
+      "category": "home",
+      "archive": true,
+      "note": "Caterpillar 品牌五金劳保用品（绑带、护膝、手套、拖车带），不是猫用品（来源分类 CAT），应属「家居」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "990366949": {
+      "category": "home",
+      "archive": true,
+      "note": "Caterpillar 品牌五金劳保用品（绑带、护膝、手套、拖车带），不是猫用品（来源分类 CAT），应属「家居」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "990368277": {
+      "category": "home",
+      "archive": true,
+      "note": "Caterpillar 品牌五金劳保用品（绑带、护膝、手套、拖车带），不是猫用品（来源分类 CAT），应属「家居」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "990370037": {
+      "category": "home",
+      "archive": true,
+      "note": "厨房电器（来源分类 Kitchen Appliances & Electrics），应属「家居」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "990370191": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "990370626": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 mothers day flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "990375567": {
+      "category": "paper-goods",
+      "archive": true,
+      "note": "一次性餐具与食品容器（来源分类 Disposable Tableware & Paper Goods），应属「纸品与湿巾」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "990376127": {
+      "category": "cleaning",
+      "archive": true,
+      "note": "拖把、清洁布与清洁剂（来源分类 Cleaning Supplies），应属「日用清洁」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "990377451": {
+      "storageCondition": "ambient-likely",
+      "note": "瓶装或罐装莎莎酱、芝士蘸酱，开封前常温货架商品；来源页未写储存说明。"
+    },
+    "990377989": {
+      "category": "home",
+      "archive": true,
+      "note": "Caterpillar 品牌五金劳保用品（绑带、护膝、手套、拖车带），不是猫用品（来源分类 CAT），应属「家居」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "990380049": {
+      "category": "personal-care",
+      "archive": true,
+      "note": "按摩器（来源分类 Bath & Body），应属「个护」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "990381450": {
+      "category": "pet",
+      "archive": true,
+      "note": "宠物围栏与狗屋（来源分类 Pet Accessories），应属「宠物食品与用品」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "990386138": {
+      "category": "personal-care",
+      "archive": true,
+      "note": "按摩器（来源分类 Bath & Body），应属「个护」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "990389423": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "990392314": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 easter flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "990398466": {
+      "storageCondition": "ambient-likely",
+      "note": "瓶装或罐装莎莎酱、芝士蘸酱，开封前常温货架商品；来源页未写储存说明。"
+    },
+    "990401763": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 valentines day flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "990403075": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 easter flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "990406413": {
+      "category": "cleaning",
+      "archive": true,
+      "note": "拖把、清洁布与清洁剂（来源分类 Cleaning Supplies），应属「日用清洁」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "990421132": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 easter flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "990421406": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 mothers day flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "990423117": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 mothers day flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "990423852": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 mothers day flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "990433377": {
+      "category": "paper-goods",
+      "archive": true,
+      "note": "一次性餐具与食品容器（来源分类 Disposable Tableware & Paper Goods），应属「纸品与湿巾」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "990440113": {
+      "note": "来源同时写 thaw & serve 与 60-day refrigerated，无法判断以冷冻还是冷藏售卖，待确认。"
+    },
+    "990442360": {
+      "category": "seasoning",
+      "storageCondition": "ambient-likely",
+      "note": "瓶装调味酱料，属于调味而非蔬菜；开封前常温，同类 Member’s Mark Ranch Dressing 页注明 Refrigerate after opening。"
+    },
+    "990448214": {
+      "category": "home",
+      "archive": true,
+      "note": "厨房电器（来源分类 Kitchen Appliances & Electrics），应属「家居」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "990460605": {
+      "category": "meat",
+      "note": "全熟鸡块，属于肉禽而非水产（原分类误把冷冻肉品归入水产）。"
+    },
+    "990463484": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 easter flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "990463878": {
+      "category": "personal-care",
+      "archive": true,
+      "note": "按摩器（来源分类 Bath & Body），应属「个护」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "990464282": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 easter flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "990464294": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 easter flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "990471914": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 easter flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "990472071": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "990475115": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 valentines day flowers），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "990477448": {
+      "category": "clothing",
+      "archive": true,
+      "note": "女鞋（来源分类 Women's Shoes），应属「服饰」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "990485383": {
+      "storageCondition": "ambient-likely",
+      "note": "瓶装或罐装莎莎酱、芝士蘸酱，开封前常温货架商品；来源页未写储存说明。来源称其为 addition to your pantry。"
+    },
+    "990495601": {
+      "category": "seasoning",
+      "storageCondition": "ambient-likely",
+      "note": "瓶装调味酱料，属于调味而非蔬菜；开封前常温，同类 Member’s Mark Ranch Dressing 页注明 Refrigerate after opening。"
+    },
+    "990496616": {
+      "category": "cleaning",
+      "archive": true,
+      "note": "拖把、清洁布与清洁剂（来源分类 Cleaning Supplies），应属「日用清洁」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "990510406": {
+      "category": "clothing",
+      "archive": true,
+      "note": "球队服饰（来源分类 Sports Team Clothing），应属「服饰」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "990510697": {
+      "category": "clothing",
+      "archive": true,
+      "note": "球队服饰（来源分类 Sports Team Clothing），应属「服饰」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "990510833": {
+      "category": "clothing",
+      "archive": true,
+      "note": "球队服饰（来源分类 Sports Team Clothing），应属「服饰」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "990514978": {
+      "category": "home",
+      "archive": true,
+      "note": "厨房电器（来源分类 Kitchen Appliances & Electrics），应属「家居」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "990515141": {
+      "category": "home",
+      "archive": true,
+      "note": "车库收纳与搬运用品（来源分类 Garage），应属「家居」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "990537992": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "990538498": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "990540801": {
+      "category": "pet",
+      "archive": true,
+      "note": "宠物围栏与狗屋（来源分类 Pet Accessories），应属「宠物食品与用品」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    },
+    "990546244": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "990546812": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "990546850": {
+      "category": "floral",
+      "archive": true,
+      "note": "鲜花花艺（来源分类 Wedding & Event Planning），不属于 19 个超市主类，来源页为线上配送专售，归档。"
+    },
+    "990559672": {
+      "category": "home",
+      "archive": true,
+      "note": "厨房电器（来源分类 Kitchen Appliances & Electrics），应属「家居」；该主类已有 100 件，超出每类 100 件的范围，归档。"
+    }
+  }
+}

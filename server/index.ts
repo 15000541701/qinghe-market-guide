@@ -10,7 +10,12 @@ import { writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { z } from 'zod';
 import { aiConfigured, AiError, guide, identifyImage } from './ai';
-import { getModelSettings, modelSettingsSchema, saveModelSettings } from './model-settings';
+import {
+  getModelSettings,
+  modelProviderReadiness,
+  modelSettingsSchema,
+  saveModelSettings,
+} from './model-settings';
 import {
   getCategories,
   getProduct,
@@ -68,7 +73,13 @@ app.put('/api/model-settings', (req, res) => {
   res.json(saveModelSettings(settings));
 });
 app.get('/api/status', (_req, res) =>
-  res.json({ ai: aiConfigured(), mode: aiConfigured() ? '大模型导购' : '规则导购', demo: true, mealPlanner: mealPlanningVersion }),
+  res.json({
+    ai: aiConfigured(),
+    mode: aiConfigured() ? '大模型导购' : '规则导购',
+    demo: true,
+    mealPlanner: mealPlanningVersion,
+    providers: modelProviderReadiness(),
+  }),
 );
 app.get('/api/products', (_req, res) => res.json(getProducts()));
 app.get('/api/products/:id', (req, res) => {

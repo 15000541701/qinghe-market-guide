@@ -4,7 +4,8 @@ import { db, getProducts } from '../server/db';
 try {
   const products = getProducts();
   const samsClub = products.filter((product) => product.sourceRetailer === 'Sam’s Club US');
-  const categories = samsClub.reduce<Record<string, number>>((counts, product) => {
+  const onSale = samsClub.filter((product) => product.status !== 'archived');
+  const categories = onSale.reduce<Record<string, number>>((counts, product) => {
     counts[product.category] = (counts[product.category] || 0) + 1;
     return counts;
   }, {});
@@ -12,8 +13,9 @@ try {
     totalProducts: products.length,
     samsClubProducts: samsClub.length,
     otherProducts: products.length - samsClub.length,
-    placed: samsClub.filter((product) => product.merchandisingState === 'placed').length,
-    awaitingPlacement: samsClub.filter((product) => product.merchandisingState !== 'placed').length,
+    archived: samsClub.length - onSale.length,
+    placed: onSale.filter((product) => product.merchandisingState === 'placed').length,
+    awaitingPlacement: onSale.filter((product) => product.merchandisingState !== 'placed').length,
     categories,
   }, null, 2));
 } finally {
