@@ -34,7 +34,11 @@
 
 在超市端“拖拽商品陈列”中搜索商品，选择目标设施，把商品卡拖到侧面和层位。也可点击商品再点击目标层位按钮；触屏设备提供手柄拖动与点击方式。
 
-保存只改变 shelfId、shelf、shelfSide 和 shelfLevel。服务端检查目标位置、通道可达性和位置是否已被别的操作更新；冲突会要求刷新，不覆盖新位置。待确认商品可以先安排陈列，但不会因此自动定价或上架。
+保存改变 shelfId、shelf、shelfSide 和 shelfLevel，并把 merchandisingState 记为 placed（商品编辑表单保存位置时同样如此）。服务端检查目标位置、通道可达性和位置是否已被别的操作更新；冲突会要求刷新，不覆盖新位置。
+
+merchandisingState 只表示商品是否占着货位；是否“待确认”由 storageCondition 决定（超市端“储存条件待确认”筛选即按此）。重启时的自动布局只补排没有位置的商品，不会挪动或清除人工安排：占着符合设施规则的位置的 Sam’s Club 商品保留原位，即使它的 merchandisingState 仍是 unplaced 或 pending-review（旧版拖拽保存的记录、SKU 文件写入的位置同理，启动时补记为 placed）。位置不再符合设施规则时才清除并重新安排，例如储存条件变更后与设施类型冲突、设施的陈列分组限制不再适用该商品，或商品已归档。
+
+待确认商品（storageCondition 为 unknown）可以先安排陈列，人工安排后同样记为 placed，所以自动布局会保留它的位置，并把它计入货位容量。这只是安排了位置，不是完成复核：storageCondition 仍为 unknown，售价、库存和上架状态都不变，不会因此自动定价或上架；自动布局也从不替待确认商品选位置。`scripts/replan-samsclub-layout.ts` 按设计从头重排全部 Sam’s Club 商品、不看现有位置，执行 `--apply` 会清除这类人工安排（待确认商品回到 pending-review）；需要保留时请在重排之后重新拖拽。
 
 ## SKU 批量导入、导出
 

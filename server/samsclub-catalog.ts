@@ -66,7 +66,8 @@ const unplaced = (product: Product): Product => ({
 /**
  * Bring imported products up to date with the reviewed source catalog. A catalog-owned field
  * changes only while it still holds the value last written from the catalog, so staff edits
- * survive. Placements that no longer fit the fixture rules are cleared for re-placement.
+ * survive. Placements that no longer fit the fixture rules are cleared for re-placement; the ones
+ * that still fit stay put and count as placed.
  */
 export function syncSamsClubProducts(products: Product[], shelves: Shelf[]): Product[] {
   const byId = new Map(catalogRecords().map((record) => [`samsclub-${record.itemId}`, record]));
@@ -105,6 +106,10 @@ export function syncSamsClubProducts(products: Product[], shelves: Shelf[]): Pro
         shelfSlotPlacementError(shelf, next, [], next.shelfSide, next.shelfLevel || 1))
     )
       next = unplaced(next);
+    // A slot that passes the fixture rules is a placement, whoever made it (drag-and-drop board,
+    // edit form, SKU file), pending items included. Earlier builds saved such slots without
+    // marking them placed, and startup re-plans everything not placed, so it moved or cleared them.
+    else if (next.shelfId) next.merchandisingState = 'placed';
     else if (next.merchandisingState === 'pending-review' && next.storageCondition !== 'unknown')
       next.merchandisingState = 'unplaced';
     if (!same(next, product)) changed.push(next);

@@ -154,7 +154,17 @@ app.patch('/api/products/:id/placement', (req, res) => {
     input.shelfLevel,
   );
   if (capacityError) return res.status(409).json({ error: capacityError });
-  res.json(saveProduct({ ...product, shelfId: shelf.id, shelf: shelf.name, ...position }));
+  res.json(
+    saveProduct({
+      ...product,
+      shelfId: shelf.id,
+      shelf: shelf.name,
+      ...position,
+      // The startup planner re-plans anything not placed, so a staff placement must be recorded.
+      // Pending items (storage unknown) count too: only the slot changes, they stay pending.
+      merchandisingState: 'placed',
+    }),
+  );
 });
 function rectsOverlap(
   first: { x: number; y: number; w: number; h: number },
@@ -862,6 +872,7 @@ app.patch('/api/products/:id', (req, res) => {
       shelfId: shelf?.id,
       shelfSide: shelfPosition.shelfSide,
       shelfLevel: shelfPosition.shelfLevel,
+      merchandisingState: 'placed',
       saleMode: input.saleMode || previous.saleMode,
       price: Math.round(input.price * 100) / 100,
       history,
