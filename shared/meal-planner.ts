@@ -14,6 +14,7 @@ import {
   ingredientNames,
   recipes,
   mealPlanningVersion,
+  ingredientLineage,
 } from './recipes';
 import {
   cartTotal,
@@ -32,9 +33,11 @@ import {
   mealProductExcluded,
   mealIngredientExcluded,
   dishMealKinds,
+  productIngredientKeys,
   canonicalMealIngredient,
 } from './meal-catalog';
 import { currencySymbol, productCurrency } from './currency';
+import { mealSlotsForPreferences } from './meal-schedule';
 import type { Recipe, RecipeIngredient } from './recipes';
 
 type ScheduledDish = { recipe: Recipe; day: number; meal: string; kind?: GeneratedDish['kind'] };
@@ -99,13 +102,7 @@ function inferKind(recipe: Recipe): GeneratedDish['kind'] {
 }
 
 function mealNames(preferences: MealPreferences) {
-  return preferences.mealsPerDay === 1
-    ? [preferences.singleMeal || (preferences.wants.includes('breakfast') ? '早餐' : '晚餐')]
-    : preferences.mealsPerDay === 2
-      ? ['午餐', '晚餐']
-      : preferences.mealsPerDay === 3
-        ? ['早餐', '午餐', '晚餐']
-        : ['早餐', '午餐', '晚餐', '加餐'];
+  return mealSlotsForPreferences(preferences);
 }
 
 function recipeEstimate(
@@ -545,6 +542,46 @@ export function buildMealPlan(
       ? scheduledFromGenerated(preferences, products)
       : staticSchedule(preferences, products, storeCategories, fixedRecipeIds);
   const unmet: string[] = [];
+  const requestedProtein = preferences.wants.filter((want) =>
+    ['fish', 'meat', 'shrimp', 'egg'].includes(want),
+  );
+  const recipeProteinKeys = schedule.flatMap(({ recipe }) =>
+    recipe.ingredients.flatMap((ingredient) => {
+      const product = ingredient.productId
+        ? products.find((p) => p.id === ingredient.productId)
+        : undefined;
+      return product
+        ? dishMealKinds(
+            {
+              kind: 'mixed',
+              ingredients: [
+                {
+                  productId: product.id,
+                  grams: ingredient.grams,
+                  milliliters: ingredient.milliliters,
+                  pieces: ingredient.pieces,
+                },
+              ],
+            },
+            products,
+          ).includes('protein')
+          ? productIngredientKeys(product)
+          : []
+        : ingredientLineage(ingredient.key);
+    }),
+  );
+  if (
+    requestedProtein.length &&
+    !requestedProtein.some((want) =>
+      (want === 'meat'
+        ? ['chicken', 'beef', 'pork']
+        : want === 'fish'
+          ? ['fish', 'salmon', 'carp', 'seabass']
+          : [want]
+      ).some((key) => recipeProteinKeys.includes(key)),
+    )
+  )
+    unmet.push('当前方案未满足指定的鱼、肉、虾或鸡蛋偏好，不能以其他食材替代后直接确认');
   if (preferences.dishIds.some((id) => !recipes.some((recipe) => recipe.id === id)))
     unmet.push('指定菜谱不属于当前西式餐食目录，需重新选择');
   for (let day = 1; day <= preferences.days; day++)
@@ -558,6 +595,9 @@ export function buildMealPlan(
               ingredients: item.recipe.ingredients.map((ingredient) => ({
                 ingredient: ingredient.key,
                 productId: ingredient.productId,
+                grams: ingredient.grams,
+                milliliters: ingredient.milliliters,
+                pieces: ingredient.pieces,
               })),
             },
             products,
@@ -583,6 +623,20 @@ export function buildMealPlan(
     plan.canApply = false;
     plan.budgetComplete = false;
     plan.remaining = null;
+  }
+  // Reusing the cheapest complete template can avoid buying a second bread or
+  // salad package. Re-evaluate the entire basket after catalogue/pack-size changes;
+  // never replace generated dishes, fixed choices or unresolved ingredients.
+  if (
+    !preferences.generatedMeals?.length && !fixedRecipeIds?.length && !preferences.cheaper &&
+    preferences.budget !== null && plan.budgetComplete && !plan.missing.length &&
+    plan.total > preferences.budget
+  ) {
+    const economical = buildMealPlan(
+      { ...preferences, cheaper: true }, products, cart, undefined, storeCategories,
+    );
+    if (economical.budgetComplete && !economical.missing.length && economical.total < plan.total)
+      return economical;
   }
   return plan;
 }

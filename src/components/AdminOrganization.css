@@ -1,0 +1,478 @@
+.organization-panel {
+  border: 1px solid #dfe6db;
+  border-radius: 16px;
+  background: #fff;
+  padding: 24px;
+}
+.organization-panel [hidden] {
+  display: none !important;
+}
+.organization-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  padding-bottom: 22px;
+}
+.organization-eyebrow {
+  display: block;
+  color: #8a987f;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.15em;
+  margin-bottom: 8px;
+}
+.organization-header h2 {
+  font-size: 22px;
+  margin: 0 0 10px;
+  line-height: 1.4;
+  color: #304d3d;
+}
+.organization-header p {
+  margin: 0;
+  color: #87927e;
+  font-size: 12px;
+  line-height: 1.8;
+  max-width: 560px;
+}
+.organization-counts {
+  display: flex;
+  flex-shrink: 0;
+  gap: 20px;
+  padding: 10px 0 10px 22px;
+  border-left: 1px solid #e7ece1;
+}
+.organization-counts > span {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  color: #919c88;
+  font-size: 10px;
+  white-space: nowrap;
+}
+.organization-counts strong {
+  color: #54734a;
+  font-size: 22px;
+  font-weight: 500;
+}
+.organization-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  justify-content: space-between;
+  padding: 15px 0;
+  border-top: 1px solid #edf0e8;
+  border-bottom: 1px solid #edf0e8;
+  margin-bottom: 18px;
+}
+.organization-tabs {
+  display: flex;
+  gap: 5px;
+  padding: 4px;
+  background: #f2f5ef;
+  border-radius: 10px;
+}
+.organization-tabs button {
+  border: 0;
+  background: transparent;
+  color: #89967d;
+  border-radius: 7px;
+  padding: 9px 14px;
+  font: inherit;
+  font-size: 12px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  white-space: nowrap;
+}
+.organization-tabs button[aria-selected='true'] {
+  color: #315443;
+  background: #fff;
+  box-shadow: 0 1px 5px #29401d12;
+  font-weight: 600;
+}
+.organization-tabs small {
+  font-size: 10px;
+  color: #99a48f;
+  font-variant-numeric: tabular-nums;
+}
+.organization-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #dfe6d8;
+  border-radius: 8px;
+  padding: 9px 11px;
+  min-width: 180px;
+  max-width: 280px;
+  flex: 1;
+  color: #92a085;
+}
+.organization-search input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  font-size: 11px;
+  color: #4b6441;
+}
+.organization-search:focus-within {
+  border-color: #8fa67e;
+  box-shadow: 0 0 0 2px #8fa67e19;
+}
+.organization-description {
+  margin: 0 0 16px;
+  color: #8b9683;
+  font-size: 11px;
+  line-height: 1.8;
+}
+.management-create {
+  border: 1px solid #e2e8da;
+  border-radius: 10px;
+  margin-bottom: 20px;
+  background: #fafcf7;
+  overflow: hidden;
+}
+.management-create > summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  color: #557347;
+  font-size: 12px;
+}
+.management-create > summary::-webkit-details-marker,
+.facility-item > summary::-webkit-details-marker {
+  display: none;
+}
+.management-create > summary > span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 500;
+}
+.management-create > summary small {
+  color: #9aa58d;
+  font-size: 10px;
+  margin-left: auto;
+}
+.management-create > summary::after {
+  content: '＋';
+  color: #859975;
+  font-size: 16px;
+}
+.management-create[open] > summary::after {
+  content: '−';
+}
+.management-create[open] > summary {
+  border-bottom: 1px solid #e5ebdd;
+}
+.organization-panel .management-create > .form-grid {
+  padding: 18px;
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 0.7fr auto;
+  gap: 15px;
+  align-items: end;
+}
+.organization-panel .management-create .field {
+  font-size: 11px;
+  color: #728267;
+}
+.organization-panel .management-create .field input,
+.organization-panel .management-create .field select {
+  width: 100%;
+  min-width: 0;
+}
+.organization-panel .management-create .button {
+  height: 40px;
+  white-space: nowrap;
+  justify-content: center;
+}
+.management-list-heading,
+.management-row {
+  display: grid;
+  align-items: center;
+  gap: 14px;
+}
+.category-columns {
+  grid-template-columns: minmax(140px, 1.3fr) minmax(150px, 1.2fr) minmax(90px, 0.65fr) 72px 56px;
+}
+.section-columns {
+  grid-template-columns: minmax(150px, 1.4fr) 80px minmax(110px, 1fr) 72px 56px;
+}
+.management-list-heading {
+  padding: 0 14px 11px;
+  color: #9aa58e;
+  font-size: 10px;
+  border-bottom: 1px solid #e8edde;
+}
+.management-list {
+  max-height: 520px;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+.management-row {
+  min-height: 65px;
+  padding: 11px 14px;
+  border-bottom: 1px solid #edf1e7;
+  transition: background 150ms ease;
+}
+.management-row:hover {
+  background: #fbfcf8;
+}
+.management-row > input,
+.management-row > select {
+  min-width: 0;
+  width: 100%;
+  height: 36px;
+  border: 1px solid #e1e7d8;
+  border-radius: 7px;
+  padding: 7px 9px;
+  background: #fff;
+  color: #516747;
+  font-size: 11px;
+  font-family: inherit;
+}
+.management-row > input:focus,
+.management-row > select:focus {
+  outline: 2px solid #cbdcbd;
+  outline-offset: 1px;
+}
+.management-status {
+  border-radius: 20px;
+  background: #f0f1ed;
+  color: #9a9e92;
+  padding: 4px 9px;
+  font-size: 10px;
+  font-style: normal;
+  white-space: nowrap;
+  width: fit-content;
+}
+.management-status.enabled {
+  color: #658051;
+  background: #edf4e5;
+}
+.management-toggle {
+  border: 0;
+  background: transparent;
+  color: #7d906b;
+  font-size: 11px;
+  padding: 6px 3px;
+}
+.management-toggle:hover {
+  color: #315443;
+  text-decoration: underline;
+}
+.management-code {
+  color: #8a9980;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.management-empty {
+  margin: 0;
+  padding: 30px;
+  text-align: center;
+  color: #9ca792;
+  font-size: 12px;
+}
+.organization-panel .area-create-panel {
+  border: 0;
+  background: #fafcf7;
+  padding: 18px;
+  margin: 0;
+}
+.organization-panel .area-create-heading {
+  margin-bottom: 16px;
+}
+.organization-panel .area-create-heading h3 {
+  font-size: 14px;
+}
+.organization-panel .area-create-layout {
+  gap: 22px;
+}
+.organization-panel .facility-editor {
+  min-width: 0;
+}
+.organization-panel .facility-create {
+  padding: 18px;
+}
+.organization-panel .facility-create > .section-heading {
+  display: none;
+}
+.organization-panel .facility-form-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.organization-panel .facility-form-grid .field small {
+  color: #a0aa96;
+  font-size: 10px;
+  line-height: 1.6;
+  font-weight: 400;
+}
+.organization-panel .facility-footprint-fields,
+.organization-panel .facility-access-fields {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  border: 1px solid #e2e9da;
+  border-radius: 9px;
+  padding: 14px;
+  min-width: 0;
+}
+.organization-panel .facility-form-grid legend {
+  color: #9ba78f;
+  padding: 0 6px;
+  font-size: 10px;
+}
+.organization-panel .facility-create > .button {
+  margin-top: 18px;
+}
+.organization-panel .facility-list {
+  display: grid;
+  gap: 9px;
+  max-height: 700px;
+  overflow: auto;
+}
+.organization-panel .facility-item {
+  border: 1px solid #e3e9db;
+  border-radius: 10px;
+  background: #fff;
+  overflow: hidden;
+}
+.organization-panel .facility-item > summary {
+  list-style: none;
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 7px 12px;
+  padding: 15px 42px 15px 16px;
+  cursor: pointer;
+}
+.organization-panel .facility-item > summary strong {
+  font-size: 12px;
+  color: #536e47;
+  font-weight: 500;
+}
+.organization-panel .facility-item > summary > span {
+  grid-column: 1 / -1;
+  font-size: 10px;
+  color: #9ba78f;
+  line-height: 1.6;
+}
+.organization-panel .facility-item > summary::after {
+  content: '＋';
+  position: absolute;
+  right: 16px;
+  top: 17px;
+  color: #91a17f;
+  font-size: 16px;
+}
+.organization-panel .facility-item[open] > summary::after {
+  content: '−';
+}
+.organization-panel .facility-item[open] > summary {
+  background: #f7faf2;
+  border-bottom: 1px solid #e2e9d9;
+}
+.organization-panel .facility-edit-grid {
+  padding: 18px;
+}
+.organization-panel .facility-reachable {
+  color: #7d8c71;
+  font-size: 11px;
+  align-self: center;
+}
+@media (max-width: 1000px) {
+  .organization-header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .organization-counts {
+    border: 0;
+    padding: 0;
+  }
+  .organization-toolbar {
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .organization-search {
+    max-width: none;
+  }
+}
+@media (max-width: 700px) {
+  .organization-panel {
+    padding: 17px 13px;
+  }
+  .organization-header h2 {
+    font-size: 19px;
+  }
+  .organization-tabs {
+    width: 100%;
+  }
+  .organization-tabs button {
+    flex: 1;
+    justify-content: center;
+    padding: 9px 7px;
+    font-size: 11px;
+    gap: 5px;
+  }
+  .organization-search {
+    width: 100%;
+    max-width: none;
+  }
+  .management-list-heading {
+    display: none;
+  }
+  .management-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 9px;
+    padding: 13px 8px;
+  }
+  .management-row > input:first-child {
+    grid-column: 1 / -1;
+  }
+  .management-row .management-toggle {
+    justify-self: end;
+  }
+  .management-create > summary small {
+    display: none;
+  }
+  .organization-panel .management-create > .form-grid,
+  .organization-panel .facility-form-grid {
+    grid-template-columns: 1fr 1fr;
+    padding: 14px;
+    gap: 12px;
+  }
+  .organization-panel .facility-footprint-fields,
+  .organization-panel .facility-access-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    padding: 12px;
+  }
+  .organization-panel .facility-item > summary {
+    padding-left: 13px;
+  }
+  .organization-panel .area-create-panel {
+    padding: 13px;
+  }
+}
+@media (max-width: 430px) {
+  .organization-panel .management-create > .form-grid {
+    grid-template-columns: 1fr;
+  }
+  .organization-panel .facility-form-grid {
+    grid-template-columns: 1fr;
+  }
+}

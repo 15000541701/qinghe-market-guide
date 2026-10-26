@@ -15,7 +15,8 @@ export async function api<T>(path: string, options?: RequestInit): Promise<T> {
       ...(options?.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
       ...options?.headers,
     },
-    signal: options?.signal || AbortSignal.timeout(55000),
+    // Meal retries and batches share a 175-second server deadline.
+    signal: options?.signal || AbortSignal.timeout(path === '/assistant' ? 200000 : 55000),
   });
   const content = await response
     .json()

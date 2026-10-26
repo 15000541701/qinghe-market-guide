@@ -8,10 +8,15 @@ import {
   fixtureSideLabels,
   fixedFixtures,
   mainAisles,
+  fixtureSupportsLevels,
 } from '../../shared/layout';
 import { entrance } from '../../shared/catalog';
 import { findPath, isWalkable } from '../../shared/navigation';
-import { DEFAULT_CAPACITY_PER_SLOT, MAX_CAPACITY_PER_SLOT, shelfSlotCapacity } from '../../shared/shelf-capacity';
+import {
+  DEFAULT_CAPACITY_PER_SLOT,
+  MAX_CAPACITY_PER_SLOT,
+  shelfSlotCapacity,
+} from '../../shared/shelf-capacity';
 import { api } from '../lib';
 
 type FixtureKind = NonNullable<Shelf['kind']>;
@@ -83,7 +88,8 @@ const kinds: { id: FixtureKind; name: string; defaultFootprint: Footprint; level
   },
 ];
 const kindNames = fixtureKindLabels as Record<FixtureKind, string>;
-const multiLevel = (kind: FixtureKind) => ['gondola', 'chiller'].includes(kind);
+const multiLevel = fixtureSupportsLevels;
+const defaultLevels = (kind: FixtureKind) => kinds.find((item) => item.id === kind)?.levels || 1;
 
 function accessDraft(points?: Shelf['accessPoints'], position?: Point | null): AccessDraft {
   const source = points || (position ? { front: position } : {});
@@ -208,7 +214,7 @@ function suggestedAccess(
   );
 }
 
-function draftFromShelf(shelf: Shelf, sections: StoreSection[], shelves: Shelf[]): FixtureDraft {
+export function draftFromShelf(shelf: Shelf, sections: StoreSection[], shelves: Shelf[]): FixtureDraft {
   const kind = shelf.kind || 'gondola';
   const footprint = shelf.footprint || suggestedFootprint(shelf.sectionId, kind, sections, shelves);
   const accessPoints =
@@ -219,7 +225,7 @@ function draftFromShelf(shelf: Shelf, sections: StoreSection[], shelves: Shelf[]
     name: shelf.name,
     kind,
     footprint,
-    levels: ['gondola', 'chiller'].includes(kind) ? shelf.levels || 4 : 1,
+    levels: multiLevel(kind) ? shelf.levels || defaultLevels(kind) : 1,
     capacityPerSlot: shelfSlotCapacity(shelf),
     allowedDisplayGroups: (shelf.allowedDisplayGroups || []).join(', '),
     reachable: shelf.reachable,
@@ -236,13 +242,20 @@ export default function FacilityEditor({
   shelves,
   onRefresh,
   onToast,
+  searchQuery = '',
 }: {
   sections: StoreSection[];
   shelves: Shelf[];
   onRefresh: () => Promise<void>;
   onToast: (message: string) => void;
+  searchQuery?: string;
 }) {
   const activeSections = sections.filter((section) => section.active);
+  const visibleShelves = shelves.filter((shelf) =>
+    `${shelf.name} ${kindNames[shelf.kind || 'gondola']} ${sections.find((section) => section.id === shelf.sectionId)?.name || ''}`
+      .toLowerCase()
+      .includes(searchQuery.trim().toLowerCase()),
+  );
   const [sectionId, setSectionId] = useState('');
   const [name, setName] = useState('');
   const [kind, setKind] = useState<FixtureKind>('gondola');
@@ -291,13 +304,6 @@ export default function FacilityEditor({
       draft.footprint.y + draft.footprint.h > mapBounds.maxY + 1
     )
       return '设施占地超出地图边界。';
-    if (
-      draft.footprint.x < section.rect.x ||
-      draft.footprint.y < section.rect.y ||
-      draft.footprint.x + draft.footprint.w > section.rect.x + section.rect.w ||
-      draft.footprint.y + draft.footprint.h > section.rect.y + section.rect.h
-    )
-      return '设施占地需要完整放在所属区域内。';
     if (draft.levels < 1 || draft.levels > 8) return '层数需设置为 1–8 层。';
     if (!multiLevel(draft.kind) && draft.levels !== 1) return '此类设施只能设置 1 层。';
     if (
@@ -342,6 +348,7 @@ export default function FacilityEditor({
       position:
         accessPoints.front || accessPoints.right || accessPoints.back || accessPoints.left || null,
       reachable: draft.reachable,
+      rotation: shelves.find((item) => item.id === ignoreId)?.rotation,
     };
     const fixtureSet = [...shelves.filter((shelf) => shelf.id !== ignoreId), preview];
     for (const [side, point] of Object.entries(accessPoints) as [AccessSide, Point][]) {
@@ -361,7 +368,7 @@ export default function FacilityEditor({
     setKind(nextKind);
     const footprint = suggestedFootprint(sectionId, nextKind, sections, shelves);
     setFootprint(footprint);
-    setLevels(multiLevel(nextKind) ? 4 : 1);
+    setLevels(defaultLevels(nextKind));
     setAccess(
       suggestedAccess(
         footprint,
@@ -370,7 +377,7 @@ export default function FacilityEditor({
         shelves,
         name,
         nextKind,
-        multiLevel(nextKind) ? 4 : 1,
+        defaultLevels(nextKind),
       ),
     );
     setError('');
@@ -483,144 +490,159 @@ export default function FacilityEditor({
 
   return (
     <div className="facility-editor">
-      <form className="facility-create" onSubmit={createFixture}>
-        <div className="section-heading">
-          <div>
-            <h3>新增门店设施</h3>
-            <p className="muted compact">
-              中央货架排、生鲜台、服务柜台、海鲜池和冷柜均可配置占地与顾客到达侧。
-            </p>
+      <details className="management-create">
+        <summary>
+          <span>
+            <Plus size={16} />
+            新增货架设施
+          </span>
+          <small>设置类型、容量与到达侧</small>
+        </summary>
+        <form className="facility-create" onSubmit={createFixture}>
+          <div className="section-heading">
+            <div>
+              <h3>新增门店设施</h3>
+              <p className="muted compact">
+                中央货架排、生鲜台、服务柜台、海鲜池和冷柜均可配置占地与顾客到达侧。
+              </p>
+            </div>
           </div>
-        </div>
-        <div className="facility-form-grid">
-          <label className="field">
-            设施名称 / 货架编号
-            <input
-              value={name}
-              maxLength={30}
-              required
-              onChange={(event) => setName(event.target.value)}
-              placeholder="例如：A-01"
-            />
-          </label>
-          <label className="field">
-            所属区域
-            <select
-              value={sectionId}
-              required
-              onChange={(event) => {
-                const next = event.target.value;
-                setSectionId(next);
-                const suggested = suggestedFootprint(next, kind, sections, shelves);
-                setFootprint(suggested);
-                setAccess(suggestedAccess(suggested, next, sections, shelves, name, kind, levels));
-              }}
-            >
-              <option value="">选择区域</option>
-              {activeSections.map((section) => (
-                <option key={section.id} value={section.id}>
-                  {section.name}
-                </option>
+          <div className="facility-form-grid">
+            <label className="field">
+              设施名称 / 货架编号
+              <input
+                value={name}
+                maxLength={30}
+                required
+                onChange={(event) => setName(event.target.value)}
+                placeholder="例如：A-01"
+              />
+            </label>
+            <label className="field">
+              所属区域
+              <select
+                value={sectionId}
+                required
+                onChange={(event) => {
+                  const next = event.target.value;
+                  setSectionId(next);
+                  const suggested = suggestedFootprint(next, kind, sections, shelves);
+                  setFootprint(suggested);
+                  setAccess(
+                    suggestedAccess(suggested, next, sections, shelves, name, kind, levels),
+                  );
+                }}
+              >
+                <option value="">选择区域</option>
+                {activeSections.map((section) => (
+                  <option key={section.id} value={section.id}>
+                    {section.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              设施类型
+              <select
+                value={kind}
+                onChange={(event) => updateNewKind(event.target.value as FixtureKind)}
+              >
+                {kinds.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="field">
+              层数（从下往上）
+              <input
+                type="number"
+                min={1}
+                max={multiLevel(kind) ? 8 : 1}
+                value={multiLevel(kind) ? levels : 1}
+                disabled={!multiLevel(kind)}
+                onChange={(event) => setLevels(Number(event.target.value))}
+              />
+            </label>
+            <label className="field">
+              每侧每层 SKU 上限
+              <input
+                type="number"
+                min={1}
+                max={MAX_CAPACITY_PER_SLOT}
+                value={capacityPerSlot}
+                onChange={(event) => setCapacityPerSlot(Number(event.target.value))}
+              />
+              <small>默认 4 个 SKU；库存数量不占用陈列位。</small>
+            </label>
+            <label className="field">
+              允许的陈列分组
+              <input
+                value={allowedDisplayGroups}
+                onChange={(event) => setAllowedDisplayGroups(event.target.value)}
+                placeholder="留空表示不限制"
+              />
+              <small>可填逗号分隔的分组编号；未知储温不会自动推断。</small>
+            </label>
+            <fieldset className="facility-footprint-fields">
+              <legend>地图占地 x、y、宽、高</legend>
+              {(['x', 'y', 'w', 'h'] as const).map((key) => (
+                <label className="field" key={key}>
+                  {key.toUpperCase()}
+                  <input
+                    type="number"
+                    min={1}
+                    max={key === 'x' ? mapBounds.maxX : key === 'y' ? mapBounds.maxY : 16}
+                    value={footprint[key]}
+                    onChange={(event) =>
+                      setFootprint((current) => ({ ...current, [key]: Number(event.target.value) }))
+                    }
+                  />
+                </label>
               ))}
-            </select>
-          </label>
-          <label className="field">
-            设施类型
-            <select
-              value={kind}
-              onChange={(event) => updateNewKind(event.target.value as FixtureKind)}
-            >
-              {kinds.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
+            </fieldset>
+            <fieldset className="facility-access-fields">
+              <legend>顾客到达点（地图坐标 x,y；留空表示该侧不可达）</legend>
+              {sides.map((side) => (
+                <label className="field" key={side}>
+                  {sideNames[side]}
+                  <input
+                    value={access[side]}
+                    pattern="[0-9]+\s*,\s*[0-9]+"
+                    onChange={(event) =>
+                      setAccess((current) => ({ ...current, [side]: event.target.value }))
+                    }
+                    aria-label={`${name || '新设施'}${sideNames[side]}到达点`}
+                  />
+                </label>
               ))}
-            </select>
-          </label>
-          <label className="field">
-            层数（从下往上）
-            <input
-              type="number"
-              min={1}
-              max={multiLevel(kind) ? 8 : 1}
-              value={multiLevel(kind) ? levels : 1}
-              disabled={!multiLevel(kind)}
-              onChange={(event) => setLevels(Number(event.target.value))}
-            />
-          </label>
-          <label className="field">
-            每侧每层 SKU 上限
-            <input
-              type="number"
-              min={1}
-              max={MAX_CAPACITY_PER_SLOT}
-              value={capacityPerSlot}
-              onChange={(event) => setCapacityPerSlot(Number(event.target.value))}
-            />
-            <small>默认 4 个 SKU；库存数量不占用陈列位。</small>
-          </label>
-          <label className="field">
-            允许的陈列分组
-            <input
-              value={allowedDisplayGroups}
-              onChange={(event) => setAllowedDisplayGroups(event.target.value)}
-              placeholder="留空表示不限制"
-            />
-            <small>可填逗号分隔的分组编号；未知储温不会自动推断。</small>
-          </label>
-          <fieldset className="facility-footprint-fields">
-            <legend>地图占地 x、y、宽、高</legend>
-            {(['x', 'y', 'w', 'h'] as const).map((key) => (
-              <label className="field" key={key}>
-                {key.toUpperCase()}
-                <input
-                  type="number"
-                  min={1}
-                  max={key === 'x' ? mapBounds.maxX : key === 'y' ? mapBounds.maxY : 16}
-                  value={footprint[key]}
-                  onChange={(event) =>
-                    setFootprint((current) => ({ ...current, [key]: Number(event.target.value) }))
-                  }
-                />
-              </label>
-            ))}
-          </fieldset>
-          <fieldset className="facility-access-fields">
-            <legend>顾客到达点（地图坐标 x,y；留空表示该侧不可达）</legend>
-            {sides.map((side) => (
-              <label className="field" key={side}>
-                {sideNames[side]}
-                <input
-                  value={access[side]}
-                  pattern="[0-9]+\s*,\s*[0-9]+"
-                  onChange={(event) =>
-                    setAccess((current) => ({ ...current, [side]: event.target.value }))
-                  }
-                  aria-label={`${name || '新设施'}${sideNames[side]}到达点`}
-                />
-              </label>
-            ))}
-          </fieldset>
-        </div>
-        {error && (
-          <p className="inline-error" role="alert">
-            {error}
-          </p>
-        )}
-        <button className="button secondary" type="submit" disabled={savingNew}>
-          {savingNew ? <LoaderCircle className="spin" size={16} /> : <Plus size={16} />}
-          {savingNew ? '保存中…' : '新增设施'}
-        </button>
-      </form>
+            </fieldset>
+          </div>
+          {error && (
+            <p className="inline-error" role="alert">
+              {error}
+            </p>
+          )}
+          <button className="button secondary" type="submit" disabled={savingNew}>
+            {savingNew ? <LoaderCircle className="spin" size={16} /> : <Plus size={16} />}
+            {savingNew ? '保存中…' : '新增设施'}
+          </button>
+        </form>
+      </details>
 
       <div className="facility-list">
-        {shelves.map((shelf) => {
+        {!visibleShelves.length && <p className="management-empty">没有匹配的货架设施。</p>}
+        {visibleShelves.map((shelf) => {
           const draft = drafts[shelf.id];
           if (!draft) return null;
           return (
             <details className="facility-item" key={shelf.id}>
               <summary>
                 <strong>{draft.name}</strong>
+                <em className={`management-status ${shelf.reachable ? 'enabled' : ''}`}>
+                  {shelf.reachable ? '可到达' : '不可到达'}
+                </em>
                 <span>
                   {kindNames[draft.kind]} ·{' '}
                   {sections.find((section) => section.id === draft.sectionId)?.name || '未关联区域'}{' '}
@@ -657,7 +679,7 @@ export default function FacilityEditor({
                       const nextKind = event.target.value as FixtureKind;
                       updateDraft(shelf.id, {
                         kind: nextKind,
-                        levels: multiLevel(nextKind) ? draft.levels || 4 : 1,
+                        levels: multiLevel(nextKind) ? draft.levels || defaultLevels(nextKind) : 1,
                       });
                     }}
                   >

@@ -44,7 +44,7 @@ function request(endpoint, data, method, options) {
       url: base() + '/api' + endpoint,
       method: method || (data ? 'POST' : 'GET'),
       data,
-      timeout: (options && options.timeout) || 55000,
+      timeout: (options && options.timeout) || (endpoint === '/assistant' ? 200000 : 55000),
       header: { 'Content-Type': 'application/json' },
       success(res) {
         if (res.statusCode >= 200 && res.statusCode < 300) resolve(res.data);

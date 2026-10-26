@@ -56,6 +56,12 @@ test('小程序导航可以规划路线并模拟到达',async()=>{
 test('服务未启动时显示可恢复的连接错误',async()=>{
   const {app}=await runtime({fail:true});assert.equal(app.globalData.connected,false);assert.equal(app.globalData.loading,false);assert.match(app.globalData.error,/连接不到/);
 });
+
+test('餐食条件被拒绝时清除旧方案，不能继续确认旧餐食',async()=>{
+  const {app}=await runtime({answer:{text:'无法核实过敏原',products:[],filters:{categories:[]},engine:'rules',clearMealPlan:true}});
+  app.globalData.meal={preferences:createMealPreferences(),recipeIds:['old']};
+  await app.send('花生过敏');assert.equal(app.globalData.meal,null);assert.equal(app.globalData.cart.length,0);
+});
 test('连接错误区分超时、拒绝和域名校验，并附微信原始信息',async()=>{
   const cases=[['request:fail timeout',/超时.*设备互访.*request:fail timeout/],['request:fail errcode:-102 cronet_error_code:-102 error_msg:net::ERR_CONNECTION_REFUSED',/被拒绝.*后端已启动/],['request:fail url not in domain list',/域名未通过校验.*开发调试/]];
   for(const [errMsg,pattern] of cases){const {app}=await runtime({fail:true,errMsg});assert.match(app.globalData.error,pattern);assert.match(app.globalData.error,errMsg.includes('domain')?/微信返回/:/http:\/\/127\.0\.0\.1:3001/);}

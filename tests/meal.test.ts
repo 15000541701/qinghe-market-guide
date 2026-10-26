@@ -308,7 +308,8 @@ test('缺少菠菜不自动替换生菜，忌口在自备食材之前检查', ()
 });
 
 test('便宜替换保持人数和份量，并包含原清单其他商品的预算', () => {
-  const prefs = parseMealPreferences(request);
+  // Leave room for variety first, so the explicit cheaper request has work to do.
+  const prefs = { ...parseMealPreferences(request), budget: 200 };
   const plan = buildMealPlan(prefs, products, []);
   const cheap = buildMealPlan(
     parseMealPreferences('换便宜一点，保持人数和份量', prefs),
@@ -326,6 +327,19 @@ test('便宜替换保持人数和份量，并包含原清单其他商品的预�
     Math.round((withExisting.existingCost + withExisting.newlyAddedCost!) * 100),
     Math.round(withExisting.total * 100),
   );
+});
+
+test('本地备用餐单超预算时复用食材整包，保持正常份量且不改已选菜单', () => {
+  const preferences = parseMealPreferences(request);
+  const economical = buildMealPlan({ ...preferences, cheaper: true }, products, []);
+  const automatic = buildMealPlan(preferences, products, []);
+  assert.equal(automatic.total, economical.total);
+  assert.equal(automatic.preferences.people, preferences.people);
+  assert.equal(automatic.items.find((item) => item.product.id === 'salmon')?.recipeAmount, '700g');
+  const fixedIds = automatic.recipes.map((recipe) => recipe.id);
+  const confirmed = buildMealPlan({ ...preferences, budget: 0 }, products, [], fixedIds);
+  assert.equal(confirmed.total, automatic.total);
+  assert.equal(confirmed.canApply, false, '确认不得换菜单来掩盖超预算');
 });
 
 test('整周采购金额按完整包装向上取整并保持重复确认幂等', () => {

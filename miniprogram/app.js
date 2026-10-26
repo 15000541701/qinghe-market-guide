@@ -220,7 +220,8 @@ App({
         },
       });
       state.filters = result.filters;
-      if (result.mealPlan)
+      if (result.clearMealPlan) state.meal = null;
+      else if (result.mealPlan)
         state.meal = {
           preferences: result.mealPlan.preferences,
           recipeIds: result.mealPlan.recipes.map((r) => r.id),

@@ -125,7 +125,8 @@ export default function ChatPanel({
       );
       let responseText = result.text;
       let actionSucceeded = false;
-      if (result.mealPlan) onPlan(result.mealPlan);
+      if (result.clearMealPlan) onPlan(null);
+      else if (result.mealPlan) onPlan(result.mealPlan);
       if (result.action) {
         try {
           responseText = await onAction(result.action);

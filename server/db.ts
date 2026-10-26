@@ -365,16 +365,17 @@ function readTable<T>(table: string): T[] {
 }
 export const getCategories = () => readTable<StoreCategory>('store_categories');
 export const getSections = () => readTable<StoreSection>('store_sections');
-export const getShelves = () => {
+export const getShelves = (includeDeleted = false) => {
   const activeSections = new Set(
     getSections()
       .filter((section) => section.active)
       .map((section) => section.id),
   );
-  return readTable<Shelf>('shelves').map((shelf) => ({
+  return readTable<Shelf>('shelves').map((shelf, index) => ({
     ...shelf,
+    mapNumber: shelf.mapNumber || index + 1,
     reachable: shelf.reachable && activeSections.has(shelf.sectionId),
-  }));
+  })).filter((shelf) => includeDeleted || !shelf.deleted);
 };
 export function saveCategory(value: StoreCategory) {
   db.prepare(
@@ -535,6 +536,20 @@ if (!db.prepare('SELECT id FROM layout_migrations WHERE id=?').get('real-sku-v1'
 export function saveProductsAtomically(products: Product[]) {
   db.exec('BEGIN');
   try {
+    for (const product of products) saveProduct(product);
+    db.exec('COMMIT');
+  } catch (error) {
+    db.exec('ROLLBACK');
+    throw error;
+  }
+}
+export function saveShelfAndProductsAtomically(shelf: Shelf, products: Product[]) {
+  saveShelvesAndProductsAtomically([shelf], products);
+}
+export function saveShelvesAndProductsAtomically(shelves: Shelf[], products: Product[]) {
+  db.exec('BEGIN');
+  try {
+    for (const shelf of shelves) saveShelf(shelf);
     for (const product of products) saveProduct(product);
     db.exec('COMMIT');
   } catch (error) {
@@ -1308,7 +1323,7 @@ try {
       saveCategory({ ...category, active: false });
   const current = getProducts();
   const layoutShelves = getShelves();
-  const retryPlacement = current.filter((product) => product.sourceRetailer === 'Sam’s Club US' && product.status !== 'archived' && (
+  const retryPlacement = current.filter((product) => !product.manualPlacement && product.sourceRetailer === 'Sam’s Club US' && product.status !== 'archived' && (
     product.merchandisingState !== 'placed' ||
     (product.category === 'meat' && ['chilled-confirmed', 'chilled-or-frozen-confirmed'].includes(product.storageCondition || '') && product.shelfId && layoutShelves.find((shelf) => shelf.id === product.shelfId)?.sectionId !== 'meat')
   ));
