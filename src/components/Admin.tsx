@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { categoryLabels, entrance, zones } from '../../shared/catalog';
 import { findPath, isWalkable } from '../../shared/navigation';
-import { fixedFixtures, mainAisles } from '../../shared/layout';
+import { fixedFixtures, mainAisles, fixtureSupportsLevels } from '../../shared/layout';
 import type {
   Category,
   MarketReference,
@@ -42,6 +42,7 @@ import ModelSettingsPanel, { type ProviderReadiness } from './ModelSettingsPanel
 import ProductImage from './ProductImage';
 import { productSearch, productSearchScore } from '../../shared/product-search';
 import './SkuManagement.css';
+import './AdminOrganization.css';
 import { inventoryLabel } from '../../shared/catalog-status';
 import { currencySymbol, formatCurrency, productCurrency } from '../../shared/currency';
 import {
@@ -166,6 +167,14 @@ export default function Admin({
   providers,
   onSettingsSaved,
 }: Props) {
+  const [managementTab, setManagementTab] = useState<'categories' | 'sections' | 'facilities'>(
+    'categories',
+  );
+  const [managementQuery, setManagementQuery] = useState('');
+  const [managementEditingId, setManagementEditingId] = useState('');
+  const [organizationError, setOrganizationError] = useState('');
+  const matchesManagement = (text: string) =>
+    text.toLowerCase().includes(managementQuery.trim().toLowerCase());
   const [categories, setCategories] = useState<StoreCategory[]>([]);
   const [sections, setSections] = useState<StoreSection[]>([]);
   const [shelves, setShelves] = useState<Shelf[]>([]);
@@ -518,7 +527,7 @@ export default function Admin({
   const selectedProductShelf = shelves.find((item) => item.id === shelfId);
   const selectedShelfSides = shelfAccessSides(selectedProductShelf);
   const selectedShelfLevels =
-    selectedProductShelf && ['gondola', 'chiller'].includes(selectedProductShelf.kind || 'gondola')
+    selectedProductShelf && fixtureSupportsLevels(selectedProductShelf.kind)
       ? selectedProductShelf.levels || 1
       : 1;
   const pickAreaMapPoint = (event: React.MouseEvent<SVGSVGElement>) => {
@@ -566,495 +575,660 @@ export default function Admin({
         }}
         onToast={onToast}
       />
-      <section className="inventory" aria-label="分类与货架管理">
-        <div className="section-heading">
-          <h2>分类与门店位置</h2>
-          <span className="muted compact">商品分类与物理分区分别管理</span>
-          <a className="button secondary area-add-shortcut" href="#section-create-form">
-            新增门店分区
-          </a>
-        </div>
-        <form
-          className="form-grid"
-          onSubmit={async (event) => {
-            event.preventDefault();
-            try {
-              const id = `custom-${Date.now().toString(36)}`;
-              await api('/categories', {
-                method: 'POST',
-                body: JSON.stringify({
-                  id,
-                  name: newCategory,
-                  sectionId: newSection || null,
-                  kind: newCategoryKind,
-                }),
-              });
-              setNewCategory('');
-              await refreshLocations();
-              onToast('分类已新增。');
-            } catch (e) {
-              setError((e as Error).message);
-            }
-          }}
-        >
-          <label className="field">
-            新增商品分类
-            <input
-              value={newCategory}
-              onChange={(e) => setNewCategory(e.target.value)}
-              maxLength={40}
-              required
-              placeholder="例如：宠物用品"
-            />
-          </label>
-          <label className="field">
-            默认门店分区
-            <select value={newSection} onChange={(e) => setNewSection(e.target.value)}>
-              <option value="">暂不指定</option>
-              {sections
-                .filter((s) => s.active)
-                .map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.name}
-                  </option>
-                ))}
-            </select>
-          </label>
-          <label className="field">
-            分类类型
-            <select
-              value={newCategoryKind}
-              onChange={(e) => setNewCategoryKind(e.target.value as 'food' | 'non_food')}
-            >
-              <option value="food">食品</option>
-              <option value="non_food">非食品</option>
-            </select>
-          </label>
-          <button className="button secondary" type="submit">
-            新增分类
-          </button>
-        </form>
-        <div className="inventory-tools" style={{ flexWrap: 'wrap', marginTop: 12 }}>
-          {categories.map((item) => (
-            <div key={item.id} className="candidate-pills">
-              <input
-                aria-label={`${item.name}分类名称`}
-                value={item.name}
-                maxLength={40}
-                onChange={(e) =>
-                  setCategories((all) =>
-                    all.map((c) => (c.id === item.id ? { ...c, name: e.target.value } : c)),
-                  )
-                }
-                onBlur={() => {
-                  const updated = categories.find((c) => c.id === item.id);
-                  if (updated)
-                    void api(`/categories/${item.id}`, {
-                      method: 'PATCH',
-                      body: JSON.stringify(updated),
-                    })
-                      .then(refreshLocations)
-                      .catch((e) => setError(e.message));
-                }}
-              />
-              <select
-                aria-label={`${item.name}所属分区`}
-                value={item.sectionId || ''}
-                onChange={(e) => {
-                  const next = { ...item, sectionId: e.target.value || null };
-                  setCategories((all) => all.map((c) => (c.id === item.id ? next : c)));
-                  void api(`/categories/${item.id}`, {
-                    method: 'PATCH',
-                    body: JSON.stringify(next),
-                  })
-                    .then(refreshLocations)
-                    .catch((err) => setError(err.message));
-                }}
-              >
-                <option value="">不关联分区</option>
-                {sections
-                  .filter((s) => s.active)
-                  .map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-              </select>
-              <select
-                aria-label={`${item.name}分类类型`}
-                value={item.kind}
-                onChange={(e) => {
-                  const next = { ...item, kind: e.target.value as 'food' | 'non_food' };
-                  setCategories((all) => all.map((c) => (c.id === item.id ? next : c)));
-                  void api(`/categories/${item.id}`, {
-                    method: 'PATCH',
-                    body: JSON.stringify(next),
-                  }).catch((err) => setError(err.message));
-                }}
-              >
-                <option value="food">食品</option>
-                <option value="non_food">非食品</option>
-              </select>
-              <button
-                className="text-button"
-                type="button"
-                onClick={() => {
-                  const next = { ...item, active: !item.active };
-                  void api(`/categories/${item.id}`, {
-                    method: 'PATCH',
-                    body: JSON.stringify(next),
-                  })
-                    .then(refreshLocations)
-                    .catch((e) => setError(e.message));
-                }}
-              >
-                {item.active ? '停用' : '启用'}
-              </button>
-            </div>
-          ))}
-        </div>
-        <form
-          className="area-create-panel"
-          id="section-create-form"
-          onSubmit={async (event) => {
-            event.preventDefault();
-            setSectionError('');
-            if (!sectionDraftReady) {
-              setSectionError('请调整区域矩形或通道到达点，直到预览显示可导航。');
-              return;
-            }
-            setSectionSaving(true);
-            try {
-              const created = await api<StoreSection>('/sections', {
-                method: 'POST',
-                body: JSON.stringify({
-                  id: `section-${Date.now().toString(36)}`,
-                  name: newSectionName,
-                  code: newSectionCode,
-                  color: '#536488',
-                  tint: '#e4e8f1',
-                  location: newSectionLocation,
-                  rect: newSectionRect,
-                }),
-              });
-              setNewSectionName('');
-              const updatedSections = await api<StoreSection[]>('/sections');
-              const placement = findOpenArea(updatedSections, shelves);
-              setNewSectionCode(nextSectionCode(updatedSections));
-              setNewSectionRect(placement.rect);
-              setNewSectionLocation(placement.location);
-              setSectionDraftTouched(false);
-              await refreshLocations();
-              if (created) onToast(`区域“${created.name}”已新增，可继续添加货架。`);
-            } catch (e) {
-              setSectionError((e as Error).message);
-            } finally {
-              setSectionSaving(false);
-            }
-          }}
-        >
-          <div className="area-create-heading">
-            <div>
-              <h3>新增门店分区</h3>
-              <p>设置地图上的占用矩形和入口通道点，预览会标出已有区域与障碍。</p>
-            </div>
-            <span className={sectionDraftReady ? 'area-ready' : 'area-needs-adjustment'}>
-              {sectionDraftReady ? '通道可到达' : '需要调整位置'}
+      <section className="inventory organization-panel" aria-label="分类与货架管理">
+        <header className="organization-header">
+          <div>
+            <span className="organization-eyebrow">门店资料管理</span>
+            <h2>分类与门店位置</h2>
+            <p>先维护商品分类与分区，再配置货架；日常摆放可直接在上方陈列工作台完成。</p>
+          </div>
+          <div className="organization-counts">
+            <span>
+              <strong>{categories.filter((item) => item.active).length}</strong> 在用分类
+            </span>
+            <span>
+              <strong>{sections.filter((item) => item.active).length}</strong> 启用分区
+            </span>
+            <span>
+              <strong>{shelves.length}</strong> 货架设施
             </span>
           </div>
-          <div className="area-create-layout">
-            <div className="area-create-fields">
+        </header>
+        <div className="organization-toolbar">
+          <div className="organization-tabs" role="tablist" aria-label="门店资料类型">
+            {(
+              [
+                ['categories', '商品分类'],
+                ['sections', '门店分区'],
+                ['facilities', '货架设施'],
+              ] as const
+            ).map(([value, label]) => (
+              <button
+                key={value}
+                id={`organization-tab-${value}`}
+                type="button"
+                role="tab"
+                aria-selected={managementTab === value}
+                aria-controls={`organization-${value}`}
+                onClick={() => {
+                  setManagementTab(value);
+                  setManagementQuery('');
+                  setManagementEditingId('');
+                  setOrganizationError('');
+                }}
+              >
+                {label}
+                <small>
+                  {value === 'categories'
+                    ? categories.length
+                    : value === 'sections'
+                      ? sections.length
+                      : shelves.length}
+                </small>
+              </button>
+            ))}
+          </div>
+          <label className="organization-search">
+            <Search size={16} />
+            <input
+              value={managementQuery}
+              onChange={(event) => setManagementQuery(event.target.value)}
+              placeholder={`搜索${managementTab === 'categories' ? '分类名称' : managementTab === 'sections' ? '分区名称或编号' : '设施名称或分区'}`}
+              aria-label="搜索当前管理列表"
+            />
+          </label>
+        </div>
+        {organizationError && (
+          <p className="inline-error" role="alert">
+            {organizationError}
+          </p>
+        )}
+        <div
+          id="organization-categories"
+          role="tabpanel"
+          aria-labelledby="organization-tab-categories"
+          hidden={managementTab !== 'categories'}
+        >
+          <p className="organization-description">
+            分类用于商品检索；默认分区用于安排商品位置。修改后自动保存。
+          </p>
+          <details className="management-create">
+            <summary>
+              <span>
+                <Plus size={16} />
+                新增商品分类
+              </span>
+              <small>设置名称、类型与默认分区</small>
+            </summary>
+            <form
+              className="form-grid"
+              onSubmit={async (event) => {
+                event.preventDefault();
+                try {
+                  const id = `custom-${Date.now().toString(36)}`;
+                  await api('/categories', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                      id,
+                      name: newCategory,
+                      sectionId: newSection || null,
+                      kind: newCategoryKind,
+                    }),
+                  });
+                  setNewCategory('');
+                  await refreshLocations();
+                  onToast('分类已新增。');
+                } catch (e) {
+                  setOrganizationError((e as Error).message);
+                }
+              }}
+            >
               <label className="field">
-                区域名称
+                新增商品分类
                 <input
-                  value={newSectionName}
-                  onChange={(e) => {
-                    setNewSectionName(e.target.value);
-                    setSectionError('');
-                  }}
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
                   maxLength={40}
                   required
-                  placeholder="例如：宠物用品区"
+                  placeholder="例如：宠物用品"
                 />
               </label>
               <label className="field">
-                区域编号
-                <input
-                  value={newSectionCode}
-                  onChange={(e) => {
-                    setNewSectionCode(e.target.value.toUpperCase());
-                    setSectionError('');
-                  }}
-                  maxLength={8}
-                  pattern="[A-Za-z0-9\-]+"
-                  required
-                  placeholder="例如：H"
-                />
-              </label>
-              <fieldset className="area-coordinates">
-                <legend>地图矩形（左上角与宽高）</legend>
-                {(['x', 'y', 'w', 'h'] as const).map((key) => (
-                  <label className="field" key={key}>
-                    {key.toUpperCase()}
-                    <input
-                      type="number"
-                      min={key === 'x' || key === 'y' ? 1 : 2}
-                      max={
-                        key === 'x'
-                          ? mapBounds.maxX
-                          : key === 'y'
-                            ? mapBounds.maxY
-                            : key === 'w'
-                              ? 12
-                              : 10
-                      }
-                      value={newSectionRect[key]}
-                      onChange={(e) => {
-                        const value = Number(e.target.value);
-                        setNewSectionRect((rect) => ({ ...rect, [key]: value }));
-                        setSectionDraftTouched(true);
-                        setSectionError('');
-                      }}
-                      required
-                    />
-                  </label>
-                ))}
-              </fieldset>
-              <fieldset className="area-coordinates">
-                <legend>通道到达点</legend>
-                {(['x', 'y'] as const).map((key) => (
-                  <label className="field" key={key}>
-                    {key.toUpperCase()}
-                    <input
-                      type="number"
-                      min={1}
-                      max={key === 'x' ? mapBounds.maxX : mapBounds.maxY}
-                      value={newSectionLocation[key]}
-                      onChange={(e) => {
-                        setNewSectionLocation((point) => ({
-                          ...point,
-                          [key]: Number(e.target.value),
-                        }));
-                        setSectionDraftTouched(true);
-                        setSectionError('');
-                      }}
-                      required
-                    />
-                  </label>
-                ))}
-              </fieldset>
-              <label className="field">
-                地图点选
-                <select
-                  value={sectionPickMode}
-                  onChange={(e) => setSectionPickMode(e.target.value as 'rect' | 'access')}
-                >
-                  <option value="rect">点击地图设置矩形左上角</option>
-                  <option value="access">点击地图设置通道到达点</option>
+                默认门店分区
+                <select value={newSection} onChange={(e) => setNewSection(e.target.value)}>
+                  <option value="">暂不指定</option>
+                  {sections
+                    .filter((s) => s.active)
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>
+                        {s.name}
+                      </option>
+                    ))}
                 </select>
               </label>
-              {sectionError && (
-                <p className="inline-error" role="alert">
-                  {sectionError}
-                </p>
-              )}
-              <button
-                className="button primary"
-                type="submit"
-                disabled={sectionSaving || !sectionDraftReady}
-              >
-                {sectionSaving ? <LoaderCircle className="spin" size={16} /> : <Plus size={16} />}
-                {sectionSaving ? '保存中…' : '保存新区域'}
+              <label className="field">
+                分类类型
+                <select
+                  value={newCategoryKind}
+                  onChange={(e) => setNewCategoryKind(e.target.value as 'food' | 'non_food')}
+                >
+                  <option value="food">食品</option>
+                  <option value="non_food">非食品</option>
+                </select>
+              </label>
+              <button className="button secondary" type="submit">
+                新增分类
               </button>
-            </div>
-            <div className="area-map-preview-wrap">
-              <svg
-                className="area-map-preview"
-                viewBox={`0 0 ${mapBounds.maxX} ${mapBounds.maxY}`}
-                role="img"
-                aria-label="分区地图预览，可按所选模式点选区域或通道点"
-                onClick={pickAreaMapPoint}
-              >
-                <rect
-                  x="0"
-                  y="0"
-                  width={mapBounds.maxX}
-                  height={mapBounds.maxY}
-                  className="area-map-background"
-                />
-                {sectionMapSections.map((section) => (
-                  <rect
-                    key={section.id}
-                    x={section.rect.x - 1}
-                    y={section.rect.y - 1}
-                    width={section.rect.w}
-                    height={section.rect.h}
-                    fill={section.tint}
-                    stroke={section.color}
-                    strokeWidth="0.12"
-                  />
-                ))}
-                {fixedFixtures.map((fixture) => (
-                  <rect
-                    key={fixture.id}
-                    x={fixture.rect.x - 1}
-                    y={fixture.rect.y - 1}
-                    width={fixture.rect.w}
-                    height={fixture.rect.h}
-                    className="area-map-fixed-fixture"
-                  />
-                ))}
-                {shelves
-                  .filter((shelf) => shelf.footprint)
-                  .map((shelf) => (
-                    <rect
-                      key={shelf.id}
-                      x={shelf.footprint!.x - 1}
-                      y={shelf.footprint!.y - 1}
-                      width={shelf.footprint!.w}
-                      height={shelf.footprint!.h}
-                      className="area-map-existing-fixture"
-                    />
-                  ))}
-                <rect
-                  x={newSectionRect.x - 1}
-                  y={newSectionRect.y - 1}
-                  width={Math.max(0.1, newSectionRect.w)}
-                  height={Math.max(0.1, newSectionRect.h)}
-                  className={
-                    sectionRectOverlaps ? 'area-map-draft area-map-draft-invalid' : 'area-map-draft'
-                  }
-                />
-                <circle
-                  cx={entrance.x - 0.5}
-                  cy={entrance.y - 0.5}
-                  r="0.28"
-                  className="area-map-entrance"
-                />
-                <circle
-                  cx={newSectionLocation.x - 0.5}
-                  cy={newSectionLocation.y - 0.5}
-                  r="0.34"
-                  className={
-                    sectionAccessReachable
-                      ? 'area-map-access'
-                      : 'area-map-access area-map-access-invalid'
-                  }
-                />
-                <rect
-                  x="0"
-                  y="0"
-                  width={mapBounds.maxX}
-                  height={mapBounds.maxY}
-                  fill="transparent"
-                />
-              </svg>
-              <div className="area-map-legend">
-                <span>
-                  <i className="legend-area" />
-                  现有区域
-                </span>
-                <span>
-                  <i className="legend-draft" />
-                  新区域
-                </span>
-                <span>
-                  <i className="legend-access" />
-                  通道到达点
-                </span>
-                <span>入口 E</span>
-              </div>
-              <p className="field-note">
-                {sectionDraftReady
-                  ? `新区域 ${newSectionRect.w}×${newSectionRect.h} 格，到达点 ${newSectionLocation.x},${newSectionLocation.y} 可从入口到达。`
-                  : sectionRectOverlaps
-                    ? '矩形与现有区域或固定障碍重叠，请点击空地或调整坐标。'
-                    : '区域表示可行走地面；到达点不能落在设施占地上，且需能从入口沿通道到达。'}
-              </p>
-            </div>
+            </form>
+          </details>
+          <div className="management-list-heading category-columns">
+            <span>分类名称</span>
+            <span>默认分区</span>
+            <span>分类类型</span>
+            <span>状态</span>
+            <span>操作</span>
           </div>
-        </form>
-        <div className="inventory-tools" style={{ flexWrap: 'wrap', marginTop: 10 }}>
-          {sections.map((item) => (
-            <div key={item.id} className="candidate-pills">
-              <input
-                aria-label={`${item.name}分区名称`}
-                value={item.name}
-                maxLength={40}
-                onChange={(e) =>
-                  setSections((all) =>
-                    all.map((s) => (s.id === item.id ? { ...s, name: e.target.value } : s)),
-                  )
-                }
-                onBlur={() => {
-                  const next = sections.find((s) => s.id === item.id);
-                  if (next)
-                    void api(`/sections/${item.id}`, {
-                      method: 'PATCH',
-                      body: JSON.stringify({
-                        name: next.name,
-                        active: next.active,
-                        location: next.location,
-                      }),
-                    })
-                      .then(refreshLocations)
-                      .catch((e) => setError(e.message));
-                }}
-              />
-              <input
-                aria-label={`${item.name}通道点`}
-                value={`${item.location.x},${item.location.y}`}
-                pattern="[0-9]+,[0-9]+"
-                onChange={(e) => {
-                  const [x, y] = e.target.value.split(',').map(Number);
-                  if (Number.isInteger(x) && Number.isInteger(y))
-                    setSections((all) =>
-                      all.map((s) => (s.id === item.id ? { ...s, location: { x, y } } : s)),
-                    );
-                }}
-                onBlur={() => {
-                  const next = sections.find((s) => s.id === item.id);
-                  if (next)
-                    void api(`/sections/${item.id}`, {
-                      method: 'PATCH',
-                      body: JSON.stringify({
-                        name: next.name,
-                        active: next.active,
-                        location: next.location,
-                      }),
-                    })
-                      .then(refreshLocations)
-                      .catch((e) => setError(e.message));
-                }}
-              />
-              <button
-                type="button"
-                className="text-button"
-                onClick={() => {
-                  const next = { ...item, active: !item.active };
-                  void api(`/sections/${item.id}`, {
-                    method: 'PATCH',
-                    body: JSON.stringify({
-                      name: next.name,
-                      active: next.active,
-                      location: next.location,
-                    }),
-                  })
-                    .then(refreshLocations)
-                    .catch((e) => setError(e.message));
-                }}
-              >
-                {item.active ? '停用' : '启用'}
-              </button>
-            </div>
-          ))}
+          <div className="management-list">
+            {categories
+              .filter((item) => item.id === managementEditingId || matchesManagement(item.name))
+              .map((item) => (
+                <div
+                  key={item.id}
+                  className="management-row category-columns"
+                  onFocusCapture={() => setManagementEditingId(item.id)}
+                  onBlurCapture={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget as Node))
+                      setManagementEditingId('');
+                  }}
+                >
+                  <input
+                    aria-label={`${item.name}分类名称`}
+                    value={item.name}
+                    maxLength={40}
+                    onChange={(e) =>
+                      setCategories((all) =>
+                        all.map((c) => (c.id === item.id ? { ...c, name: e.target.value } : c)),
+                      )
+                    }
+                    onBlur={() => {
+                      const updated = categories.find((c) => c.id === item.id);
+                      if (updated)
+                        void api(`/categories/${item.id}`, {
+                          method: 'PATCH',
+                          body: JSON.stringify(updated),
+                        })
+                          .then(refreshLocations)
+                          .catch((e) => setOrganizationError(e.message));
+                    }}
+                  />
+                  <select
+                    aria-label={`${item.name}所属分区`}
+                    value={item.sectionId || ''}
+                    onChange={(e) => {
+                      const next = { ...item, sectionId: e.target.value || null };
+                      setCategories((all) => all.map((c) => (c.id === item.id ? next : c)));
+                      void api(`/categories/${item.id}`, {
+                        method: 'PATCH',
+                        body: JSON.stringify(next),
+                      })
+                        .then(refreshLocations)
+                        .catch((err) => setOrganizationError(err.message));
+                    }}
+                  >
+                    <option value="">不关联分区</option>
+                    {sections
+                      .filter((s) => s.active)
+                      .map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                  </select>
+                  <select
+                    aria-label={`${item.name}分类类型`}
+                    value={item.kind}
+                    onChange={(e) => {
+                      const next = { ...item, kind: e.target.value as 'food' | 'non_food' };
+                      setCategories((all) => all.map((c) => (c.id === item.id ? next : c)));
+                      void api(`/categories/${item.id}`, {
+                        method: 'PATCH',
+                        body: JSON.stringify(next),
+                      }).catch((err) => setOrganizationError(err.message));
+                    }}
+                  >
+                    <option value="food">食品</option>
+                    <option value="non_food">非食品</option>
+                  </select>
+                  <span className={`management-status ${item.active ? 'enabled' : ''}`}>
+                    {item.active ? '使用中' : '已停用'}
+                  </span>
+                  <button
+                    className="management-toggle"
+                    type="button"
+                    onClick={() => {
+                      const next = { ...item, active: !item.active };
+                      void api(`/categories/${item.id}`, {
+                        method: 'PATCH',
+                        body: JSON.stringify(next),
+                      })
+                        .then(refreshLocations)
+                        .catch((e) => setOrganizationError(e.message));
+                    }}
+                  >
+                    {item.active ? '停用' : '启用'}
+                  </button>
+                </div>
+              ))}
+          </div>
+          {!categories.some((item) => matchesManagement(item.name)) && (
+            <p className="management-empty">没有匹配的分类。</p>
+          )}
         </div>
-        <FacilityEditor
-          sections={sections}
-          shelves={shelves}
-          onRefresh={refreshLocations}
-          onToast={onToast}
-        />
+        <div
+          id="organization-sections"
+          role="tabpanel"
+          aria-labelledby="organization-tab-sections"
+          hidden={managementTab !== 'sections'}
+        >
+          <p className="organization-description">
+            分区对应地图上的一块区域；通道到达点决定导航位置。修改后自动保存。
+          </p>
+          <details className="management-create">
+            <summary>
+              <span>
+                <Plus size={16} />
+                新增门店分区
+              </span>
+              <small>展开地图预览与位置设置</small>
+            </summary>
+            <form
+              className="area-create-panel"
+              id="section-create-form"
+              onSubmit={async (event) => {
+                event.preventDefault();
+                setSectionError('');
+                if (!sectionDraftReady) {
+                  setSectionError('请调整区域矩形或通道到达点，直到预览显示可导航。');
+                  return;
+                }
+                setSectionSaving(true);
+                try {
+                  const created = await api<StoreSection>('/sections', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                      id: `section-${Date.now().toString(36)}`,
+                      name: newSectionName,
+                      code: newSectionCode,
+                      color: '#536488',
+                      tint: '#e4e8f1',
+                      location: newSectionLocation,
+                      rect: newSectionRect,
+                    }),
+                  });
+                  setNewSectionName('');
+                  const updatedSections = await api<StoreSection[]>('/sections');
+                  const placement = findOpenArea(updatedSections, shelves);
+                  setNewSectionCode(nextSectionCode(updatedSections));
+                  setNewSectionRect(placement.rect);
+                  setNewSectionLocation(placement.location);
+                  setSectionDraftTouched(false);
+                  await refreshLocations();
+                  if (created) onToast(`区域“${created.name}”已新增，可继续添加货架。`);
+                } catch (e) {
+                  setSectionError((e as Error).message);
+                } finally {
+                  setSectionSaving(false);
+                }
+              }}
+            >
+              <div className="area-create-heading">
+                <div>
+                  <h3>新增门店分区</h3>
+                  <p>设置地图上的占用矩形和入口通道点，预览会标出已有区域与障碍。</p>
+                </div>
+                <span className={sectionDraftReady ? 'area-ready' : 'area-needs-adjustment'}>
+                  {sectionDraftReady ? '通道可到达' : '需要调整位置'}
+                </span>
+              </div>
+              <div className="area-create-layout">
+                <div className="area-create-fields">
+                  <label className="field">
+                    区域名称
+                    <input
+                      value={newSectionName}
+                      onChange={(e) => {
+                        setNewSectionName(e.target.value);
+                        setSectionError('');
+                      }}
+                      maxLength={40}
+                      required
+                      placeholder="例如：宠物用品区"
+                    />
+                  </label>
+                  <label className="field">
+                    区域编号
+                    <input
+                      value={newSectionCode}
+                      onChange={(e) => {
+                        setNewSectionCode(e.target.value.toUpperCase());
+                        setSectionError('');
+                      }}
+                      maxLength={8}
+                      pattern="[A-Za-z0-9-]+"
+                      required
+                      placeholder="例如：H"
+                    />
+                  </label>
+                  <fieldset className="area-coordinates">
+                    <legend>地图矩形（左上角与宽高）</legend>
+                    {(['x', 'y', 'w', 'h'] as const).map((key) => (
+                      <label className="field" key={key}>
+                        {key.toUpperCase()}
+                        <input
+                          type="number"
+                          min={key === 'x' || key === 'y' ? 1 : 2}
+                          max={
+                            key === 'x'
+                              ? mapBounds.maxX
+                              : key === 'y'
+                                ? mapBounds.maxY
+                                : key === 'w'
+                                  ? 12
+                                  : 10
+                          }
+                          value={newSectionRect[key]}
+                          onChange={(e) => {
+                            const value = Number(e.target.value);
+                            setNewSectionRect((rect) => ({ ...rect, [key]: value }));
+                            setSectionDraftTouched(true);
+                            setSectionError('');
+                          }}
+                          required
+                        />
+                      </label>
+                    ))}
+                  </fieldset>
+                  <fieldset className="area-coordinates">
+                    <legend>通道到达点</legend>
+                    {(['x', 'y'] as const).map((key) => (
+                      <label className="field" key={key}>
+                        {key.toUpperCase()}
+                        <input
+                          type="number"
+                          min={1}
+                          max={key === 'x' ? mapBounds.maxX : mapBounds.maxY}
+                          value={newSectionLocation[key]}
+                          onChange={(e) => {
+                            setNewSectionLocation((point) => ({
+                              ...point,
+                              [key]: Number(e.target.value),
+                            }));
+                            setSectionDraftTouched(true);
+                            setSectionError('');
+                          }}
+                          required
+                        />
+                      </label>
+                    ))}
+                  </fieldset>
+                  <label className="field">
+                    地图点选
+                    <select
+                      value={sectionPickMode}
+                      onChange={(e) => setSectionPickMode(e.target.value as 'rect' | 'access')}
+                    >
+                      <option value="rect">点击地图设置矩形左上角</option>
+                      <option value="access">点击地图设置通道到达点</option>
+                    </select>
+                  </label>
+                  {sectionError && (
+                    <p className="inline-error" role="alert">
+                      {sectionError}
+                    </p>
+                  )}
+                  <button
+                    className="button primary"
+                    type="submit"
+                    disabled={sectionSaving || !sectionDraftReady}
+                  >
+                    {sectionSaving ? (
+                      <LoaderCircle className="spin" size={16} />
+                    ) : (
+                      <Plus size={16} />
+                    )}
+                    {sectionSaving ? '保存中…' : '保存新区域'}
+                  </button>
+                </div>
+                <div className="area-map-preview-wrap">
+                  <svg
+                    className="area-map-preview"
+                    viewBox={`0 0 ${mapBounds.maxX} ${mapBounds.maxY}`}
+                    role="img"
+                    aria-label="分区地图预览，可按所选模式点选区域或通道点"
+                    onClick={pickAreaMapPoint}
+                  >
+                    <rect
+                      x="0"
+                      y="0"
+                      width={mapBounds.maxX}
+                      height={mapBounds.maxY}
+                      className="area-map-background"
+                    />
+                    {sectionMapSections.map((section) => (
+                      <rect
+                        key={section.id}
+                        x={section.rect.x - 1}
+                        y={section.rect.y - 1}
+                        width={section.rect.w}
+                        height={section.rect.h}
+                        fill={section.tint}
+                        stroke={section.color}
+                        strokeWidth="0.12"
+                      />
+                    ))}
+                    {fixedFixtures.map((fixture) => (
+                      <rect
+                        key={fixture.id}
+                        x={fixture.rect.x - 1}
+                        y={fixture.rect.y - 1}
+                        width={fixture.rect.w}
+                        height={fixture.rect.h}
+                        className="area-map-fixed-fixture"
+                      />
+                    ))}
+                    {shelves
+                      .filter((shelf) => shelf.footprint)
+                      .map((shelf) => (
+                        <rect
+                          key={shelf.id}
+                          x={shelf.footprint!.x - 1}
+                          y={shelf.footprint!.y - 1}
+                          width={shelf.footprint!.w}
+                          height={shelf.footprint!.h}
+                          className="area-map-existing-fixture"
+                        />
+                      ))}
+                    <rect
+                      x={newSectionRect.x - 1}
+                      y={newSectionRect.y - 1}
+                      width={Math.max(0.1, newSectionRect.w)}
+                      height={Math.max(0.1, newSectionRect.h)}
+                      className={
+                        sectionRectOverlaps
+                          ? 'area-map-draft area-map-draft-invalid'
+                          : 'area-map-draft'
+                      }
+                    />
+                    <circle
+                      cx={entrance.x - 0.5}
+                      cy={entrance.y - 0.5}
+                      r="0.28"
+                      className="area-map-entrance"
+                    />
+                    <circle
+                      cx={newSectionLocation.x - 0.5}
+                      cy={newSectionLocation.y - 0.5}
+                      r="0.34"
+                      className={
+                        sectionAccessReachable
+                          ? 'area-map-access'
+                          : 'area-map-access area-map-access-invalid'
+                      }
+                    />
+                    <rect
+                      x="0"
+                      y="0"
+                      width={mapBounds.maxX}
+                      height={mapBounds.maxY}
+                      fill="transparent"
+                    />
+                  </svg>
+                  <div className="area-map-legend">
+                    <span>
+                      <i className="legend-area" />
+                      现有区域
+                    </span>
+                    <span>
+                      <i className="legend-draft" />
+                      新区域
+                    </span>
+                    <span>
+                      <i className="legend-access" />
+                      通道到达点
+                    </span>
+                    <span>入口 E</span>
+                  </div>
+                  <p className="field-note">
+                    {sectionDraftReady
+                      ? `新区域 ${newSectionRect.w}×${newSectionRect.h} 格，到达点 ${newSectionLocation.x},${newSectionLocation.y} 可从入口到达。`
+                      : sectionRectOverlaps
+                        ? '矩形与现有区域或固定障碍重叠，请点击空地或调整坐标。'
+                        : '区域表示可行走地面；到达点不能落在设施占地上，且需能从入口沿通道到达。'}
+                  </p>
+                </div>
+              </div>
+            </form>
+          </details>
+          <div className="management-list-heading section-columns">
+            <span>分区名称</span>
+            <span>分区编号</span>
+            <span>通道坐标</span>
+            <span>状态</span>
+            <span>操作</span>
+          </div>
+          <div className="management-list">
+            {sections
+              .filter(
+                (item) =>
+                  item.id === managementEditingId || matchesManagement(`${item.name} ${item.code}`),
+              )
+              .map((item) => (
+                <div
+                  key={item.id}
+                  className="management-row section-columns"
+                  onFocusCapture={() => setManagementEditingId(item.id)}
+                  onBlurCapture={(event) => {
+                    if (!event.currentTarget.contains(event.relatedTarget as Node))
+                      setManagementEditingId('');
+                  }}
+                >
+                  <input
+                    aria-label={`${item.name}分区名称`}
+                    value={item.name}
+                    maxLength={40}
+                    onChange={(e) =>
+                      setSections((all) =>
+                        all.map((s) => (s.id === item.id ? { ...s, name: e.target.value } : s)),
+                      )
+                    }
+                    onBlur={() => {
+                      const next = sections.find((s) => s.id === item.id);
+                      if (next)
+                        void api(`/sections/${item.id}`, {
+                          method: 'PATCH',
+                          body: JSON.stringify({
+                            name: next.name,
+                            active: next.active,
+                            location: next.location,
+                          }),
+                        })
+                          .then(refreshLocations)
+                          .catch((e) => setOrganizationError(e.message));
+                    }}
+                  />
+                  <span className="management-code">{item.code}</span>
+                  <input
+                    aria-label={`${item.name}通道点`}
+                    value={`${item.location.x},${item.location.y}`}
+                    pattern="[0-9]+,[0-9]+"
+                    onChange={(e) => {
+                      const [x, y] = e.target.value.split(',').map(Number);
+                      if (Number.isInteger(x) && Number.isInteger(y))
+                        setSections((all) =>
+                          all.map((s) => (s.id === item.id ? { ...s, location: { x, y } } : s)),
+                        );
+                    }}
+                    onBlur={() => {
+                      const next = sections.find((s) => s.id === item.id);
+                      if (next)
+                        void api(`/sections/${item.id}`, {
+                          method: 'PATCH',
+                          body: JSON.stringify({
+                            name: next.name,
+                            active: next.active,
+                            location: next.location,
+                          }),
+                        })
+                          .then(refreshLocations)
+                          .catch((e) => setOrganizationError(e.message));
+                    }}
+                  />
+                  <span className={`management-status ${item.active ? 'enabled' : ''}`}>
+                    {item.active ? '已启用' : '已停用'}
+                  </span>
+                  <button
+                    type="button"
+                    className="management-toggle"
+                    onClick={() => {
+                      const next = { ...item, active: !item.active };
+                      void api(`/sections/${item.id}`, {
+                        method: 'PATCH',
+                        body: JSON.stringify({
+                          name: next.name,
+                          active: next.active,
+                          location: next.location,
+                        }),
+                      })
+                        .then(refreshLocations)
+                        .catch((e) => setOrganizationError(e.message));
+                    }}
+                  >
+                    {item.active ? '停用' : '启用'}
+                  </button>
+                </div>
+              ))}
+          </div>
+          {!sections.some((item) => matchesManagement(`${item.name} ${item.code}`)) && (
+            <p className="management-empty">没有匹配的分区。</p>
+          )}
+        </div>
+        <div
+          id="organization-facilities"
+          role="tabpanel"
+          aria-labelledby="organization-tab-facilities"
+          hidden={managementTab !== 'facilities'}
+        >
+          <p className="organization-description">
+            设施设置控制类型、容量与顾客到达侧；单纯移动货架请使用上方地图。
+          </p>
+          <FacilityEditor
+            searchQuery={managementQuery}
+            sections={sections}
+            shelves={shelves}
+            onRefresh={refreshLocations}
+            onToast={onToast}
+          />
+        </div>
       </section>
       <form className="admin-workspace" onSubmit={save} ref={formRef}>
         <section className="intake-panel">
@@ -1245,7 +1419,16 @@ export default function Admin({
             </label>
             <label className="field">
               库存数量
-              <select value={inventoryMode} onChange={(event) => setInventoryMode(event.target.value as 'tracked' | 'untracked')} aria-label="库存管理方式"><option value="tracked">管理本店库存数量</option><option value="untracked">未管理库存（不代表京东库存）</option></select>
+              <select
+                value={inventoryMode}
+                onChange={(event) =>
+                  setInventoryMode(event.target.value as 'tracked' | 'untracked')
+                }
+                aria-label="库存管理方式"
+              >
+                <option value="tracked">管理本店库存数量</option>
+                <option value="untracked">未管理库存（不代表京东库存）</option>
+              </select>
               <input
                 required
                 type="number"
@@ -1282,10 +1465,10 @@ export default function Admin({
               {products
                 .filter((product) => productCurrency(product) === formCurrency)
                 .map((product) => (
-                <option key={product.id} value={product.id}>
-                  {product.name} · {product.unit}
-                </option>
-              ))}
+                  <option key={product.id} value={product.id}>
+                    {product.name} · {product.unit}
+                  </option>
+                ))}
             </select>
           </label>
           {formCurrency === 'CNY' && (
@@ -1307,61 +1490,65 @@ export default function Admin({
               }}
             />
           )}
-          {formCurrency === 'CNY' && <div className="price-advice">
-            <div>
-              <span>建议售价</span>
-              {advising ? (
-                <div className="skeleton price-skeleton" />
-              ) : advice?.price ? (
-                <strong>
-                  <small>¥</small>
-                  {money(advice.price)}
-                  <span>/{unit}</span>
-                </strong>
-              ) : (
-                <strong className="no-price">待补充价格依据</strong>
+          {formCurrency === 'CNY' && (
+            <div className="price-advice">
+              <div>
+                <span>建议售价</span>
+                {advising ? (
+                  <div className="skeleton price-skeleton" />
+                ) : advice?.price ? (
+                  <strong>
+                    <small>¥</small>
+                    {money(advice.price)}
+                    <span>/{unit}</span>
+                  </strong>
+                ) : (
+                  <strong className="no-price">待补充价格依据</strong>
+                )}
+              </div>
+              <button
+                className="button primary small"
+                type="button"
+                disabled={!advice?.price || advising}
+                onClick={() => {
+                  if (advice?.price) {
+                    setPrice(String(advice.price));
+                    onToast('已采纳建议价，保存后生效。');
+                  }
+                }}
+              >
+                采纳建议
+                <Check size={15} />
+              </button>
+              <p>{advice?.explanation || '选择参考商品，或补充一条有来源的参考价。'}</p>
+              {!!advice?.price && (
+                <span className="price-range">
+                  参考区间 ¥{money(advice.low)}–{money(advice.high)}（建议价 ±10%）
+                </span>
               )}
             </div>
-            <button
-              className="button primary small"
-              type="button"
-              disabled={!advice?.price || advising}
-              onClick={() => {
-                if (advice?.price) {
-                  setPrice(String(advice.price));
-                  onToast('已采纳建议价，保存后生效。');
-                }
-              }}
-            >
-              采纳建议
-              <Check size={15} />
-            </button>
-            <p>{advice?.explanation || '选择参考商品，或补充一条有来源的参考价。'}</p>
-            {!!advice?.price && (
-              <span className="price-range">
-                参考区间 ¥{money(advice.low)}–{money(advice.high)}（建议价 ±10%）
-              </span>
-            )}
-          </div>}
-          {formCurrency === 'CNY' && <div className="price-evidence">
-            <div>
-              <span>历史价格中位数</span>
-              <strong>
-                {advice?.historyMedian != null ? `¥${money(advice.historyMedian)}` : '暂无'}
-              </strong>
-              <small>近 30 天 · {advice?.sampleCount || 0} 条记录</small>
+          )}
+          {formCurrency === 'CNY' && (
+            <div className="price-evidence">
+              <div>
+                <span>历史价格中位数</span>
+                <strong>
+                  {advice?.historyMedian != null ? `¥${money(advice.historyMedian)}` : '暂无'}
+                </strong>
+                <small>近 30 天 · {advice?.sampleCount || 0} 条记录</small>
+              </div>
+              <div>
+                <span>
+                  {advice?.marketKind === 'wholesale' ? '零售参考（批发价加价后）' : '市场参考价'}
+                </span>
+                <strong>
+                  {advice?.marketPrice != null ? `¥${money(advice.marketPrice)}` : '暂无有效参考'}
+                </strong>
+                <small>{advice?.marketSource || '需要日期与来源'}</small>
+                {advice?.marketDate && <small>报价日期：{advice.marketDate}</small>}
+              </div>
             </div>
-            <div>
-              <span>
-                {advice?.marketKind === 'wholesale' ? '零售参考（批发价加价后）' : '市场参考价'}
-              </span>
-              <strong>
-                {advice?.marketPrice != null ? `¥${money(advice.marketPrice)}` : '暂无有效参考'}
-              </strong>
-              <small>{advice?.marketSource || '需要日期与来源'}</small>
-              {advice?.marketDate && <small>报价日期：{advice.marketDate}</small>}
-            </div>
-          </div>}
+          )}
           {formCurrency === 'CNY' && !!advice?.history.length && (
             <details className="history-details">
               <summary>
@@ -1377,77 +1564,79 @@ export default function Admin({
                       {record.source === 'open-prices'
                         ? 'Open Prices参考价'
                         : record.source === 'seed'
-                        ? '演示记录'
-                        : record.source === 'suggested'
-                          ? '采纳建议价'
-                          : '人工定价'}
+                          ? '演示记录'
+                          : record.source === 'suggested'
+                            ? '采纳建议价'
+                            : '人工定价'}
                     </span>
                   </div>
                 ))}
               </div>
             </details>
           )}
-          {formCurrency === 'CNY' && <details className="market-reference">
-            <summary>
-              手动补充零售参考价
-              <Plus size={14} />
-            </summary>
-            <p className="field-note">
-              按当前计价单位填写零售参考价。手动输入会替换新发地参考；超过 7 天的报价不参与计算。
-            </p>
-            <div className="form-grid">
-              <label className="field">
-                参考价（元）
-                <input
-                  type="number"
-                  min="0.01"
-                  max="100000"
-                  step="0.01"
-                  value={marketPrice}
-                  onChange={(event) => {
-                    setLiveReference(null);
-                    setManualContext(referenceContext);
-                    setMarketPrice(event.target.value);
-                  }}
-                  placeholder="例如 5.20"
-                />
-              </label>
-              <label className="field">
-                参考日期
-                <input
-                  type="date"
-                  value={marketDate}
-                  max={today()}
-                  onChange={(event) => {
-                    setLiveReference(null);
-                    setManualContext(referenceContext);
-                    setMarketDate(event.target.value);
-                  }}
-                />
-              </label>
-              <label className="field span-two">
-                数据来源
-                <input
-                  value={marketSource}
-                  maxLength={100}
-                  onChange={(event) => {
-                    setLiveReference(null);
-                    setManualContext(referenceContext);
-                    setMarketSource(event.target.value);
-                  }}
-                  placeholder="例如：供应商报价单，9 月 17 日"
-                />
-              </label>
-            </div>
-            <button
-              className="button secondary small"
-              type="button"
-              onClick={() => void recalculate()}
-              disabled={advising}
-            >
-              重新计算建议
-            </button>
-          </details>}
+          {formCurrency === 'CNY' && (
+            <details className="market-reference">
+              <summary>
+                手动补充零售参考价
+                <Plus size={14} />
+              </summary>
+              <p className="field-note">
+                按当前计价单位填写零售参考价。手动输入会替换新发地参考；超过 7 天的报价不参与计算。
+              </p>
+              <div className="form-grid">
+                <label className="field">
+                  参考价（元）
+                  <input
+                    type="number"
+                    min="0.01"
+                    max="100000"
+                    step="0.01"
+                    value={marketPrice}
+                    onChange={(event) => {
+                      setLiveReference(null);
+                      setManualContext(referenceContext);
+                      setMarketPrice(event.target.value);
+                    }}
+                    placeholder="例如 5.20"
+                  />
+                </label>
+                <label className="field">
+                  参考日期
+                  <input
+                    type="date"
+                    value={marketDate}
+                    max={today()}
+                    onChange={(event) => {
+                      setLiveReference(null);
+                      setManualContext(referenceContext);
+                      setMarketDate(event.target.value);
+                    }}
+                  />
+                </label>
+                <label className="field span-two">
+                  数据来源
+                  <input
+                    value={marketSource}
+                    maxLength={100}
+                    onChange={(event) => {
+                      setLiveReference(null);
+                      setManualContext(referenceContext);
+                      setMarketSource(event.target.value);
+                    }}
+                    placeholder="例如：供应商报价单，9 月 17 日"
+                  />
+                </label>
+              </div>
+              <button
+                className="button secondary small"
+                type="button"
+                onClick={() => void recalculate()}
+                disabled={advising}
+              >
+                重新计算建议
+              </button>
+            </details>
+          )}
           {formCurrency === 'USD' && baselineProduct && (
             <div className="price-evidence">
               <div>
@@ -1462,7 +1651,11 @@ export default function Admin({
                     价格记录 #{baselineProduct.priceRecordId || '查看'}
                   </a>
                 )}
-                <small>位置 #{baselineProduct.priceLocationId ?? '未提供'} · proof #{baselineProduct.priceProofId ?? '未提供'} · price_per {baselineProduct.pricePer ?? '未注明'}</small>
+                <small>
+                  位置 #{baselineProduct.priceLocationId ?? '未提供'} · proof #
+                  {baselineProduct.priceProofId ?? '未提供'} · price_per{' '}
+                  {baselineProduct.pricePer ?? '未注明'}
+                </small>
               </div>
             </div>
           )}
@@ -1646,13 +1839,19 @@ export default function Admin({
                     )}
                   </td>
                   <td className="table-price">
-                    {product.price > 0 ? formatCurrency(product.price, productCurrency(product)) : '报价暂未获取'}
-                    {product.priceOrigin === 'jd-retail' && <small className="table-sub">京东列表价 · {product.priceCheckedAt}</small>}
-                    {product.priceOrigin === 'open-prices' && <small className="table-sub">Open Prices USD · {product.priceCheckedAt}</small>}
+                    {product.price > 0
+                      ? formatCurrency(product.price, productCurrency(product))
+                      : '报价暂未获取'}
+                    {product.priceOrigin === 'jd-retail' && (
+                      <small className="table-sub">京东列表价 · {product.priceCheckedAt}</small>
+                    )}
+                    {product.priceOrigin === 'open-prices' && (
+                      <small className="table-sub">
+                        Open Prices USD · {product.priceCheckedAt}
+                      </small>
+                    )}
                   </td>
-                  <td>
-                    {product.status === 'archived' ? '已归档' : inventoryLabel(product)}
-                  </td>
+                  <td>{product.status === 'archived' ? '已归档' : inventoryLabel(product)}</td>
                   <td>
                     <button className="text-button" onClick={() => edit(product)}>
                       <Pencil size={14} />

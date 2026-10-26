@@ -11,6 +11,11 @@ export const fixtureKindLabels = {
   'hanging-rack': '服饰挂架',
 };
 export const fixtureSideLabels = { left: '左侧', right: '右侧', front: '前侧', back: '后侧' };
+export function fixtureSupportsLevels(kind: Shelf['kind'] = 'gondola') {
+  // Hanging racks may have several garment rails; the seeded layout uses two.
+  // Keep this rule shared by layout edits, product placement and facility forms.
+  return kind === 'gondola' || kind === 'chiller' || kind === 'freezer' || kind === 'hanging-rack';
+}
 export const fixedFixtures = [
   { id: 'checkout-1', name: '人工收银', kind: 'checkout', rect: { x: 3, y: 22, w: 3, h: 1 } },
   { id: 'checkout-2', name: '自助收银', kind: 'checkout', rect: { x: 8, y: 22, w: 3, h: 1 } },
@@ -24,6 +29,18 @@ export const mainAisles = [
   { x: 1, y: 10, w: 66, h: 2 },
   { x: 1, y: 20, w: 66, h: 2 },
 ];
+export function fixtureOperationFootprint(shelf: Shelf): Shelf['footprint'] {
+  if (shelf.kind !== 'service-counter' || !shelf.footprint) return undefined;
+  const rect = shelf.footprint,
+    angle = (((shelf.rotation || 0) % 360) + 360) % 360;
+  return angle === 90
+    ? { x: rect.x + rect.w, y: rect.y, w: 1, h: rect.h }
+    : angle === 180
+      ? { x: rect.x, y: rect.y + rect.h, w: rect.w, h: 1 }
+      : angle === 270
+        ? { x: rect.x - 1, y: rect.y, w: 1, h: rect.h }
+        : { ...rect, y: rect.y - 1, h: 1 };
+}
 // Original department footprints used only to identify untouched demo layouts during migration.
 export const legacyDefaultRects: Record<string, StoreSection['rect']> = {
   vegetables: { x: 2, y: 2, w: 8, h: 6 },
@@ -190,6 +207,7 @@ export function productLocationLabel(product: Product): string {
     product.shelf,
     product.shelfSide && fixtureSideLabels[product.shelfSide],
     product.shelfLevel && `第${product.shelfLevel}层（从下往上）`,
+    product.shelfSlot !== undefined && `第${product.shelfSlot + 1}格`,
   ]
     .filter(Boolean)
     .join(' · ');

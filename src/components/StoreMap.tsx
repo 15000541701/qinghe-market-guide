@@ -19,6 +19,7 @@ import {
 import type { Category, Point, Product, Route, Shelf, StoreSection } from '../../shared/types';
 import { currencySymbol, productCurrency } from '../../shared/currency';
 import { shelfSlotCapacity } from '../../shared/shelf-capacity';
+import { shelfCells } from '../../shared/placement';
 import ProductImage from './ProductImage';
 import './StoreMap.css';
 
@@ -58,6 +59,40 @@ const colors = {
   'hanging-rack': '#a496b4',
 };
 
+// Keep labels inside their fixture instead of painting long names across aisles.
+// HTML wrapping also handles names edited by the store without guessing glyph widths.
+function FixtureLabel({
+  name,
+  width,
+  height,
+  active = false,
+  compact = false,
+}: {
+  name: string;
+  width: number;
+  height: number;
+  active?: boolean;
+  compact?: boolean;
+}) {
+  return (
+    <foreignObject
+      className="floor-fixture-label"
+      x={-width / 2}
+      y={-height / 2}
+      width={width}
+      height={height}
+      aria-hidden="true"
+    >
+      <div
+        className={`floor-label-badge${active ? ' active' : ''}${compact ? ' compact' : ''}`}
+        style={{ '--map-label-lines': Math.max(1, Math.floor((height - 4) / 12)) } as CSSProperties}
+      >
+        <span>{name}</span>
+      </div>
+    </foreignObject>
+  );
+}
+
 function FixtureDrawing({
   shelf,
   active,
@@ -79,17 +114,14 @@ function FixtureDrawing({
   if (!r)
     return shelf.position ? (
       <g>
-        <circle cx={center(shelf.position.x)} cy={center(shelf.position.y)} r="7" fill="#aaa" />
-        <text
-          x={center(shelf.position.x)}
-          y={center(shelf.position.y) - 12}
-          className="floor-label"
-        >
-          {shelf.name} · 待配置
-        </text>
+        <circle cx={center(shelf.position.x)} cy={center(shelf.position.y)} r="4" fill="#aaa" />
+        <g transform={`translate(${center(shelf.position.x)},${center(shelf.position.y) - 12})`}>
+          <FixtureLabel name={shelf.name} width={cell - 4} height={12} compact />
+        </g>
       </g>
     ) : null;
   const kind = shelf.kind || 'gondola';
+  const counterAngle = (((shelf.rotation || 0) % 360) + 360) % 360;
   const x = r.x * cell,
     y = r.y * cell,
     w = r.w * cell,
@@ -194,6 +226,7 @@ function FixtureDrawing({
         opacity=".1"
       />
       <rect
+        className="floor-fixture-shape"
         x={x}
         y={y}
         width={w}
@@ -232,7 +265,12 @@ function FixtureDrawing({
         <>
           <rect x={x + 4} y={y + 4} width={w - 8} height={h * 0.45} rx="2" fill="#f3dfc0" />
           <path d={`M${x + 3} ${y + h - 5}h${w - 6}`} stroke="#e0eced" strokeWidth="4" />
-          <text x={x + w / 2} y={y - 6} textAnchor="middle" className="floor-micro">
+          <text
+            x={counterAngle === 90 ? x + w + 6 : counterAngle === 270 ? x - 6 : x + w / 2}
+            y={counterAngle === 0 ? y - 6 : counterAngle === 180 ? y + h + 12 : y + h / 2}
+            textAnchor={counterAngle === 90 ? 'start' : counterAngle === 270 ? 'end' : 'middle'}
+            className="floor-micro"
+          >
             员工操作侧
           </text>
         </>
@@ -259,25 +297,13 @@ function FixtureDrawing({
               );
             })
           : surfaceSlots()}
-      <g transform={`translate(${x + w / 2},${y + h / 2})`}>
-        <rect
-          x="-19"
-          y="-8"
-          width="38"
-          height="16"
-          rx="3"
-          fill={active ? '#244f3b' : '#ffffff'}
-          opacity=".95"
+      <g transform={`translate(${x + w / 2},${y + h / 2})${long ? ' rotate(-90)' : ''}`}>
+        <FixtureLabel
+          name={shelf.name}
+          width={Math.max(1, (long ? h : w) - 10)}
+          height={Math.max(1, Math.min(40, (long ? w : h) - 8))}
+          active={active}
         />
-        <text
-          textAnchor="middle"
-          y="3.5"
-          fontSize="12"
-          fontWeight="700"
-          fill={active ? '#fff' : '#394b40'}
-        >
-          {shelf.name}
-        </text>
       </g>
     </g>
   );
@@ -620,30 +646,38 @@ export default function StoreMap({
               opacity=".72"
             />
           ))}
-          <text
-            x="308"
-            y="337"
-            textAnchor="middle"
-            className="floor-aisle-label"
-            transform="rotate(-90 308 337)"
-          >
-            主 通 道
-          </text>
-          <text
-            x="588"
-            y="337"
-            textAnchor="middle"
-            className="floor-aisle-label"
-            transform="rotate(-90 588 337)"
-          >
-            主 通 道
-          </text>
-          <text x="451" y="307" textAnchor="middle" className="floor-aisle-label">
-            横 向 通 道
-          </text>
-          <text x="451" y="599" textAnchor="middle" className="floor-aisle-label">
-            入 口 缓 冲 区
-          </text>
+          {mainAisles
+            .filter((aisle) => aisle.h > aisle.w)
+            .map((aisle, index) => {
+              // Reserve the opposite lane for legacy access-point markers.
+              const x = (aisle.x + 0.5) * cell;
+              const y = (aisle.y + aisle.h / 2) * cell;
+              return (
+                <text
+                  key={`vertical-aisle-${index}`}
+                  x={x}
+                  y={y}
+                  textAnchor="middle"
+                  className="floor-aisle-label"
+                  transform={`rotate(-90 ${x} ${y})`}
+                >
+                  主 通 道
+                </text>
+              );
+            })}
+          {mainAisles
+            .filter((aisle) => aisle.w > aisle.h)
+            .map((aisle, index) => (
+              <text
+                key={`horizontal-aisle-${index}`}
+                x={(aisle.x + aisle.w / 2) * cell}
+                y={(aisle.y + aisle.h / 2) * cell + 3}
+                textAnchor="middle"
+                className="floor-aisle-label"
+              >
+                {index === 0 ? '横 向 通 道' : '入 口 缓 冲 区'}
+              </text>
+            ))}
           {areas.map((area) => (
             <g key={area.id}>
               <rect
@@ -660,7 +694,17 @@ export default function StoreMap({
               />
               <text
                 x={area.rect.x * cell + 5}
-                y={area.rect.y * cell + 16}
+                y={
+                  area.rect.y * cell +
+                  (shelves.some(
+                    (shelf) =>
+                      shelf.sectionId === area.id &&
+                      shelf.footprint &&
+                      shelf.footprint.y < area.rect.y + 1,
+                  )
+                    ? -6
+                    : 16)
+                }
                 fill={area.color}
                 className="floor-department"
                 role="button"
@@ -706,6 +750,7 @@ export default function StoreMap({
             .map((shelf) => (
               <g
                 key={shelf.id}
+                data-shelf-id={shelf.id}
                 role="button"
                 tabIndex={0}
                 aria-label={`${fixtureKindLabels[shelf.kind || 'gondola']} ${shelf.name}，查看侧面和层位`}
@@ -720,6 +765,7 @@ export default function StoreMap({
               >
                 <title>
                   {shelf.name} · {fixtureKindLabels[shelf.kind || 'gondola']}
+                  {!shelf.footprint ? ' · 待配置' : ''}
                 </title>
                 <FixtureDrawing
                   shelf={shelf}
@@ -877,10 +923,18 @@ export default function StoreMap({
           >
             <Plus size={16} />
           </button>
-          <button className="icon-button" aria-label="适合视口" onClick={() => fitMap(1)}>
+          <button
+            className="icon-button map-text-control"
+            aria-label="适合视口"
+            onClick={() => fitMap(1)}
+          >
             适合
           </button>
-          <button className="icon-button" aria-label="重置地图缩放与当前位置" onClick={resetView}>
+          <button
+            className="icon-button map-text-control"
+            aria-label="重置地图缩放与当前位置"
+            onClick={resetView}
+          >
             重置
           </button>
           <span className="store-map-zoom-label" aria-live="polite">
@@ -990,11 +1044,7 @@ export default function StoreMap({
           <div className="fixture-elevation">
             {Array.from({ length: focused.levels || 1 }, (_, i) => (focused.levels || 1) - i).map(
               (level) => {
-                const items = focusedProducts.filter(
-                  (p) =>
-                    (p.shelfLevel || 1) === level &&
-                    (!effectiveSide || !p.shelfSide || p.shelfSide === effectiveSide),
-                );
+                const items = shelfCells(focusedProducts, focused, effectiveSide || 'front', level);
                 const slotCapacity = shelfSlotCapacity(focused);
                 const renderedSlotCount = Math.max(slotCapacity, items.length);
                 return (

@@ -15,6 +15,9 @@ import {
   mealCatalog,
   mealMeasureReliable,
   matchesMealIngredient,
+  productMealKinds,
+  dishMealKinds,
+  canonicalMealIngredient,
 } from '../shared/meal-catalog';
 import { respondToQuery } from '../shared/guide';
 import type { GeneratedMeal, Product, SamsClubCatalogRecord } from '../shared/types';
@@ -342,4 +345,196 @@ test('实际模型返回的简写商品名通过商品ID解析，菜名直接显
   const incorrect = structuredClone(raw);
   incorrect.meals[0].dishes[0].ingredients[0].ingredient = 'pork';
   assert.equal(createMealGenerationSchema(prefs, products).safeParse(incorrect).success, false);
+});
+
+test('真实DeepSeek沙拉包回复通过校验，调味料不能冒充主菜', () => {
+  const raw = JSON.parse(readFileSync('tests/fixtures/western-model-salad.json', 'utf8'));
+  const preferences = parseMealPreferences('两个人吃，预算50 USD，想搭配西式鱼餐和沙拉');
+  const parsed = createMealGenerationSchema(preferences, products).parse(raw);
+  assert.ok(
+    productMealKinds(products.find((p) => p.id === 'samsclub-980189846')!).includes('vegetable'),
+  );
+  assert.deepEqual(
+    dishMealKinds({ kind: 'protein', ingredients: [{ ingredient: 'salt', grams: 2 }] } as any),
+    [],
+  );
+  const fishSauce = { ...base, category: 'seasoning', name: 'Fish Sauce', aliases: ['Fish Sauce'] };
+  assert.deepEqual(productMealKinds(fishSauce), []);
+  assert.deepEqual(
+    productMealKinds({
+      ...base,
+      category: 'pantry',
+      name: 'Bread & Pizza Flour',
+      aliases: ['Bread & Pizza Flour'],
+    }),
+    [],
+  );
+  assert.ok(
+    productMealKinds({
+      ...base,
+      category: 'bakery',
+      name: 'Whole Wheat Flour Tortillas',
+      aliases: ['Whole Wheat Flour Tortillas'],
+    }).includes('staple'),
+  );
+  const plan = buildMealPlan(
+    {
+      ...preferences,
+      budget: null,
+      generatedMeals: parsed.meals.map((meal, i) => ({
+        ...meal,
+        id: `salad-${i}`,
+        dishes: meal.dishes.map((dish, j) => ({ ...dish, id: `salad-${i}-${j}` })),
+      })),
+    },
+    products,
+    [],
+  );
+  assert.equal(plan.budgetComplete, true, plan.missing.join(';'));
+  assert.ok(plan.recipes.some((recipe) => /沙拉/.test(recipe.title)));
+  const counterfeit = menu();
+  counterfeit.meals[0].dishes[0].kind = 'protein';
+  counterfeit.meals[0].dishes[0].ingredients = [{ ingredient: 'salt', grams: 2 }] as any;
+  assert.equal(createMealGenerationSchema(prefs, products).safeParse(counterfeit).success, false);
+});
+
+test('家中已有食材不会吞掉逗号后的新采购意愿', () => {
+  const preferences = parseMealPreferences(
+    '两个人的晚餐，预算50美元，家里有鸡蛋，想吃三文鱼和沙拉',
+  );
+  assert.ok(preferences.owned.includes('egg'));
+  assert.ok(!preferences.owned.includes('salmon'));
+});
+
+test('多日两餐的确认和预算续问保留餐次，猪肉忌口包含火腿与培根', () => {
+  const preferences = parseMealPreferences('两个人吃3天，每天两餐，预算150美元');
+  assert.equal(parseMealPreferences('确认清单', preferences).mealsPerDay, 2);
+  assert.equal(parseMealPreferences('预算改为100美元', preferences).mealsPerDay, 2);
+  const withoutPork = mealCatalog(products, [], ['pork']);
+  assert.ok(
+    withoutPork.every(
+      (product) => !/\b(?:pork|ham|bacon|prosciutto|salami)\b/i.test(englishProductName(product)),
+    ),
+  );
+});
+
+test('明确换成鸡肉意面时更新菜式约束，保留人数和原预算', () => {
+  const original = parseMealPreferences('两个人的晚餐，预算50美元，想吃鱼和沙拉');
+  const changed = parseMealPreferences('换成鸡肉意面', original);
+  assert.equal(changed.request, '换成鸡肉意面');
+  assert.equal(changed.people, 2);
+  assert.equal(changed.budget, 50);
+  assert.deepEqual(changed.wants, ['meat']);
+  assert.equal(
+    createMealGenerationSchema(changed, products).safeParse(menu()).success,
+    false,
+    'bread cannot fulfill a pasta replacement',
+  );
+});
+
+test('名录中的新蔬菜、奶酪和谷物具有实际餐食角色', () => {
+  for (const [name, category, role] of [
+    ['Asparagus', 'vegetables', 'vegetable'],
+    ['Southwest Chopped Salad Kit', 'vegetables', 'vegetable'],
+    ['Mozzarella Cheese', 'dairy', 'protein'],
+    ['Chickpeas', 'pantry', 'protein'],
+    ['Quinoa', 'pantry', 'staple'],
+  ])
+    assert.ok(productMealKinds({ ...base, name, aliases: [name], category }).includes(role), name);
+});
+
+test('整包装超预算反馈给模型修正，换一个方案会重新生成，确认不重复调用', async () => {
+  const variables = [
+    'AI_API_KEY',
+    'GEMINI_API_KEY',
+    'DEEPSEEK_API_KEY',
+    'GEMINI_BASE_URL',
+    'DEEPSEEK_BASE_URL',
+  ];
+  const saved = variables.map((key) => process.env[key]);
+  variables.forEach((key) => {
+    process.env[key] = key.endsWith('BASE_URL') ? 'https://offline.invalid' : 'offline-test-only';
+  });
+  const beforeFetch = globalThis.fetch;
+  const cheapBread = {
+    ...products.find((p) => p.id === 'samsclub-598443')!,
+    id: 'test-cheap-bread',
+    price: 2,
+  };
+  const catalog = [
+    ...products.map((p) => (p.id === 'samsclub-598443' ? { ...p, price: 80 } : p)),
+    cheapBread,
+  ];
+  let calls = 0;
+  let sawBudgetFeedback = false;
+  let initialCatalogSize = 0;
+  globalThis.fetch = async (_url, init) => {
+    calls++;
+    const body = JSON.parse(String(init?.body));
+    sawBudgetFeedback ||= body.messages.some((m: { content: string }) =>
+      m.content.includes('整包装核算'),
+    );
+    const bowl = products.find((product) => product.id === 'samsclub-984313777')!;
+    assert.equal(
+      canonicalMealIngredient(bowl),
+      undefined,
+      'a chicken bowl is not plain owned chicken',
+    );
+    assert.equal(matchesMealIngredient(bowl, 'chicken'), false);
+    const value = menu();
+    if (calls > 1) value.meals[0].dishes[0].ingredients[0].productId = cheapBread.id;
+    const available = JSON.parse(body.messages[1].content).catalog as {
+      id: string;
+      mealRoles: string[];
+      contents: { unit: string };
+    }[];
+    if (calls === 1) initialCatalogSize = available.length;
+    if (calls === 2) {
+      assert.ok(available.length < initialCatalogSize, 'single-day repair uses a verified basket');
+      assert.ok(!available.some((product) => product.id === 'samsclub-598443'));
+      const selected = ['staple', 'protein', 'vegetable'].map((role) =>
+        available.find((product) => product.mealRoles.includes(role))!,
+      );
+      value.meals[0].dishes[0] = {
+        ...value.meals[0].dishes[0],
+        title: '西式蔬菜拼盘',
+        steps: ['按各商品的包装说明处理，搭配食用。'],
+        ingredients: selected.map((product) => ({
+          productId: product.id,
+          ...(product.contents.unit === 'piece' ? { pieces: 4 } : { grams: 200 }),
+        })) as (typeof value.meals)[0]['dishes'][0]['ingredients'],
+      };
+    }
+    return new Response(
+      JSON.stringify({ choices: [{ message: { content: JSON.stringify(value) } }] }),
+      { status: 200 },
+    );
+  };
+  try {
+    const result = await shoppingAgent('两个人的晚餐，预算30美元', catalog, { cart: [] });
+    assert.equal(result.engine, 'model', result.fallback);
+    assert.equal(result.mealPlan?.canApply, true, result.text);
+    assert.equal(calls, 2);
+    assert.equal(sawBudgetFeedback, true);
+    const context = {
+      cart: [],
+      meal: result.mealPlan!.preferences,
+      recipeIds: result.mealPlan!.recipes.map((r) => r.id),
+    };
+    const changed = await shoppingAgent('换一个方案', catalog, context);
+    assert.equal(changed.engine, 'model');
+    assert.equal(calls, 3, 'an explicit replacement must call the generator');
+    const confirmed = await shoppingAgent('确认清单', catalog, {
+      ...context,
+      meal: changed.mealPlan!.preferences,
+    });
+    assert.equal(confirmed.action?.type, 'apply_plan');
+    assert.equal(calls, 3, 'confirmation reuses the checked menu');
+  } finally {
+    globalThis.fetch = beforeFetch;
+    variables.forEach((key, index) => {
+      if (saved[index] === undefined) delete process.env[key];
+      else process.env[key] = saved[index];
+    });
+  }
 });

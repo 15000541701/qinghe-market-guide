@@ -262,6 +262,8 @@ export function importSkus(
         shelf: shelf?.name || '',
         shelfSide: shelf ? (side as Product['shelfSide']) : undefined,
         shelfLevel: shelf ? level : undefined,
+        shelfSlot: shelf?.id === previous?.shelfId && side === previous?.shelfSide &&
+          level === (previous?.shelfLevel || 1) ? previous?.shelfSlot : undefined,
         sourceUrl,
         sourceRetailer: input.sourceRetailer ?? previous?.sourceRetailer,
         sourceSku: input.sourceSku ?? previous?.sourceSku,

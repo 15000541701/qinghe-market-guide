@@ -24,6 +24,9 @@ import {
   getShelves,
   saveCategory,
   saveProduct,
+  saveProductsAtomically,
+  saveShelfAndProductsAtomically,
+  saveShelvesAndProductsAtomically,
   saveSection,
   saveShelf,
 } from './db';
@@ -36,6 +39,7 @@ import {
   defaultFixture,
   fixtureAccessPoints,
   fixtureSideLabels,
+  fixtureSupportsLevels,
   fixedFixtures,
   mainAisles,
 } from '../shared/layout';
@@ -51,6 +55,11 @@ import { currencyMismatchMessage, productCurrency } from '../shared/currency';
 import { registerProductImageCacheRoute } from './product-image-cache';
 import { productDetail } from './samsclub-catalog';
 import { mealPlanningVersion } from '../shared/recipes';
+import { applyPlacement, placementOf, samePlacement, invertPlacementChanges } from '../shared/placement';
+import { shelfGeometry, shelfMoveError, translatedShelf, rotatedShelf, resizedShelf, restoreShelfGeometry, rotateShelfSide } from '../shared/shelf-move';
+import { shelfSlotCapacity } from '../shared/shelf-capacity';
+import { shelfCells, unplaced } from '../shared/placement';
+import { expandShelfSelection, shelfVersion, shelfTarget, shelfBatchPlacementError, translateShelfSelection } from '../shared/shelf-batch';
 
 configureNetworkProxy();
 const app = express();
@@ -117,6 +126,52 @@ app.post('/api/sku/import', (req, res) => {
   const result = importSkus(input.rows, input.mode, input.apply);
   res.status(input.apply && result.errors.length ? 422 : 200).json(result);
 });
+const placementSchema = z.object({
+  shelfId: z.string().min(1).max(80).nullable(),
+  shelfSide: z.enum(['left', 'right', 'front', 'back']).nullable(),
+  shelfLevel: z.number().int().min(1).max(8).nullable(),
+  shelfSlot: z.number().int().min(0).max(19).nullable(),
+}).strict();
+app.post('/api/merchandising/placements', (req, res) => {
+  const { changes } = z.object({ changes: z.array(z.object({
+    id: z.string().min(1).max(80), expected: placementSchema, target: placementSchema,
+  }).strict()).min(1).max(100) }).strict().parse(req.body);
+  if (new Set(changes.map((change) => change.id)).size !== changes.length)
+    return res.status(400).json({ error: '同一商品不能重复提交。' });
+  const products = getProducts(), shelves = getShelves();
+  for (const change of changes) {
+    const product = products.find((item) => item.id === change.id);
+    if (!product || product.status === 'archived') return res.status(409).json({ error: '商品不存在或已归档，请刷新。' });
+    if (!samePlacement(placementOf(product), change.expected))
+      return res.status(409).json({ error: '商品位置已被其他操作更新，请刷新后重试。' });
+    if (!change.target.shelfId && Object.values(change.target).some((value) => value !== null))
+      return res.status(400).json({ error: '移回待摆放时必须清除完整陈列位置。' });
+  }
+  const staged = products.map((product) => {
+    const change = changes.find((item) => item.id === product.id);
+    return change ? applyPlacement(product, change.target, shelves) : product;
+  });
+  for (const change of changes) {
+    if (!change.target.shelfId) continue;
+    const shelf = shelves.find((item) => item.id === change.target.shelfId);
+    if (!shelf) return res.status(409).json({ error: '目标货架已不存在。' });
+    const position = resolveProductShelfPosition(shelf, change.target.shelfSide ?? undefined, change.target.shelfLevel ?? undefined);
+    if ('error' in position) return res.status(409).json({ error: position.error });
+    const product = staged.find((item) => item.id === change.id)!;
+    const capacityError = shelfSlotPlacementError(shelf, product, staged, position.shelfSide, position.shelfLevel);
+    if (capacityError) return res.status(409).json({ error: capacityError });
+    if (change.target.shelfSlot !== null) {
+      if (change.target.shelfSlot >= shelfSlotCapacity(shelf)) return res.status(409).json({ error: '目标格位超出货架容量。' });
+      if (staged.some((other) => other.status !== 'archived' && other.id !== product.id &&
+        other.shelfId === shelf.id && other.shelfSide === position.shelfSide &&
+        (other.shelfLevel || 1) === position.shelfLevel && other.shelfSlot === product.shelfSlot))
+        return res.status(409).json({ error: '目标格位已被占用，请刷新后重试。' });
+    }
+  }
+  const updated = staged.filter((product) => changes.some((change) => change.id === product.id));
+  saveProductsAtomically(updated);
+  res.json({ products: updated, undo: invertPlacementChanges(changes) });
+});
 app.patch('/api/products/:id/placement', (req, res) => {
   const input = z
     .object({
@@ -154,7 +209,9 @@ app.patch('/api/products/:id/placement', (req, res) => {
     input.shelfLevel,
   );
   if (capacityError) return res.status(409).json({ error: capacityError });
-  res.json(saveProduct({ ...product, shelfId: shelf.id, shelf: shelf.name, ...position }));
+  const sameLayer = product.shelfId === shelf.id && product.shelfSide === position.shelfSide && (product.shelfLevel || 1) === position.shelfLevel;
+  res.json(saveProduct({ ...product, shelfId: shelf.id, shelf: shelf.name, ...position,
+    shelfSlot: sameLayer ? product.shelfSlot : undefined }));
 });
 function rectsOverlap(
   first: { x: number; y: number; w: number; h: number },
@@ -185,17 +242,6 @@ function sectionPlacementError(section: StoreSection, current: StoreSection[] = 
   const activeOthers = current.filter((item) => item.active && item.id !== section.id);
   if (activeOthers.some((item) => rectsOverlap(rect, item.rect)))
     return '区域矩形与现有启用区域重叠，请调整位置。';
-  const misplacedFixture = getShelves().find(
-    (shelf) =>
-      shelf.sectionId === section.id &&
-      shelf.footprint &&
-      (shelf.footprint.x < rect.x ||
-        shelf.footprint.y < rect.y ||
-        shelf.footprint.x + shelf.footprint.w > rect.x + rect.w ||
-        shelf.footprint.y + shelf.footprint.h > rect.y + rect.h),
-  );
-  if (misplacedFixture)
-    return `调整区域会把设施“${misplacedFixture.name}”移出所属地面，请先调整设施位置。`;
   const routeSections = [...activeOthers, { ...section, active: true }];
   const fixtures = getShelves();
   if (!isWalkable(section.location, routeSections, fixtures))
@@ -248,15 +294,8 @@ function fixturePlacementError(input: Shelf, currentShelves = getShelves(), igno
     footprint.y + footprint.h > mapBounds.maxY + 1
   )
     return '设施占地超出地图边界。';
-  if (
-    footprint.x < section.rect.x ||
-    footprint.y < section.rect.y ||
-    footprint.x + footprint.w > section.rect.x + section.rect.w ||
-    footprint.y + footprint.h > section.rect.y + section.rect.h
-  )
-    return '设施占地需完整位于所属区域内。';
   if (input.levels < 1 || input.levels > 8) return '设施层数需在 1–8 层之间。';
-  if (!['gondola', 'chiller'].includes(input.kind) && input.levels !== 1)
+  if (!fixtureSupportsLevels(input.kind) && input.levels !== 1)
     return '生鲜台、展示台、柜台和海鲜池只能设置 1 层。';
   if (fixedFixtures.some((fixture) => rectsOverlap(footprint, fixture.rect)))
     return '设施占地与固定收银/服务设施重叠。';
@@ -289,7 +328,8 @@ function productsInvalidatedByFixture(shelfId: string, next: Shelf) {
     return (
       (side !== undefined && !next.accessPoints?.[side]) ||
       level > (next.levels || 1) ||
-      (!['gondola', 'chiller'].includes(next.kind || 'gondola') && level !== 1) ||
+      (product.shelfSlot !== undefined && product.shelfSlot >= shelfSlotCapacity(next)) ||
+      (!fixtureSupportsLevels(next.kind) && level !== 1) ||
       (!!side && !!shelfSlotPlacementError(next, product, getProducts(), side, level))
     );
   });
@@ -304,7 +344,7 @@ function resolveProductShelfPosition(shelf: Shelf, side?: AccessSide, level?: nu
   const maxLevels = shelf.levels || 1;
   if (!Number.isInteger(selectedLevel) || selectedLevel < 1 || selectedLevel > maxLevels)
     return { error: `该设施有 ${maxLevels} 层，请填写 1–${maxLevels} 层。` };
-  if (!['gondola', 'chiller'].includes(shelf.kind || 'gondola') && selectedLevel !== 1)
+  if (!fixtureSupportsLevels(shelf.kind) && selectedLevel !== 1)
     return { error: '该设施为单层，商品层位必须为 1。' };
   const point = accessPoints[selectedSide];
   if (
@@ -518,11 +558,154 @@ app.post('/api/shelves', (req, res) => {
   const section = getSections().find((item) => item.id === raw.sectionId && item.active);
   if (!section) return res.status(400).json({ error: '请选择启用中的所属区域。' });
   const input = normalizeShelfInput(raw, section, getShelves());
-  if (getShelves().some((shelf) => shelf.id === input.id))
+  if (getShelves(true).some((shelf) => shelf.id === input.id))
     return res.status(409).json({ error: '货架编号已存在。' });
   const placementError = fixturePlacementError(input);
   if (placementError) return res.status(400).json({ error: placementError });
   res.status(201).json(saveShelf(input));
+});
+app.patch('/api/shelves/:id/position', (req, res) => {
+  const input = z.object({ x: z.number().int(), y: z.number().int(), expected: z.object({
+    footprint: shelfFootprintSchema, sectionId: z.string(), accessPoints: shelfAccessSchema, layoutRevision: z.number().int().nonnegative().optional(),
+  }).strict() }).strict().parse(req.body);
+  const shelves = getShelves();
+  const existing = shelves.find((item) => item.id === req.params.id);
+  if (!existing?.footprint) return res.status(404).json({ error: '实体货架不存在，请刷新。' });
+  if (existing.groupId && shelves.filter((item) => item.groupId === existing.groupId).length > 1) return res.status(409).json({ error:'该货架属于组合，请整体移动或先分拆。' });
+  const moved = ['x', 'y', 'w', 'h'].some((key) => existing.footprint![key as keyof NonNullable<Shelf['footprint']>] !== input.expected.footprint[key as keyof NonNullable<Shelf['footprint']>]);
+  const sides = ['left', 'right', 'front', 'back'] as const;
+  if (moved || (input.expected.layoutRevision !== undefined && input.expected.layoutRevision !== (existing.layoutRevision || 0)) || existing.sectionId !== input.expected.sectionId || sides.some((side) =>
+    existing.accessPoints?.[side]?.x !== input.expected.accessPoints[side]?.x ||
+    existing.accessPoints?.[side]?.y !== input.expected.accessPoints[side]?.y))
+    return res.status(409).json({ error: '货架布局已被其他操作更新，请刷新后重试。' });
+  const next = translatedShelf(existing, input.x, input.y);
+  const error = shelfMoveError(next, shelves, getSections()) || fixturePlacementError(next, shelves, existing.id);
+  if (error) return res.status(409).json({ error });
+  res.json(saveShelf({ ...next, layoutRevision: (existing.layoutRevision || 0) + 1 }));
+});
+const rotationSchema = z.number().int().min(-360000).max(360000).refine((value) => value % 90 === 0, '旋转角度必须是90度的整数倍');
+const geometrySchema = z.object({ footprint: shelfFootprintSchema, accessPoints: shelfAccessSchema,
+  accessOrder: z.array(z.enum(['left', 'right', 'front', 'back'])).max(4), position: mapPointSchema.nullable(), rotation: rotationSchema,
+}).strict().refine((value) => new Set(value.accessOrder).size === value.accessOrder.length &&
+  value.accessOrder.length === Object.keys(value.accessPoints).length && value.accessOrder.every((side) => !!value.accessPoints[side]), '到达侧顺序与坐标不一致');
+const placedSnapshotSchema = z.object({ id: z.string().min(1).max(80), placement: placementSchema }).strict();
+const shelfVersionSchema = z.object({ id: z.string().min(1).max(80), revision: z.number().int().nonnegative(), groupId: z.string().max(80).nullable(), deleted: z.boolean() }).strict();
+const shelfTargetSchema = z.object({ id: z.string().min(1).max(80), geometry: geometrySchema, groupId: z.string().max(80).nullable(), deleted: z.boolean() }).strict();
+app.post('/api/shelves/batch', (req, res) => {
+  const input = z.object({ expected: z.array(shelfVersionSchema).min(1).max(200), expectedProducts: z.array(placedSnapshotSchema).max(5000),
+    action: z.discriminatedUnion('type', [
+      z.object({ type: z.literal('move'), dx: z.number().int().min(-67).max(67), dy: z.number().int().min(-23).max(23) }).strict(),
+      z.object({ type: z.literal('group') }).strict(), z.object({ type: z.literal('ungroup') }).strict(), z.object({ type: z.literal('delete') }).strict(),
+      z.object({ type: z.literal('restore'), shelves: z.array(shelfTargetSchema).min(1).max(200), products: z.array(placedSnapshotSchema).max(5000) }).strict(),
+    ]),
+  }).strict().parse(req.body);
+  const all = getShelves(true), active = all.filter((shelf) => !shelf.deleted), products = getProducts();
+  const ids = input.expected.map((item) => item.id);
+  if (new Set(ids).size !== ids.length) return res.status(400).json({ error: '同一货架不能重复选择。' });
+  const selected = all.filter((shelf) => ids.includes(shelf.id));
+  if (selected.length !== ids.length || selected.some((shelf) => {
+    const expected = input.expected.find((item) => item.id === shelf.id)!; const current = shelfVersion(shelf);
+    return !shelf.footprint || current.revision !== expected.revision || current.groupId !== expected.groupId || current.deleted !== expected.deleted;
+  })) return res.status(409).json({ error: '所选货架已被其他操作更新，请刷新后重试。' });
+  const action = input.action;
+  if (action.type !== 'restore' && (selected.some((shelf) => shelf.deleted) || expandShelfSelection(ids,active).some((id) => !ids.includes(id))))
+    return res.status(409).json({ error: '请选择完整组合，或先分拆组合。' });
+  if (action.type === 'group' && selected.length < 2) return res.status(400).json({ error: '至少选择两个货架才能组合。' });
+  const installed = products.filter((product) => product.status !== 'archived' && product.shelfId && ids.includes(product.shelfId));
+  const productIds = input.expectedProducts.map((item) => item.id);
+  if (new Set(productIds).size !== productIds.length || installed.some((product) => !productIds.includes(product.id)) ||
+    (action.type !== 'restore' && installed.length !== productIds.length) || input.expectedProducts.some((item) => {
+      const product = products.find((product) => product.id === item.id);
+      return !product || product.status === 'archived' || !samePlacement(placementOf(product), item.placement);
+    })) return res.status(409).json({ error: '所选货架的商品位置已变化，请刷新后重试。' });
+  if (action.type === 'restore' && (action.shelves.length !== ids.length || new Set(action.shelves.map((item) => item.id)).size !== ids.length ||
+    action.shelves.some((item) => !ids.includes(item.id)) || action.products.length !== productIds.length || new Set(action.products.map((item) => item.id)).size !== productIds.length ||
+    action.products.some((item) => !productIds.includes(item.id) || !!item.placement.shelfId && !ids.includes(item.placement.shelfId))))
+    return res.status(409).json({ error: '撤销记录不完整，操作未保存。' });
+  const groupId = action.type === 'group' ? `shelf-group-${randomUUID()}` : undefined;
+  const moved = action.type === 'move' ? translateShelfSelection(ids, action.dx, action.dy, selected) : [];
+  const updates = selected.map((shelf) => {
+    const target = action.type === 'restore' ? action.shelves.find((item) => item.id === shelf.id)! : undefined;
+    const next = action.type === 'move' ? moved.find((item) => item.id === shelf.id)!
+      : action.type === 'restore' ? { ...restoreShelfGeometry(shelf,target!.geometry), groupId: target!.groupId || undefined, deleted: target!.deleted }
+      : action.type === 'delete' ? { ...shelf, deleted: true }
+      : { ...shelf, groupId: action.type === 'group' ? groupId : undefined };
+    return { ...next, layoutRevision: (shelf.layoutRevision || 0) + 1 };
+  });
+  if (action.type === 'move' || action.type === 'restore') {
+    const reason = shelfBatchPlacementError(updates, active, getSections());
+    if (reason) return res.status(409).json({ error: reason });
+  }
+  const stagedShelves = [...active.filter((shelf) => !ids.includes(shelf.id)), ...updates.filter((shelf) => !shelf.deleted)];
+  const affected = products.filter((product) => productIds.includes(product.id));
+  const updatedProducts = affected.map((product) => action.type === 'delete' ? { ...applyPlacement(product,unplaced(),stagedShelves), manualPlacement:true }
+    : action.type === 'restore' ? { ...applyPlacement(product,action.products.find((item) => item.id === product.id)!.placement,stagedShelves), manualPlacement:true } : product);
+  if (action.type === 'restore') {
+    const stagedProducts = products.map((product) => updatedProducts.find((item) => item.id === product.id) || product);
+    for (const product of updatedProducts) {
+      if (!product.shelfId) continue;
+      const shelf = stagedShelves.find((shelf) => shelf.id === product.shelfId);
+      const side = product.shelfSide || Object.keys(shelf?.accessPoints || {})[0] as AccessSide;
+      if (!shelf || !side || !shelf.accessPoints?.[side] || (product.shelfLevel || 1) > (shelf.levels || 1) ||
+        (product.shelfSlot !== undefined && product.shelfSlot >= shelfSlotCapacity(shelf))) return res.status(409).json({ error:'恢复后商品位置无效，操作未保存。' });
+      const reason = shelfSlotPlacementError(shelf,product,stagedProducts,side,product.shelfLevel || 1);
+      if (reason) return res.status(409).json({error:reason});
+    }
+  }
+  saveShelvesAndProductsAtomically(updates, action.type === 'delete' || action.type === 'restore' ? updatedProducts : []);
+  res.json({ shelves: updates, products: updatedProducts, undo: { expected: updates.map(shelfVersion),
+    expectedProducts: updatedProducts.map((product) => ({ id:product.id, placement:placementOf(product) })),
+    action: { type:'restore', shelves:selected.map(shelfTarget), products:affected.map((product) => ({id:product.id,placement:placementOf(product)})) } } });
+});
+app.patch('/api/shelves/:id/layout', (req, res) => {
+  const input = z.object({ expected: z.object({ geometry: geometrySchema, revision: z.number().int().nonnegative() }).strict(),
+    expectedProducts: z.array(placedSnapshotSchema).max(2000),
+    action: z.discriminatedUnion('type', [
+      z.object({ type: z.literal('rotate'), direction: z.enum(['cw', 'ccw']) }).strict(),
+      z.object({ type: z.literal('resize'), footprint: shelfFootprintSchema }).strict(),
+      z.object({ type: z.literal('restore'), geometry: geometrySchema, placements: z.array(placedSnapshotSchema).max(2000) }).strict(),
+    ]),
+  }).strict().parse(req.body);
+  const shelves = getShelves(), products = getProducts();
+  const existing = shelves.find((shelf) => shelf.id === req.params.id);
+  if (!existing?.footprint) return res.status(409).json({ error: '请先补全货架占地资料。' });
+  if (existing.groupId && shelves.filter((item) => item.groupId === existing.groupId).length > 1) return res.status(409).json({ error:'请先分拆组合，再旋转或调整单个货架占地。' });
+  const before = shelfGeometry(existing), expected = input.expected.geometry;
+  const different = (['x', 'y', 'w', 'h'] as const).some((key) => before.footprint[key] !== expected.footprint[key]) ||
+    before.rotation !== expected.rotation || before.accessOrder.join() !== expected.accessOrder.join() ||
+    before.position?.x !== expected.position?.x || before.position?.y !== expected.position?.y ||
+    (['left', 'right', 'front', 'back'] as const).some((side) => before.accessPoints[side]?.x !== expected.accessPoints[side]?.x || before.accessPoints[side]?.y !== expected.accessPoints[side]?.y);
+  if ((existing.layoutRevision || 0) !== input.expected.revision || different)
+    return res.status(409).json({ error: '货架布局已更新，请刷新后再操作。' });
+  const installed = products.filter((product) => product.status !== 'archived' && product.shelfId === existing.id);
+  if (installed.length !== input.expectedProducts.length || new Set(input.expectedProducts.map((item) => item.id)).size !== installed.length ||
+    installed.some((product) => !input.expectedProducts.some((item) => item.id === product.id && samePlacement(item.placement, placementOf(product)))))
+    return res.status(409).json({ error: '货架上的商品位置已变更，请刷新后再操作。' });
+  const action = input.action;
+  let next = action.type === 'rotate' ? rotatedShelf(existing, action.direction) : action.type === 'resize' ? resizedShelf(existing, action.footprint) : restoreShelfGeometry(existing, action.geometry);
+  const error = shelfMoveError(next, shelves, getSections()) || fixturePlacementError(next, shelves, existing.id);
+  if (error) return res.status(409).json({ error });
+  if (action.type === 'restore' && (action.placements.length !== installed.length || new Set(action.placements.map((item) => item.id)).size !== installed.length ||
+    action.placements.some((item) => item.placement.shelfId !== existing.id || !installed.some((product) => product.id === item.id))))
+    return res.status(409).json({ error: '待恢复的商品位置不完整，请刷新。' });
+  const updated = installed.map((product) => action.type === 'rotate'
+    ? { ...product, shelfSide: product.shelfSide ? rotateShelfSide(product.shelfSide, action.direction) : undefined }
+    : action.type === 'restore' ? applyPlacement(product, action.placements.find((item) => item.id === product.id)!.placement, [next]) : product);
+  const staged = products.map((product) => updated.find((item) => item.id === product.id) || product);
+  for (const product of updated) {
+    const side = product.shelfSide || Object.keys(next.accessPoints || {})[0] as NonNullable<Product['shelfSide']>;
+    if (!side || !next.accessPoints?.[side] || (product.shelfLevel || 1) > (next.levels || 1) || (product.shelfSlot !== undefined && product.shelfSlot >= shelfSlotCapacity(next)))
+      return res.status(409).json({ error: `“${product.name}”的位置会失效，操作未保存。` });
+    const reason = shelfSlotPlacementError(next, product, staged, side, product.shelfLevel || 1);
+    if (reason) return res.status(409).json({ error: reason });
+    if (shelfCells(staged, next, side, product.shelfLevel || 1).filter(Boolean).length > shelfSlotCapacity(next))
+      return res.status(409).json({ error: '变更后商品数量超出层位容量。' });
+  }
+  next = { ...next, layoutRevision: (existing.layoutRevision || 0) + 1 };
+  saveShelfAndProductsAtomically(next, updated);
+  res.json({ shelf: next, products: updated,
+    expectedProducts: updated.map((product) => ({ id: product.id, placement: placementOf(product) })),
+    undo: { geometry: before, placements: installed.map((product) => ({ id: product.id, placement: placementOf(product) })) } });
 });
 app.patch('/api/shelves/:id', (req, res) => {
   const existing = getShelves().find((item) => item.id === req.params.id);
@@ -535,7 +718,7 @@ app.patch('/api/shelves/:id', (req, res) => {
     section,
     getShelves(),
   );
-  const input = { ...existing, ...normalized, id: existing.id };
+  const input = { ...existing, ...normalized, id: existing.id, layoutRevision: (existing.layoutRevision || 0) + 1 };
   const placementError = fixturePlacementError(input, getShelves(), existing.id);
   if (placementError) return res.status(400).json({ error: placementError });
   const invalidProducts = productsInvalidatedByFixture(existing.id, input);
@@ -585,7 +768,7 @@ app.post('/api/assistant', async (req, res) => {
   const currency = input.currency || 'CNY';
   const mismatch = currencyMismatchMessage(input.message, currency);
   if (mismatch)
-    return res.json({ text: mismatch, products: [], filters: input.previous || { categories: [] }, engine: 'rules' } satisfies GuideResponse);
+    return res.json({ text: mismatch, products: [], filters: input.previous || { categories: [] }, engine: 'rules',clearMealPlan:true } satisfies GuideResponse);
   res.json(
     await shoppingAgent(
       input.message,
@@ -862,6 +1045,8 @@ app.patch('/api/products/:id', (req, res) => {
       shelfId: shelf?.id,
       shelfSide: shelfPosition.shelfSide,
       shelfLevel: shelfPosition.shelfLevel,
+      shelfSlot: sameShelf && previous.shelfSide === shelfPosition.shelfSide &&
+        (previous.shelfLevel || 1) === shelfPosition.shelfLevel ? previous.shelfSlot : undefined,
       saleMode: input.saleMode || previous.saleMode,
       price: Math.round(input.price * 100) / 100,
       history,

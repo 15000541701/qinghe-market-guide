@@ -14,3 +14,7 @@ project.private.config.json
 miniprogram/lib/
 miniprogram/assets/
 public/images/samsclub/
+
+# Local diagnostic runs and generated weekly exports.
+outputs/
+docs/weekly/*.pdf

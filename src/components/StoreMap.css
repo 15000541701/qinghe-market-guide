@@ -129,6 +129,45 @@
   fill: #fff;
   text-anchor: middle;
 }
+.floor-fixture-label {
+  overflow: hidden;
+  pointer-events: none;
+}
+.floor-label-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 2px 3px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: #fffffff2;
+  color: #394b40;
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 12px;
+  text-align: center;
+}
+.floor-label-badge > span {
+  display: -webkit-box;
+  min-width: 0;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--map-label-lines);
+}
+.floor-label-badge.active {
+  background: #244f3bf2;
+  color: #fff;
+}
+.floor-label-badge.compact {
+  padding: 0;
+  background: transparent;
+  color: #6e7769;
+  font-size: 8px;
+  line-height: 10px;
+}
 .store-map-toolbar {
   display: flex;
   justify-content: space-between;
@@ -143,6 +182,15 @@
   align-items: center;
   gap: 8px;
   font-size: 12px;
+}
+.store-map-toolbar label {
+  min-width: 0;
+}
+.store-map-toolbar .map-text-control {
+  width: auto;
+  min-width: 40px;
+  padding: 4px 7px;
+  white-space: nowrap;
 }
 .store-map-zoom-label {
   min-width: 38px;

@@ -22,6 +22,13 @@ export type Shelf = {
   name: string;
   position: Point | null;
   reachable: boolean;
+  /** Signed accumulated angle, in multiples of 90 degrees. */
+  rotation?: number;
+  layoutRevision?: number;
+  groupId?: string;
+  deleted?: boolean;
+  /** Stable map label, including gaps left by deleted fixtures. */
+  mapNumber?: number;
   kind?:
     | 'gondola'
     | 'produce-table'
@@ -136,6 +143,10 @@ export type Product = {
   shelfId?: string;
   shelfSide?: 'left' | 'right' | 'front' | 'back';
   shelfLevel?: number;
+  /** Zero-based position within a side/level; omitted on legacy placements. */
+  shelfSlot?: number;
+  /** Keep deliberate unplacement from being changed by automatic catalog placement. */
+  manualPlacement?: boolean;
   history: PriceRecord[];
   marketPrice?: number;
   marketDate?: string;
@@ -246,11 +257,13 @@ export type GuideResponse = {
   engine: 'rules' | 'model';
   fallback?: string;
   mealPlan?: MealPlan;
+  clearMealPlan?: boolean;
   action?: ShoppingAction;
   trace?: string[];
 };
 export type MealWant = 'fish' | 'greens' | 'vegetables' | 'meat' | 'shrimp' | 'egg' | 'breakfast';
 export type MealPreferences = {
+  request?: string;
   planningVersion?: string;
   people: number;
   budget: number | null;
@@ -264,6 +277,7 @@ export type MealPreferences = {
   includeRice: boolean;
   days: number;
   mealsPerDay: number;
+  mealSlots?: ('早餐' | '午餐' | '晚餐' | '加餐')[];
   singleMeal?: '早餐' | '午餐' | '晚餐' | '加餐';
   /** Household staples confirmed available; amounts are intentionally not inferred. */
   homePantry: string[];

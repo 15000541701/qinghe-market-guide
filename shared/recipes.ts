@@ -60,6 +60,21 @@ export const ingredientNames: Record<string, string> = {
   carrot: '胡萝卜',
   pasta: '意面',
   yogurt: '酸奶',
+  cucumber: '黄瓜',
+  mushroom: '蘑菇',
+  asparagus: '芦笋',
+  cheese: '奶酪',
+  butter: '黄油',
+  honey: '蜂蜜',
+  cod: '鳕鱼',
+  tilapia: '罗非鱼',
+  tuna: '金枪鱼',
+  crab: '蟹',
+  lobster: '龙虾',
+  scallop: '扇贝',
+  clam: '蛤蜊',
+  mussel: '贻贝',
+  oyster: '生蚝',
 };
 export const ingredientAliases: Record<string, string[]> = {
   oil: ['食用油', '植物油', '菜籽油', '油'],
@@ -91,7 +106,7 @@ export const ingredientAliases: Record<string, string[]> = {
   seabass: ['鲈鱼'],
   carp: ['草鱼'],
   salmon: ['三文鱼'],
-  bread: ['面包', '吐司', '全麦面包', '全麦吐司'],
+  bread: ['面包', '吐司', '全麦面包', '全麦吐司', '英式松饼'],
   milk: ['牛奶'],
   onion: ['洋葱'],
   tofu: ['豆腐', '北豆腐', '豆制品'],
@@ -102,6 +117,21 @@ export const ingredientAliases: Record<string, string[]> = {
   carrot: ['胡萝卜', '红萝卜'],
   pasta: ['意面', '意大利面'],
   yogurt: ['酸奶', '希腊酸奶'],
+  cucumber: ['黄瓜'],
+  mushroom: ['蘑菇', '口蘑', '香菇'],
+  asparagus: ['芦笋'],
+  cheese: ['奶酪', '芝士'],
+  butter: ['黄油'],
+  honey: ['蜂蜜'],
+  cod: ['鳕鱼'],
+  tilapia: ['罗非鱼'],
+  tuna: ['金枪鱼'],
+  crab: ['螃蟹', '蟹'],
+  lobster: ['龙虾'],
+  scallop: ['扇贝'],
+  clam: ['蛤蜊'],
+  mussel: ['贻贝', '青口'],
+  oyster: ['牡蛎', '生蚝'],
 };
 // Input aliases translate the request; catalog matching uses only English terms.
 export const ingredientEnglishTerms: Record<string, string[]> = {
@@ -110,6 +140,7 @@ export const ingredientEnglishTerms: Record<string, string[]> = {
   salmon: ['salmon'],
   fish: [
     'fish',
+    'catfish',
     'salmon',
     'cod',
     'pollock',
@@ -123,6 +154,7 @@ export const ingredientEnglishTerms: Record<string, string[]> = {
     'mahi',
   ],
   seafood: [
+    'seafood',
     'fish',
     'salmon',
     'cod',
@@ -144,12 +176,22 @@ export const ingredientEnglishTerms: Record<string, string[]> = {
   lettuce: ['romaine', 'lettuce'],
   broccoli: ['broccoli'],
   tomato: ['tomatoes', 'tomato'],
-  chicken: ['chicken breast', 'chicken breasts'],
-  beef: ['beef', 'steak'],
-  pork: ['pork'],
+  chicken: ['chicken breast', 'chicken breasts', 'chicken'],
+  beef: ['beef', 'angus', 'sirloin', 'ribeye', 'brisket'],
+  pork: ['pork', 'ham', 'bacon', 'prosciutto', 'salami'],
   shrimp: ['shrimp'],
   egg: ['eggs', 'egg'],
-  bread: ['bread', 'baguette', 'bagel', 'bagels', 'croissant', 'croissants', 'tortillas'],
+  bread: [
+    'bread',
+    'baguette',
+    'bagel',
+    'bagels',
+    'croissant',
+    'croissants',
+    'tortillas',
+    'english muffin',
+    'english muffins',
+  ],
   milk: ['milk'],
   rice: ['rice'],
   oats: ['oats', 'oatmeal'],
@@ -176,7 +218,71 @@ export const ingredientEnglishTerms: Record<string, string[]> = {
   carrot: ['carrots', 'carrot'],
   pasta: ['spaghetti', 'penne', 'rotini', 'fettuccine', 'pasta'],
   yogurt: ['yogurt'],
+  cucumber: ['cucumber', 'cucumbers'],
+  mushroom: ['mushroom', 'mushrooms'],
+  asparagus: ['asparagus'],
+  cheese: ['cheese'],
+  butter: ['butter'],
+  honey: ['honey'],
+  cod: ['cod'],
+  tilapia: ['tilapia'],
+  tuna: ['tuna'],
+  pollock: ['pollock'],
+  trout: ['trout'],
+  flounder: ['flounder'],
+  haddock: ['haddock'],
+  sardine: ['sardine', 'sardines'],
+  anchovy: ['anchovy', 'anchovies'],
+  mahi: ['mahi'],
+  crab: ['crab'],
+  lobster: ['lobster'],
+  scallop: ['scallop', 'scallops'],
+  clam: ['clam', 'clams'],
+  mussel: ['mussel', 'mussels'],
+  oyster: ['oyster', 'oysters'],
 };
+export const ingredientFamilies: Record<string, string[]> = {
+  seafood: ['fish', 'shrimp', 'crab', 'lobster', 'scallop', 'clam', 'mussel', 'oyster'],
+  fish: [
+    'salmon',
+    'seabass',
+    'carp',
+    'cod',
+    'tilapia',
+    'tuna',
+    'pollock',
+    'trout',
+    'flounder',
+    'haddock',
+    'sardine',
+    'anchovy',
+    'mahi',
+  ],
+};
+export function ingredientInFamily(key: string, family: string): boolean {
+  const children = Object.hasOwn(ingredientFamilies, family) ? ingredientFamilies[family] : [];
+  return key === family || children.some((child) => ingredientInFamily(key, child));
+}
+export function ingredientLineage(key: string): string[] {
+  return [
+    key,
+    ...Object.keys(ingredientFamilies).filter(
+      (family) => family !== key && ingredientInFamily(key, family),
+    ),
+  ];
+}
+export function restoreExcludedIngredients(excluded: string[], restored: string[]): string[] {
+  const visit = (key: string): string[] => {
+    if (restored.some((parent) => ingredientInFamily(key, parent))) return [];
+    if (
+      Object.hasOwn(ingredientFamilies, key) &&
+      restored.some((child) => ingredientInFamily(child, key))
+    )
+      return ingredientFamilies[key].flatMap(visit);
+    return [key];
+  };
+  return [...new Set(excluded.flatMap(visit))];
+}
 export const defaultHomePantry = ['oil', 'salt'];
 export const mealPlanningVersion = 'western-en-v1' as const;
 export function ingredientKey(name: string) {

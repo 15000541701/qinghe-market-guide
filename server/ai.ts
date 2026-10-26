@@ -17,6 +17,7 @@ export class AiError extends Error {
   constructor(
     message: string,
     public status = 502,
+    public reason?: 'format' | 'truncated' | 'empty',
   ) {
     super(message);
   }
@@ -31,6 +32,7 @@ export async function completion(
   vision = false,
   maxTokens = 1200,
   temperature = 0.1,
+  timeoutMs = 45000,
 ): Promise<unknown> {
   const connection = getModelConnection();
   if (!(connection.baseUrl && connection.apiKey && connection.model))
@@ -71,7 +73,7 @@ export async function completion(
             }
           : {}),
       }),
-      signal: AbortSignal.timeout(45000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch {
     throw new AiError(
@@ -89,15 +91,23 @@ export async function completion(
       `模型接口返回 ${response.status}。请检查模型名称；图片识别需要支持图片输入的模型。`,
     );
   }
-  const result = (await response.json()) as { choices?: { message?: { content?: string } }[] };
+  const result = (await response.json()) as {
+    choices?: { finish_reason?: string; message?: { content?: string } }[];
+  };
+  if (result.choices?.[0]?.finish_reason === 'length')
+    throw new AiError(
+      '模型输出已截断，未将不完整结果作为成功方案。请缩短单次规划或重试。',
+      502,
+      'truncated',
+    );
   const content = result.choices?.[0]?.message?.content;
   if (!content || typeof content !== 'string')
-    throw new AiError('模型没有返回可用结果，请重试或手动填写。');
+    throw new AiError('模型没有返回可用结果，请重试或手动填写。', 502, 'empty');
   const json = content.match(/\{[\s\S]*\}/)?.[0];
   try {
     return JSON.parse(json || content);
   } catch {
-    throw new AiError('模型返回格式无法解析，请重试或手动填写。');
+    throw new AiError('模型返回格式无法解析，请重试或手动填写。', 502, 'format');
   }
 }
 
@@ -180,7 +190,11 @@ export async function guide(
       min: z.number().nonnegative().nullable().optional(),
       max: z.number().nonnegative().nullable().optional(),
       productIds: z.array(z.string()).max(12).optional(),
-      term: z.string().max(80).regex(/^[a-z0-9 -]*$/i).optional(),
+      term: z
+        .string()
+        .max(80)
+        .regex(/^[a-z0-9 -]*$/i)
+        .optional(),
       leafy: z.boolean().optional(),
       fish: z.boolean().optional(),
       sort: z.enum(['price', 'default']).optional(),

@@ -1,0 +1,44 @@
+{
+  "meals": [
+    {
+      "day": 1,
+      "meal": "早餐",
+      "dishes": [
+        {
+          "title": "黄油炒蛋切达三明治",
+          "kind": "mixed",
+          "minutes": 15,
+          "steps": [
+            "将鸡蛋磕入碗中，用叉子打散，加入盐搅匀。",
+            "平底锅中小火加热，放入黄油融化，倒入蛋液，用刮刀缓慢推炒约3-4分钟至刚凝固，盛出。",
+            "将切达奶酪片放在炒蛋上静置1分钟使其微微融化。",
+            "将英式松饼横切两半，切面朝下放入同一平底锅，中小火烤约2分钟至微金黄。",
+            "把炒蛋与奶酪夹入松饼中，合上即可。"
+          ],
+          "ingredients": [
+            {
+              "productId": "samsclub-990013040",
+              "pieces": 3
+            },
+            {
+              "productId": "samsclub-831421",
+              "grams": 15
+            },
+            {
+              "productId": "samsclub-980150051",
+              "grams": 40
+            },
+            {
+              "productId": "samsclub-122813",
+              "grams": 120
+            },
+            {
+              "ingredient": "salt",
+              "grams": 1
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

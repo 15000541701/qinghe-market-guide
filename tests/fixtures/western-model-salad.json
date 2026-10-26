@@ -1,0 +1,88 @@
+{
+  "meals": [
+    {
+      "day": 1,
+      "meal": "午餐",
+      "dishes": [
+        {
+          "title": "香煎三文鱼配西南风味沙拉与法棍",
+          "kind": "mixed",
+          "minutes": 25,
+          "steps": [
+            "将冷冻三文鱼（Member's Mark Wild Caught Boneless Marinated Alaskan Salmon）按包装说明解冻，用厨房纸巾吸干水分。",
+            "平底锅加入橄榄油（自备），中火加热，将三文鱼皮朝下放入，煎4-5分钟至皮脆，翻面再煎3-4分钟至熟透。",
+            "同时将西南风味沙拉菜（Member's Mark Southwest Chopped Salad Kit）按包装说明混合，加入自备橄榄油和盐调味。",
+            "将法棍面包（Member's Mark French Baguette）切片，刷上橄榄油（自备），烤至微脆。",
+            "将煎好的三文鱼、沙拉和法棍装盘即可。"
+          ],
+          "ingredients": [
+            {
+              "productId": "samsclub-980254048",
+              "grams": 200
+            },
+            {
+              "productId": "samsclub-980189846",
+              "grams": 170
+            },
+            {
+              "productId": "samsclub-598443",
+              "grams": 100
+            },
+            {
+              "ingredient": "olive oil",
+              "grams": 15
+            },
+            {
+              "ingredient": "salt",
+              "grams": 2
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "day": 1,
+      "meal": "晚餐",
+      "dishes": [
+        {
+          "title": "香烤罗非鱼配西兰花与蒜香面包",
+          "kind": "mixed",
+          "minutes": 30,
+          "steps": [
+            "将冷冻罗非鱼（Member's Mark Farm Raised Skinless and Boneless Tilapia Fillet Portions）按包装说明解冻，用厨房纸巾吸干水分，两面撒盐和蒜粉（Member's Mark Organic Granulated Garlic）调味。",
+            "烤箱预热至200°C（400°F）。将罗非鱼放在烤盘上，淋上橄榄油（自备），烤12-15分钟至鱼肉变白易剥落。",
+            "同时将冷冻西兰花（Member's Mark Steamable Broccoli Florets）按包装说明微波或蒸熟。",
+            "将法棍面包（Member's Mark French Baguette）切片，刷上橄榄油（自备），烤至微脆。",
+            "将烤鱼、西兰花和蒜香面包装盘即可。"
+          ],
+          "ingredients": [
+            {
+              "productId": "samsclub-320205",
+              "grams": 200
+            },
+            {
+              "productId": "samsclub-980092509",
+              "grams": 200
+            },
+            {
+              "productId": "samsclub-598443",
+              "grams": 100
+            },
+            {
+              "productId": "samsclub-990304384",
+              "grams": 2
+            },
+            {
+              "ingredient": "olive oil",
+              "grams": 15
+            },
+            {
+              "ingredient": "salt",
+              "grams": 2
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

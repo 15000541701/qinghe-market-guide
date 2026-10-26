@@ -1,7 +1,7 @@
 import { mapBounds } from './map-config';
 import { entrance, extraObstacles, zones } from './catalog';
 import type { Category, Point, Route, Shelf, StoreSection } from './types';
-import { fixedFixtures } from './layout';
+import { fixedFixtures, fixtureOperationFootprint } from './layout';
 
 export function isWalkable(p: Point, sections: StoreSection[] = [], fixtures?: Shelf[]) {
   return (
@@ -18,8 +18,8 @@ export function isWalkable(p: Point, sections: StoreSection[] = [], fixtures?: S
               fixture.footprint
                 ? [
                     fixture.footprint,
-                    ...(fixture.kind === 'service-counter'
-                      ? [{ ...fixture.footprint, y: fixture.footprint.y - 1, h: 1 }]
+                    ...(fixtureOperationFootprint(fixture)
+                      ? [fixtureOperationFootprint(fixture)!]
                       : []),
                   ]
                 : [],
