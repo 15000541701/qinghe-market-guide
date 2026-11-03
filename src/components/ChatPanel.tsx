@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from 'react';
+import type { DemoChat } from '../demo/types';
 import {
   ArrowRight,
   ArrowUp,
@@ -43,9 +44,10 @@ type Message = {
 const welcome: Message = {
   id: 0,
   role: 'assistant',
-  text: '你好呀，我是小禾。\n想搭配烤鱼、意面、三明治或沙拉？用中文告诉我人数和预算，我来按美国山姆商品规划西式餐食，还能带你找到货架。',
+  text: '今天想吃什么？',
 };
 interface Props {
+  ref?: Ref<DemoChat>;
   currency: Currency;
   products: Product[];
   storeCategories: StoreCategory[];
@@ -64,6 +66,7 @@ interface Props {
   visible: boolean;
 }
 export default function ChatPanel({
+  ref,
   currency,
   products,
   storeCategories,
@@ -109,9 +112,21 @@ export default function ChatPanel({
     }
   }, [request?.id]);
   useEffect(() => {
-    if (visible && scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    const element = scrollRef.current;
+    if (!visible || !element) return;
+    if (!document.body.classList.contains('presentation-page')) { element.scrollTop = element.scrollHeight; return; }
+    const from = element.scrollTop, to = Math.max(0, element.scrollHeight - element.clientHeight);
+    const began = performance.now();
+    let frame = 0;
+    const scroll = (now: number) => {
+      const progress = Math.min(1, (now - began) / 1000);
+      element.scrollTop = from + (to - from) * (1 - (1 - progress) ** 3);
+      if (progress < 1) frame = requestAnimationFrame(scroll);
+    };
+    frame = requestAnimationFrame(scroll);
+    return () => cancelAnimationFrame(frame);
   }, [messages, busy, visible]);
-  const send = async (text: string) => {
+  const send = async (text: string, signal?: AbortSignal): Promise<GuideResponse | undefined> => {
     text = text.trim();
     if (!text || busyRef.current) return;
     busyRef.current = true;
@@ -121,8 +136,9 @@ export default function ChatPanel({
     try {
       const result = await api<GuideResponse>(
         '/assistant',
-        post({ message: text, previous: filters, context, currency }),
+        { ...post({ message: text, previous: filters, context, currency }), signal },
       );
+      signal?.throwIfAborted();
       let responseText = result.text;
       let actionSucceeded = false;
       if (result.clearMealPlan) onPlan(null);
@@ -157,7 +173,10 @@ export default function ChatPanel({
       ]);
       if (!result.action || result.mealPlan)
         onResults(result.products, `“${text.length > 20 ? text.slice(0, 20) + '…' : text}”的推荐`);
+      if (result.action && !actionSucceeded) return;
+      return result;
     } catch (error) {
+      if (signal?.aborted) return;
       setMessages((previous) => [
         ...previous,
         {
@@ -171,6 +190,14 @@ export default function ChatPanel({
       busyRef.current = false;
     }
   };
+  useImperativeHandle(ref, () => ({ draft: setInput, send,
+    capture: () => ({ messages, input, filters, sequence: sequence.current }),
+    restore: (value) => {
+      const snapshot = value as { messages: Message[]; input: string; filters: QueryFilters; sequence: number };
+      setMessages(snapshot.messages); setInput(snapshot.input); setFilters(snapshot.filters);
+      sequence.current = snapshot.sequence;
+    },
+  }));
   const identify = async (file: File) => {
     if (busyRef.current) return;
     if (file.size > 6 * 1024 * 1024) {
@@ -239,7 +266,7 @@ export default function ChatPanel({
     ]);
   };
   return (
-    <section className="chat-panel" aria-label="智能导购对话">
+    <section className="chat-panel" aria-label="智能导购对话" data-demo="chat">
       <div className="panel-heading">
         <div>
           <span className="assistant-mark">
@@ -247,10 +274,6 @@ export default function ChatPanel({
           </span>
           <div>
             <h2>小禾导购</h2>
-            <p className="chat-status">
-              <span className="status-dot" />
-              {ai ? '大模型已配置' : '规则导购可用'}
-            </p>
           </div>
         </div>
         <button
@@ -386,7 +409,6 @@ export default function ChatPanel({
         ))}
         {messages.length === 1 && (
           <div className="starter-questions">
-            <p>不知道怎么问？试试这些</p>
             {(currency === 'USD'
               ? [
                   '两个人吃，预算 50 USD，想搭配西式鱼餐和沙拉',
@@ -492,9 +514,6 @@ export default function ChatPanel({
           </button>
         </div>
       </form>
-      <p className="chat-footnote">
-        {ai ? '图片将发送至你配置的模型服务商' : '图片识别需配置 API · 文字导购可直接体验'}
-      </p>
     </section>
   );
 }

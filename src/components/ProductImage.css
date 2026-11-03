@@ -51,8 +51,9 @@
   position: absolute;
   inset: 0;
   display: grid;
-  place-items: center;
-  gap: 4px;
+  place-content: center;
+  justify-items: center;
+  gap: 8px;
   padding: 8px;
   color: #71806a;
   background: #edf0e9;
@@ -61,8 +62,11 @@
   text-align: center;
 }
 .product-image__retry {
-  min-height: 0;
-  padding: 2px 4px;
+  min-height: 28px;
+  min-width: 28px;
+  display: grid;
+  place-items: center;
+  padding: 4px;
   border: 0;
   color: #4e6247;
   background: transparent;

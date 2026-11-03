@@ -496,15 +496,11 @@ export default function FacilityEditor({
             <Plus size={16} />
             新增货架设施
           </span>
-          <small>设置类型、容量与到达侧</small>
         </summary>
         <form className="facility-create" onSubmit={createFixture}>
           <div className="section-heading">
             <div>
               <h3>新增门店设施</h3>
-              <p className="muted compact">
-                中央货架排、生鲜台、服务柜台、海鲜池和冷柜均可配置占地与顾客到达侧。
-              </p>
             </div>
           </div>
           <div className="facility-form-grid">
@@ -574,7 +570,6 @@ export default function FacilityEditor({
                 value={capacityPerSlot}
                 onChange={(event) => setCapacityPerSlot(Number(event.target.value))}
               />
-              <small>默认 4 个 SKU；库存数量不占用陈列位。</small>
             </label>
             <label className="field">
               允许的陈列分组
@@ -583,7 +578,7 @@ export default function FacilityEditor({
                 onChange={(event) => setAllowedDisplayGroups(event.target.value)}
                 placeholder="留空表示不限制"
               />
-              <small>可填逗号分隔的分组编号；未知储温不会自动推断。</small>
+              <small>多个分组用逗号分隔</small>
             </label>
             <fieldset className="facility-footprint-fields">
               <legend>地图占地 x、y、宽、高</legend>
@@ -714,7 +709,6 @@ export default function FacilityEditor({
                       updateDraft(shelf.id, { capacityPerSlot: Number(event.target.value) })
                     }
                   />
-                  <small>默认 4 个 SKU；库存数量不占用陈列位。</small>
                 </label>
                 <label className="field">
                   允许的陈列分组
@@ -725,7 +719,7 @@ export default function FacilityEditor({
                     }
                     placeholder="留空表示不限制"
                   />
-                  <small>可填逗号分隔的分组编号；未知储温不会自动推断。</small>
+                  <small>多个分组用逗号分隔</small>
                 </label>
                 <fieldset className="facility-footprint-fields">
                   <legend>地图占地 x、y、宽、高</legend>
@@ -743,7 +737,7 @@ export default function FacilityEditor({
                           })
                         }
                       />
-                    </label>
+                </label>
                   ))}
                 </fieldset>
                 <fieldset className="facility-access-fields">
@@ -760,7 +754,7 @@ export default function FacilityEditor({
                           })
                         }
                       />
-                    </label>
+                </label>
                   ))}
                 </fieldset>
                 <label className="facility-reachable">

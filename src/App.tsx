@@ -49,6 +49,9 @@ import ProductImage from './components/ProductImage';
 import ProductDetail from './components/ProductDetail';
 import StoreMap from './components/StoreMap';
 import MealPanel from './components/MealPanel';
+import DemoPlayer from './demo/DemoPlayer';
+import type { DemoAdmin, DemoBridge, DemoChat } from './demo/types';
+import { transitionDemoView } from './demo/motion';
 import { buildMealPlan } from '../shared/meal-planner';
 import { productSearch, productSearchScore } from '../shared/product-search';
 import { defaultHomePantry } from '../shared/recipes';
@@ -72,6 +75,7 @@ import {
 } from '../shared/shopping';
 
 type Tab = 'guide' | 'list';
+const demoMode = new URLSearchParams(window.location.search).get('demo') === '1';
 function loadHomePantry() {
   try {
     const stored = JSON.parse(localStorage.getItem('qinghe-home-pantry') || 'null');
@@ -176,11 +180,16 @@ export default function App() {
   const [route, setRoute] = useState<Route | null>(null);
   const [selectedProductId, setSelectedProductId] = useState('');
   const [selected, setSelected] = useState<Category | undefined>();
-  const [list, setListState] = useState<ListItem[]>(loadList);
+  const [list, setListState] = useState<ListItem[]>(() => demoMode ? [] : loadList());
   const listRef = useRef(list);
   const undoStack = useRef<ListItem[][]>([]);
   const [mealPlan, setMealPlan] = useState<MealPlan | null>(null);
-  const [homePantry, setHomePantry] = useState<string[]>(loadHomePantry);
+  const [homePantry, setHomePantry] = useState<string[]>(() => demoMode ? [...defaultHomePantry] : loadHomePantry());
+  const [presentationServer, setPresentationServer] = useState(false);
+  const [demoSession, setDemoSession] = useState(0);
+  const demoChat = useRef<DemoChat>(null);
+  const demoAdmin = useRef<DemoAdmin>(null);
+  const demoDetail = useRef<{ ready: () => boolean; next: () => void }>(null);
   const [chatBusy, setChatBusy] = useState(false);
   const [chatRequest, setChatRequest] = useState<{ id: number; text: string } | null>(null);
   const requestNumber = useRef(0);
@@ -249,7 +258,7 @@ export default function App() {
       : productPlacementStatus(product) || '待安排陈列';
   const revealHomeMap = () => {
     setTab('guide');
-    setMapScrollRequest((request) => request + 1);
+    if (!demoMode) setMapScrollRequest((request) => request + 1);
   };
   useEffect(() => {
     if (!mapScrollRequest) return;
@@ -294,7 +303,7 @@ export default function App() {
     try {
       const [data, status, places, categoryData, sectionData] = await Promise.all([
         api<Product[]>('/products'),
-        api<{ ai: boolean; providers?: ProviderReadiness }>('/status'),
+        api<{ ai: boolean; presentation?: boolean; providers?: ProviderReadiness }>('/status'),
         api<Shelf[]>('/shelves'),
         api<StoreCategory[]>('/categories'),
         api<StoreSection[]>('/sections'),
@@ -304,6 +313,7 @@ export default function App() {
       setStoreCategories(categoryData);
       setStoreSections(sectionData);
       setAi(status.ai);
+      setPresentationServer(!!status.presentation);
       setProviders(status.providers || {});
     } catch {
       setError('暂时无法连接门店服务，请确认服务已启动后重试。');
@@ -322,6 +332,7 @@ export default function App() {
     return () => clearTimeout(toastTimer.current);
   }, []);
   useEffect(() => {
+    if (demoMode) return;
     try {
       localStorage.setItem('qinghe-list', JSON.stringify(list));
     } catch {
@@ -329,6 +340,7 @@ export default function App() {
     }
   }, [list]);
   useEffect(() => {
+    if (demoMode) return;
     try {
       localStorage.setItem('qinghe-home-pantry', JSON.stringify(homePantry));
     } catch {
@@ -711,6 +723,98 @@ export default function App() {
     onPosition: changePosition,
     onArrive: arrive,
   };
+  type PageCheckpoint = {
+    token: string; role: typeof role; tab: Tab; detailId: string; collection: typeof collection;
+    query: string; category: typeof category; sort: string; recommendations: typeof recommendations;
+    resultTitle: string; current: typeof current; currentPoint: Point; route: Route | null;
+    selectedProductId: string; selected: typeof selected; list: ListItem[]; undo: ListItem[][];
+    mealPlan: MealPlan | null; homePantry: string[]; chat?: unknown; admin?: unknown; scroll: number; openDetails: number[];
+  };
+  const demoBridge: DemoBridge = {
+    capture: async () => {
+      const page = { role, tab, detailId, collection, query, category, sort, recommendations,
+        resultTitle, current, currentPoint, route, selectedProductId, selected,
+        list: listRef.current, undo: undoStack.current, mealPlan, homePantry,
+        chat: demoChat.current?.capture(), admin: demoAdmin.current?.capture(), scroll: window.scrollY,
+        openDetails: [...document.querySelectorAll<HTMLDetailsElement>('#main-content details')].flatMap((element, index) => element.open ? [index] : []) };
+      const { id } = await api<{ id: string }>('/demo/checkpoints', { method: 'POST' });
+      return structuredClone({ ...page, token: id } satisfies PageCheckpoint);
+    },
+    restore: async (value, signal) => {
+      const snapshot = structuredClone(value) as PageCheckpoint;
+      await api(`/demo/checkpoints/${encodeURIComponent(snapshot.token)}/restore`, { method: 'POST', signal });
+      const fresh = await api<Product[]>('/products', { signal });
+      signal.throwIfAborted();
+      await transitionDemoView(() => {
+        setProducts(fresh); setRole(snapshot.role); setTab(snapshot.tab); setDetailId(snapshot.detailId);
+        setCollection(snapshot.collection); setQuery(snapshot.query); setCategory(snapshot.category);
+        setSort(snapshot.sort); setRecommendations(snapshot.recommendations); setResultTitle(snapshot.resultTitle);
+        setCurrent(snapshot.current); setCurrentPoint(snapshot.currentPoint); setRoute(snapshot.route);
+        setSelectedProductId(snapshot.selectedProductId); setSelected(snapshot.selected);
+        listRef.current = snapshot.list; setListState(snapshot.list); undoStack.current = snapshot.undo;
+        setMealPlan(snapshot.mealPlan); setHomePantry(snapshot.homePantry); setDemoSession((value) => value + 1);
+        const url = new URL(window.location.href);
+        if (snapshot.detailId) url.searchParams.set('product', snapshot.detailId);
+        else url.searchParams.delete('product');
+        window.history.replaceState(null, '', url);
+      });
+      for (let attempt = 0; attempt < 100; attempt++) {
+        signal.throwIfAborted();
+        if (snapshot.role === 'store' ? demoAdmin.current?.ready() : !!demoChat.current) break;
+        await new Promise((resolve) => setTimeout(resolve, 30));
+      }
+      if (snapshot.chat && demoChat.current) demoChat.current.restore(snapshot.chat);
+      if (snapshot.admin && demoAdmin.current) demoAdmin.current.restore(snapshot.admin);
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      document.querySelectorAll<HTMLDetailsElement>('#main-content details').forEach((element, index) => { element.open = snapshot.openDetails.includes(index); });
+    },
+    ready: !loading && !error && products.length > 0,
+    isolated: presentationServer,
+    ai,
+    reset: async (signal) => {
+      if (!presentationServer) throw new Error('请用 npm run demo 启动独立演示门店。');
+      await api('/demo/reset', { method: 'POST', signal });
+      await refresh();
+      listRef.current = [];
+      undoStack.current = [];
+      setListState([]);
+      setMealPlan(null);
+      setHomePantry([...defaultHomePantry]);
+      setRole('customer');
+      setTab('guide');
+      setCurrencyMode('USD');
+      setCategory('all');
+      setQuery('');
+      setRecommendations(null);
+      setResultTitle('');
+      setRoute(null);
+      setCurrent('entrance');
+      setCurrentPoint(entrance);
+      setSelectedProductId('');
+      setSelected(undefined);
+      setChatRequest(null);
+      setDemoSession((value) => value + 1);
+      closeProductDetails(false);
+    },
+    customer: async (nextTab = 'guide') => {
+      if (role === 'customer' && tab === nextTab) return;
+      await transitionDemoView(() => { setRole('customer'); setTab(nextTab); });
+    },
+    catalog: (text) => { setQuery(text); setCategory('all'); setRecommendations(null); setResultTitle(''); },
+    pickProduct: () => currencyProducts.find((product) =>
+      product.category === 'dairy' && /whole milk/i.test(product.name) && !/yogurt/i.test(product.name) &&
+      availableForSale(product) && !!shelfForProduct(product) && product.name.length <= 60),
+    openDetail: async (product) => { await transitionDemoView(() => openProductDetails(product)); },
+    closeDetail: async () => { if (detailId) await transitionDemoView(() => closeProductDetails(false)); },
+    detailReady: () => !!demoDetail.current?.ready(),
+    nextPhoto: () => demoDetail.current?.next(),
+    chat: () => demoChat.current,
+    showAdmin: async () => { if (role !== 'store' || detailId) await transitionDemoView(() => { closeProductDetails(false); setRole('store'); }); },
+    admin: () => demoAdmin.current,
+    point: setCurrentPoint,
+    arrive,
+    snapshot: () => ({ products, list: listRef.current, route, plan: displayedPlan }),
+  };
   return (
     <>
       <a className="skip-link" href="#main-content">
@@ -785,7 +889,8 @@ export default function App() {
       <div id="main-content" tabIndex={-1}>
         {detailId && (
           <ProductDetail
-            key={detailId}
+            ref={demoDetail}
+            key={`${detailId}:${demoSession}`}
             id={detailId}
             onBack={() => closeProductDetails()}
             onAdd={add}
@@ -810,6 +915,7 @@ export default function App() {
             </main>
           ) : role === 'store' ? (
             <Admin
+              ref={demoAdmin}
               products={products}
               onRefresh={refresh}
               onToast={notify}
@@ -822,11 +928,6 @@ export default function App() {
               <div className="page-heading">
                 <div>
                   <h1>{displayTab === 'guide' ? '今天，想买点什么？' : '把想买的，都记下来。'}</h1>
-                  <p>
-                    {displayTab === 'guide'
-                      ? '聊聊你的想法，小禾帮你挑选，也带你找到。'
-                      : '挑选好物，规划路线，让这一趟采购从容一点。'}
-                  </p>
                 </div>
                 <div className="store-label">
                   <MapPin size={16} />
@@ -842,7 +943,8 @@ export default function App() {
               <div hidden={displayTab !== 'guide'}>
                 <div className="guide-workspace">
                   <ChatPanel
-                    key={currencyMode}
+                    key={`${currencyMode}:${demoSession}`}
+                    ref={demoChat}
                     currency={currencyMode}
                     products={currencyProducts}
                     onResults={handleResults}
@@ -870,6 +972,7 @@ export default function App() {
                 {displayedPlan && (
                   <div className="meal-plan-below-map">
                     <MealPanel
+                      demoExpanded={demoMode}
                       plan={displayedPlan}
                       categoryNames={Object.fromEntries(
                         storeCategories.map((item) => [item.id, item.name]),
@@ -901,7 +1004,7 @@ export default function App() {
                     <ArrowUpRight size={16} />
                   </button>
                 </div>
-                <section className="products-section" id="products">
+                <section className="products-section" id="products" data-demo="products">
                   <div className="section-heading">
                     <div>
                       <h2>{resultTitle || '门店商品目录'}</h2>
@@ -1035,7 +1138,6 @@ export default function App() {
                     <div className="empty-state">
                       <ShoppingBasket size={34} />
                       <h3>暂时没有符合条件的商品</h3>
-                      <p>试试其他关键词、分区，或让小禾帮你放宽预算。</p>
                       <button
                         className="button secondary"
                         onClick={() => {
@@ -1064,11 +1166,10 @@ export default function App() {
                 </section>
               </div>
               {displayTab === 'list' && (
-                <section className="shopping-page">
+                <section className="shopping-page" data-demo="list">
                   {otherCurrencyListCount > 0 && (
                     <p className="currency-separation-note" role="status">
-                      另有 {otherCurrencyListCount} 件其他币种商品仍保留在清单中；当前只显示{' '}
-                      {currencyMode} 小计。
+                      其他币种 · {otherCurrencyListCount} 件
                       <button
                         className="text-button"
                         onClick={() => changeCurrencyMode(currencyMode === 'USD' ? 'CNY' : 'USD')}
@@ -1082,12 +1183,7 @@ export default function App() {
                       <span className="empty-basket">
                         <ShoppingBag size={40} strokeWidth={1.4} />
                       </span>
-                      <h2>清单还空着，去挑点喜欢的。</h2>
-                      <p>
-                        点击商品图片上的加号，把好物加入清单，
-                        <br />
-                        小禾会帮你串起要逛的分区。
-                      </p>
+                      <h2>购物清单为空</h2>
                       <button className="button primary" onClick={() => setTab('guide')}>
                         去逛逛
                         <ArrowRight size={16} />
@@ -1281,7 +1377,9 @@ export default function App() {
                             {money(total)}
                           </strong>
                         </div>
-                        <p>按商品标注单位计价，称重商品以实际结算为准。</p>
+                        {availableList.some((item) => !item.checked && isWeighed(item.product)) && (
+                          <p>含称重商品 · 金额预估</p>
+                        )}
                         {displayedPlan?.preferences.budget != null && (
                           <p
                             className={
@@ -1334,8 +1432,7 @@ export default function App() {
           <Sprout size={15} />
           青禾 · 让每一次采购轻松一点
         </span>
-        <span>初始商品与地图为演示数据 · 图片仅供展示</span>
-        <span>虚拟超市导购原型</span>
+
       </footer>
       {toast && (
         <div className="toast" role="status">
@@ -1346,6 +1443,7 @@ export default function App() {
           </button>
         </div>
       )}
+      {demoMode && <DemoPlayer bridge={demoBridge} />}
     </>
   );
 }

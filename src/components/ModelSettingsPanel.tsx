@@ -52,7 +52,7 @@ export default function ModelSettingsPanel({
       });
       setSettings(value);
       setSaved(value);
-      setMessage('已保存，后续请求使用新模型；正在进行的请求不受影响。');
+      setMessage('已保存');
       await onSaved?.();
     } catch (e) {
       setError(e instanceof Error ? e.message : '保存失败');
@@ -145,13 +145,6 @@ export default function ModelSettingsPanel({
           </button>
         )}
       </div>
-      <p className="field-note">
-        {ready === false
-          ? '所选服务商尚未在服务端 .env 配置地址和密钥：文字导购使用规则模式，图片识别不可用。填写后重启后端生效。'
-          : '对话、餐食规划和图片识别共用所选模型；地址与密钥保存在服务端 .env，按服务商成组切换。'}
-        保存只记录选择，不调用模型，也不检查余额。DeepSeek V4 Pro 仅支持文字，图片识别请选择 Flash
-        或 Gemini。
-      </p>
       {message && <p role="status">{message}</p>}
       {error && (
         <p className="inline-error" role="alert">

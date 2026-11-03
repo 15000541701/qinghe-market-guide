@@ -1,10 +1,10 @@
 import { mapBounds } from '../../shared/map-config';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useImperativeHandle, useMemo, useRef, useState, type Ref } from 'react';
+import type { DemoAdmin } from '../demo/types';
 import {
   ArrowRight,
   Check,
   ChevronDown,
-  CircleHelp,
   ImagePlus,
   LoaderCircle,
   Mic,
@@ -52,6 +52,7 @@ import {
 } from '../../shared/merchandising-display';
 
 interface Props {
+  ref?: Ref<DemoAdmin>;
   products: Product[];
   onRefresh: () => Promise<void>;
   onToast: (message: string) => void;
@@ -160,6 +161,7 @@ function findOpenArea(sections: StoreSection[], shelves: Shelf[]) {
   return { rect: { x: 11, y: 8, w: 2, h: 2 }, location: { x: 13, y: 8 } };
 }
 export default function Admin({
+  ref,
   products,
   onRefresh,
   onToast,
@@ -227,6 +229,7 @@ export default function Admin({
   const inputRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const busyRef = useRef(false);
+  const demoBoard = useRef<Pick<DemoAdmin, 'selectShelf' | 'unplace' | 'undoPlacement' | 'capture' | 'restore'>>(null);
   const refreshLocations = async () => {
     const [categoryData, sectionData, shelfData] = await Promise.all([
       api<StoreCategory[]>('/categories'),
@@ -427,7 +430,8 @@ export default function Admin({
     setError('');
     setMarketPrice('');
     setMarketSource('');
-    formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (!document.body.classList.contains('presentation-page'))
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
   const recalculate = () => {
     if (reference && (!(reference.price > 0) || !reference.source || !reference.date)) {
@@ -442,8 +446,8 @@ export default function Admin({
     setError('');
     setAdviceRevision((value) => value + 1);
   };
-  const save = async (event: React.FormEvent) => {
-    event.preventDefault();
+  const save = async (event?: React.FormEvent) => {
+    event?.preventDefault();
     if (saving || recognizing) return;
     if (!(Number(price) > 0)) {
       setError('请先填写大于 0 的最终售价，或采纳价格建议。');
@@ -456,7 +460,7 @@ export default function Admin({
     setSaving(true);
     setError('');
     try {
-      await api<Product>(editing ? `/products/${editing}` : '/products', {
+      const saved = await api<Product>(editing ? `/products/${editing}` : '/products', {
         method: editing ? 'PATCH' : 'POST',
         body: JSON.stringify({
           name,
@@ -478,12 +482,38 @@ export default function Admin({
       await onRefresh();
       onToast(editing ? '商品已更新，顾客端已同步。' : '商品已上架，顾客端已同步。');
       reset();
+      return saved;
     } catch (error) {
       setError((error as Error).message);
     } finally {
       setSaving(false);
     }
   };
+  useImperativeHandle(ref, () => ({
+    section: setManagementTab,
+    capture: () => ({ search, editing, price, managementTab, board: demoBoard.current?.capture() }),
+    restore: (value) => {
+      const snapshot = value as { search: string; editing: string | null; price: string;
+        managementTab: typeof managementTab; board?: unknown };
+      if (snapshot.editing) {
+        const product = products.find((item) => item.id === snapshot.editing);
+        if (product) edit(product);
+      } else reset();
+      setSearch(snapshot.search); setPrice(snapshot.price); setManagementTab(snapshot.managementTab);
+      if (snapshot.board) demoBoard.current?.restore(snapshot.board);
+    },
+    ready: () => shelves.length > 0 && categories.length > 0,
+    search: setSearch,
+    edit: (id) => {
+      const product = products.find((item) => item.id === id);
+      if (product) edit(product);
+    },
+    price: setPrice,
+    save: () => save(),
+    selectShelf: (id) => demoBoard.current?.selectShelf(id),
+    unplace: async (id) => demoBoard.current?.unplace(id),
+    undoPlacement: async () => demoBoard.current?.undoPlacement(),
+  }));
   const inventorySearch = useMemo(() => productSearch(search), [search]);
   const filtered = products.filter(
     (p) =>
@@ -556,7 +586,6 @@ export default function Admin({
       <div className="page-heading">
         <div>
           <h1>商品上架与定价</h1>
-          <p>让商品找到分区，让每一次定价有据可依。</p>
         </div>
         <span className="store-label">
           <span className="status-dot" />
@@ -566,6 +595,7 @@ export default function Admin({
       <ModelSettingsPanel providers={providers} onSaved={onSettingsSaved} />
       <SkuTransferPanel onRefresh={onRefresh} onToast={onToast} />
       <MerchandisingBoard
+        ref={demoBoard}
         products={products}
         shelves={shelves}
         sections={sections}
@@ -580,7 +610,6 @@ export default function Admin({
           <div>
             <span className="organization-eyebrow">门店资料管理</span>
             <h2>分类与门店位置</h2>
-            <p>先维护商品分类与分区，再配置货架；日常摆放可直接在上方陈列工作台完成。</p>
           </div>
           <div className="organization-counts">
             <span>
@@ -649,16 +678,12 @@ export default function Admin({
           aria-labelledby="organization-tab-categories"
           hidden={managementTab !== 'categories'}
         >
-          <p className="organization-description">
-            分类用于商品检索；默认分区用于安排商品位置。修改后自动保存。
-          </p>
           <details className="management-create">
             <summary>
               <span>
                 <Plus size={16} />
                 新增商品分类
               </span>
-              <small>设置名称、类型与默认分区</small>
             </summary>
             <form
               className="form-grid"
@@ -830,16 +855,12 @@ export default function Admin({
           aria-labelledby="organization-tab-sections"
           hidden={managementTab !== 'sections'}
         >
-          <p className="organization-description">
-            分区对应地图上的一块区域；通道到达点决定导航位置。修改后自动保存。
-          </p>
           <details className="management-create">
             <summary>
               <span>
                 <Plus size={16} />
                 新增门店分区
               </span>
-              <small>展开地图预览与位置设置</small>
             </summary>
             <form
               className="area-create-panel"
@@ -884,7 +905,6 @@ export default function Admin({
               <div className="area-create-heading">
                 <div>
                   <h3>新增门店分区</h3>
-                  <p>设置地图上的占用矩形和入口通道点，预览会标出已有区域与障碍。</p>
                 </div>
                 <span className={sectionDraftReady ? 'area-ready' : 'area-needs-adjustment'}>
                   {sectionDraftReady ? '通道可到达' : '需要调整位置'}
@@ -1100,10 +1120,10 @@ export default function Admin({
                   </div>
                   <p className="field-note">
                     {sectionDraftReady
-                      ? `新区域 ${newSectionRect.w}×${newSectionRect.h} 格，到达点 ${newSectionLocation.x},${newSectionLocation.y} 可从入口到达。`
+                      ? `${newSectionRect.w} × ${newSectionRect.h} 格`
                       : sectionRectOverlaps
-                        ? '矩形与现有区域或固定障碍重叠，请点击空地或调整坐标。'
-                        : '区域表示可行走地面；到达点不能落在设施占地上，且需能从入口沿通道到达。'}
+                        ? '区域重叠'
+                        : '到达点不可达'}
                   </p>
                 </div>
               </div>
@@ -1218,9 +1238,6 @@ export default function Admin({
           aria-labelledby="organization-tab-facilities"
           hidden={managementTab !== 'facilities'}
         >
-          <p className="organization-description">
-            设施设置控制类型、容量与顾客到达侧；单纯移动货架请使用上方地图。
-          </p>
           <FacilityEditor
             searchQuery={managementQuery}
             sections={sections}
@@ -1230,7 +1247,7 @@ export default function Admin({
           />
         </div>
       </section>
-      <form className="admin-workspace" onSubmit={save} ref={formRef}>
+      <form className="admin-workspace" onSubmit={(event) => { void save(event); }} ref={formRef} data-demo="admin-form">
         <section className="intake-panel">
           <div className="section-heading">
             <h2>{editing ? '编辑商品' : '录入新商品'}</h2>
@@ -1285,11 +1302,6 @@ export default function Admin({
               event.target.value = '';
             }}
           />
-          <p className="field-note">
-            {ai
-              ? '图片发送至配置的模型服务商，识别后请核对信息。'
-              : '尚未配置 API；可先手动录入，图片会保存到本地。'}
-          </p>
           {candidates.length > 0 && (
             <div className="candidate-pills">
               {candidates.map((candidate, i) => (
@@ -1427,7 +1439,7 @@ export default function Admin({
                 aria-label="库存管理方式"
               >
                 <option value="tracked">管理本店库存数量</option>
-                <option value="untracked">未管理库存（不代表京东库存）</option>
+                <option value="untracked">未管理库存</option>
               </select>
               <input
                 required
@@ -1448,9 +1460,7 @@ export default function Admin({
               <TrendingUp size={20} />
               价格建议
             </h2>
-            <span className="small-tag">可随时调整</span>
           </div>
-          <p className="muted">选取同一商品、相同单位的记录，生成参考售价。</p>
           <label className="field">
             参考商品历史
             <select
@@ -1486,7 +1496,7 @@ export default function Admin({
                 setMarketPrice('');
                 setMarketSource('');
                 setError('');
-                onToast('已使用所选人民币报价重新计算建议，最终售价由你确认。');
+                onToast('建议价已更新');
               }}
             />
           )}
@@ -1520,10 +1530,10 @@ export default function Admin({
                 采纳建议
                 <Check size={15} />
               </button>
-              <p>{advice?.explanation || '选择参考商品，或补充一条有来源的参考价。'}</p>
+              {advice?.explanation && <p>{advice.explanation}</p>}
               {!!advice?.price && (
                 <span className="price-range">
-                  参考区间 ¥{money(advice.low)}–{money(advice.high)}（建议价 ±10%）
+                  参考区间 ¥{money(advice.low)}–{money(advice.high)}
                 </span>
               )}
             </div>
@@ -1580,12 +1590,9 @@ export default function Admin({
                 手动补充零售参考价
                 <Plus size={14} />
               </summary>
-              <p className="field-note">
-                按当前计价单位填写零售参考价。手动输入会替换新发地参考；超过 7 天的报价不参与计算。
-              </p>
               <div className="form-grid">
                 <label className="field">
-                  参考价（元）
+                  参考价（元 / {unit}）
                   <input
                     type="number"
                     min="0.01"
@@ -1685,7 +1692,6 @@ export default function Admin({
                 {listening ? '结束录音' : '语音输入'}
               </button>
             </div>
-            <p className="field-note">可以说“售价八块五”。识别后核对金额，再保存。</p>
           </div>
         </section>
         {error && (
@@ -1694,10 +1700,6 @@ export default function Admin({
           </div>
         )}
         <div className="admin-actions">
-          <p>
-            <CircleHelp size={15} />
-            分区与价格可手动修改，保存后立即同步顾客端。
-          </p>
           <div>
             <button
               type="button"
@@ -1714,7 +1716,7 @@ export default function Admin({
           </div>
         </div>
       </form>
-      <section className="inventory">
+      <section className="inventory" data-demo="inventory">
         <div className="section-heading">
           <div>
             <h2>SKU 商品库</h2>

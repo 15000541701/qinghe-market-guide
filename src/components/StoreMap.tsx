@@ -8,6 +8,7 @@ import {
 import { Check, LocateFixed, MapPin, Minus, Navigation, Plus, X } from 'lucide-react';
 import { entrance } from '../../shared/catalog';
 import { mapView } from '../../shared/map-config';
+import { fitRouteCamera } from '../../shared/map-camera';
 import { routeInstructions } from '../../shared/navigation';
 import {
   fixedFixtures,
@@ -43,7 +44,7 @@ interface Props {
 }
 const cell = 28;
 const center = (n: number) => n * cell + cell / 2;
-const MIN_ZOOM = 0.25;
+const MIN_ZOOM = 0.08;
 const MAX_ZOOM = 1.8;
 const DEFAULT_ZOOM = 1;
 const clampZoom = (value: number) => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, value));
@@ -329,6 +330,7 @@ export default function StoreMap({
 }: Props) {
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [cameraMoving, setCameraMoving] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
   const [focusedId, setFocusedId] = useState('');
   const [side, setSide] = useState<NonNullable<Product['shelfSide']>>('front');
@@ -368,6 +370,12 @@ export default function StoreMap({
   const fitMap = (oversize = 1) => {
     const viewport = viewportRef.current;
     if (!viewport) return;
+    setCameraMoving(true);
+    if (route?.points.length) {
+      const camera = fitRouteCamera(route.points, viewport.clientWidth, viewport.clientHeight);
+      if (camera) { setZoom(camera.zoom); setPan(camera.pan); }
+      return;
+    }
     const fit = Math.min(
       (viewport.clientWidth - 24) / mapView.width,
       (viewport.clientHeight - 24) / mapView.height,
@@ -401,6 +409,7 @@ export default function StoreMap({
     );
   };
   const zoomAt = (nextZoom: number, clientX: number, clientY: number) => {
+    setCameraMoving(true);
     const viewport = viewportRef.current;
     if (!viewport) return;
     const scale = clampZoom(nextZoom);
@@ -417,13 +426,17 @@ export default function StoreMap({
     panRef.current = pan;
   }, [zoom, pan]);
   useEffect(() => {
-    const frame = requestAnimationFrame(resetView);
+    const frame = requestAnimationFrame(() => {
+      if (document.body.classList.contains('presentation-page')) fitMap();
+      else resetView();
+    });
     return () => cancelAnimationFrame(frame);
   }, []);
   useEffect(() => {
     const viewport = viewportRef.current;
     if (!viewport) return;
     const handleWheel = (event: WheelEvent) => {
+      setCameraMoving(false);
       event.preventDefault();
       const currentZoom = zoomRef.current;
       const currentPan = panRef.current;
@@ -449,6 +462,7 @@ export default function StoreMap({
     return () => viewport.removeEventListener('wheel', handleWheel);
   }, []);
   const onMapPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    setCameraMoving(false);
     if (event.pointerType === 'mouse' && event.button !== 0) return;
     if ((event.target as HTMLElement).closest('button,select,input,[role="button"]')) return;
     const viewport = viewportRef.current;
@@ -530,38 +544,22 @@ export default function StoreMap({
       const requestedSide = routeTargetId.split('@')[1] as
         NonNullable<Product['shelfSide']> | undefined;
       if (requestedSide) setSide(requestedSide);
-      const frame = requestAnimationFrame(() => {
-        const viewport = viewportRef.current;
-        if (!viewport || !route?.points.length) return;
-        viewport.scrollIntoView({ block: 'center', behavior: 'smooth' });
-        const xs = route.points.map((point) => center(point.x));
-        const ys = route.points.map((point) => center(point.y));
-        const left = Math.min(...xs);
-        const right = Math.max(...xs);
-        const top = Math.min(...ys);
-        const bottom = Math.max(...ys);
-        const width = Math.max(1, right - left);
-        const height = Math.max(1, bottom - top);
-        const routeFit = Math.min(
-          (viewport.clientWidth - 48) / width,
-          (viewport.clientHeight - 48) / height,
-        );
-        const scale = clampZoom(Math.max(DEFAULT_ZOOM, Math.min(1.35, routeFit)));
-        const focus = route.shelfStops?.[0]?.position || route.points.at(-1)!;
-        setZoom(scale);
-        setPan(
-          boundPan(
-            {
-              x: viewport.clientWidth / 2 - center(focus.x) * scale,
-              y: viewport.clientHeight / 2 - center(focus.y) * scale,
-            },
-            scale,
-          ),
-        );
-      });
-      return () => cancelAnimationFrame(frame);
     }
-  }, [routeTargetId, route, shelves]);
+    const viewport = viewportRef.current;
+    if (!viewport || !route?.points.length) return;
+    let frame = 0;
+    const fit = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const camera = fitRouteCamera(route.points, viewport.clientWidth, viewport.clientHeight);
+        if (camera) { setCameraMoving(true); setZoom(camera.zoom); setPan(camera.pan); }
+      });
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(viewport);
+    return () => { cancelAnimationFrame(frame); observer.disconnect(); };
+  }, [routeTargetId, route]);
   const focused = shelves.find((shelf) => shelf.id === focusedId);
   const focusedProducts = products.filter(
     (product) => product.status !== 'archived' && product.shelfId === focused?.id,
@@ -585,7 +583,7 @@ export default function StoreMap({
         <div>
           <MapPin size={19} />
           <h2>卖场平面图</h2>
-          <span className="muted compact">1F · 点击陈列设施查看商品</span>
+          <span className="muted compact">1F</span>
         </div>
       </div>
       <div className="store-map-legend">
@@ -615,6 +613,7 @@ export default function StoreMap({
             height: mapView.height,
             transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
             transformOrigin: '0 0',
+            transition: cameraMoving && !isPanning ? 'transform 1600ms cubic-bezier(.22,.61,.36,1)' : 'none',
           }}
           role="group"
           aria-label="主通道连接双面货架、生鲜岛台、熟食档口、活鲜池及冷藏柜"
@@ -825,6 +824,7 @@ export default function StoreMap({
               ),
           )}
           <circle
+            className="floor-current-position"
             cx={center(position.x)}
             cy={center(position.y)}
             r="9"
@@ -832,6 +832,7 @@ export default function StoreMap({
             opacity=".15"
           />
           <circle
+            className="floor-current-position"
             cx={center(position.x)}
             cy={center(position.y)}
             r="5"
@@ -844,7 +845,7 @@ export default function StoreMap({
             入口 / 出口 ↑
           </text>
           <text x="850" y="714" textAnchor="middle" className="floor-micro">
-            示例卖场 · 每格约2米
+            每格约 2 米
           </text>
         </svg>
         {(() => {
@@ -925,10 +926,10 @@ export default function StoreMap({
           </button>
           <button
             className="icon-button map-text-control"
-            aria-label="适合视口"
+            aria-label={route?.points.length ? '展示完整路线' : '适合视口'}
             onClick={() => fitMap(1)}
           >
-            适合
+            {route?.points.length ? '全路线' : '适合'}
           </button>
           <button
             className="icon-button map-text-control"
@@ -1032,15 +1033,6 @@ export default function StoreMap({
               </button>
             ))}
           </div>
-          <p className="field-note">
-            {(focused.levels || 1) > 1
-              ? `从下往上编号 · 每个等大格对应1个SKU位（此侧层最多${shelfSlotCapacity(focused)}个）。`
-              : focused.kind === 'service-counter'
-                ? '服务柜台：从顾客侧到达，向店员选购。'
-                : focused.kind === 'seafood-tank'
-                  ? '池内陈列：到达池边顾客侧，由店员协助选购。'
-                  : `台面陈列：到达台边取货 · 每格1个SKU位（此侧层最多${shelfSlotCapacity(focused)}个）。`}
-          </p>
           <div className="fixture-elevation">
             {Array.from({ length: focused.levels || 1 }, (_, i) => (focused.levels || 1) - i).map(
               (level) => {
@@ -1132,9 +1124,6 @@ export default function StoreMap({
             前往{focused.name}
             {effectiveSide ? ` · ${fixtureSideLabels[effectiveSide]}` : ''}
           </button>
-          {!focused.footprint && (
-            <p className="field-note">此旧位置尚未配置实体占地，请在超市端补充陈列设施。</p>
-          )}
         </div>
       )}
       {route && !!route.stops.length && (
@@ -1166,9 +1155,6 @@ export default function StoreMap({
           无法到达：{route.unreachable.join('、')}
         </p>
       )}
-      <p className="store-map-footnote">
-        按常规超市陈列关系设计的示例布局，位置由你手动设置，不代表真实门店测绘。
-      </p>
     </section>
   );
 }

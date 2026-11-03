@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useImperativeHandle, useRef, useState, type Ref } from 'react';
 import {
   ArrowLeft,
   Check,
@@ -27,7 +27,9 @@ export default function ProductDetail({
   onAdd,
   onNavigate,
   added,
+  ref,
 }: {
+  ref?: Ref<{ ready: () => boolean; next: () => void }>;
   id: string;
   onBack: () => void;
   onAdd: (product: Product) => void;
@@ -37,6 +39,7 @@ export default function ProductDetail({
   const [detail, setDetail] = useState<ProductDetailResponse | null>(null);
   const [error, setError] = useState('');
   const [index, setIndex] = useState(0);
+  const [previousImage, setPreviousImage] = useState<string | null>(null);
   const [imageError, setImageError] = useState(false);
   const touch = useRef<number | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -45,6 +48,7 @@ export default function ProductDetail({
     setDetail(null);
     setError('');
     setIndex(0);
+    setPreviousImage(null);
     api<ProductDetailResponse>(`/products/${encodeURIComponent(id)}`, { signal: controller.signal })
       .then(setDetail)
       .catch((error) => {
@@ -56,13 +60,23 @@ export default function ProductDetail({
     if (detail) heading.current?.focus({ preventScroll: true });
   }, [detail]);
   useEffect(() => setImageError(false), [index, id]);
+  useEffect(() => {
+    if (!previousImage) return;
+    const timer = setTimeout(() => setPreviousImage(null), 1450);
+    return () => clearTimeout(timer);
+  }, [previousImage, index]);
   const product = detail?.product;
   const gallery = detail?.gallery || [];
   const current = gallery[index];
-  const flip = (direction: number) =>
-    setIndex((previous) => (previous + direction + gallery.length) % gallery.length);
+  const changeImage = (next: number) => {
+    if (next === index || !gallery.length) return;
+    setPreviousImage(current?.url || null);
+    setIndex(next);
+  };
+  const flip = (direction: number) => changeImage((index + direction + gallery.length) % gallery.length);
+  useImperativeHandle(ref, () => ({ ready: () => !!detail, next: () => { if (gallery.length > 1) flip(1); } }));
   return (
-    <main className="main-container product-detail-page">
+    <main className="main-container product-detail-page" data-demo="detail">
       <button className="detail-back text-button" onClick={onBack}>
         <ArrowLeft size={17} />
         返回商品目录
@@ -103,6 +117,7 @@ export default function ProductDetail({
                   touch.current = null;
                 }}
               >
+                {previousImage && <img className="detail-outgoing-image" src={previousImage} alt="" aria-hidden="true" />}
                 {current && !imageError ? (
                   <img
                     key={current.url}
@@ -112,7 +127,7 @@ export default function ProductDetail({
                     onError={() => setImageError(true)}
                   />
                 ) : (
-                  <p className="detail-image-empty">这张图片暂时无法显示，请查看其他图片。</p>
+                  <p className="detail-image-empty">图片加载失败</p>
                 )}
                 {gallery.length > 1 && (
                   <>
@@ -144,7 +159,7 @@ export default function ProductDetail({
                       className={index === imageIndex ? 'active' : ''}
                       aria-label={`查看第 ${imageIndex + 1} 张商品图片`}
                       aria-pressed={index === imageIndex}
-                      onClick={() => setIndex(imageIndex)}
+                      onClick={() => changeImage(imageIndex)}
                     >
                       <img src={image.thumbnailUrl || image.url} alt="" loading="lazy" />
                     </button>
@@ -188,7 +203,7 @@ export default function ProductDetail({
                   {money(product.price)}
                   <span> / {product.unit}</span>
                 </div>
-                {detail.finalCostByWeight && <p>称重商品 · 当前为页面估价，最终按实际重量结算</p>}
+                {detail.finalCostByWeight && <p>称重估价</p>}
               </div>
               <dl className="detail-quick-facts">
                 {product.sourceSku && (
@@ -265,9 +280,7 @@ export default function ProductDetail({
                       {detail.introduction}
                     </p>
                   )}
-                  {detail.introductionIsSummary && (
-                    <small className="muted">以上为原站介绍摘要；下方保留原站亮点与规格。</small>
-                  )}
+
                   {detail.highlights.length > 0 && (
                     <>
                       <h3>商品亮点</h3>
@@ -292,7 +305,7 @@ export default function ProductDetail({
                     ))}
                   </div>
                 ) : (
-                  <p className="muted">原商品资料暂未提供更多规格。</p>
+                  <p className="muted">暂无规格</p>
                 )}
               </section>
             </div>
@@ -303,9 +316,6 @@ export default function ProductDetail({
               </div>
               {detail.prices.length ? (
                 <>
-                  <p className="detail-source-note">
-                    {product.sourceRetailer} 公开页面参考价格，门店与线上渠道可能不同。
-                  </p>
                   {detail.prices.map((observation, i) => (
                     <div className="detail-price-observation" key={i}>
                       <div>
@@ -331,7 +341,7 @@ export default function ProductDetail({
                   </p>
                 </>
               ) : (
-                <p className="muted">以本店当前标价为准。</p>
+                <p className="muted">暂无来源报价</p>
               )}
             </aside>
           </div>

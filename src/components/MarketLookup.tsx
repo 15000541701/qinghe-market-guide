@@ -95,7 +95,6 @@ export default function MarketLookup({ name, unit, product, applied, onApply }: 
           <ArrowUpRight size={13} />
         </a>
       </div>
-      <p className="field-note">点击时查询最新发布的报价，不会自动定时更新。</p>
       <div className="market-search-row">
         <label className="field" htmlFor={`${radioId}-query`}>
           行情商品名
@@ -145,10 +144,9 @@ export default function MarketLookup({ name, unit, product, applied, onApply }: 
         <div className="market-results" aria-live="polite">
           <p className="market-result-status">
             {result.quotes.length
-              ? `${result.latestDate} · ${result.quotes.length} 条报价，请选择匹配的一条`
+              ? `${result.latestDate} · ${result.quotes.length} 条报价`
               : '暂未找到报价'}
           </p>
-          <p className="field-note">{result.notice}</p>
           {!!result.quotes.length && (
             <div className="market-quote-list" role="radiogroup" aria-label="选择新发地报价">
               {result.quotes.map((quote) => {
@@ -183,8 +181,8 @@ export default function MarketLookup({ name, unit, product, applied, onApply }: 
                       {disabled && (
                         <span className="quote-warning">
                           {stale
-                            ? '报价超过 7 天，暂不参与建议'
-                            : `无法将“${quote.unit}”可靠换算为“${unit}”，请手动核对`}
+                            ? '已过期'
+                            : `${quote.unit} → ${unit} 无法换算`}
                         </span>
                       )}
                     </span>
@@ -223,10 +221,6 @@ export default function MarketLookup({ name, unit, product, applied, onApply }: 
                   {retail === null ? '请填写有效加价率' : `¥${money(retail)} / ${unit}`}
                 </strong>
               </div>
-              <p className="field-note">
-                默认 30% 是可调整的试算参数，不是市场给出的利润率。批发均价 ×（1 +
-                加价率），未另计运输、损耗等费用。
-              </p>
               <button
                 type="button"
                 className="button primary small"
@@ -249,7 +243,7 @@ export default function MarketLookup({ name, unit, product, applied, onApply }: 
           <span>
             当前参考：{applied.quote?.name || '已选报价'} · {applied.date} · ¥{money(applied.price)}
             /{applied.unit || unit} · 加价 {applied.markupPercent ?? '未设'}%。
-            {isFreshMarketDate(applied.date) ? '保存商品后留存来源。' : '已过期，请重新查询。'}
+            {!isFreshMarketDate(applied.date) && ' · 已过期'}
           </span>
         </p>
       )}
