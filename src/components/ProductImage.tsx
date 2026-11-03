@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { ImageOff, RotateCw } from 'lucide-react';
 import {
   productImageRequestUrl,
   validProductImage,
@@ -122,11 +123,14 @@ export default function ProductImage({
         <span className="product-image__skeleton" aria-hidden="true" />
       ) : state === 'unavailable' ? (
         <span className="product-image__fallback">
-          <span role="status">图片暂不可用</span>
+          <span role="status" aria-label="图片暂不可用">
+            <ImageOff size={22} strokeWidth={1.4} aria-hidden="true" />
+          </span>
           {sources.length > 0 && (
             <button
               className="product-image__retry"
               type="button"
+              aria-label="重新加载图片"
               disabled={retrySeconds > 0}
               onClick={(event) => {
                 event.preventDefault();
@@ -134,7 +138,7 @@ export default function ProductImage({
                 setReloadToken((current) => current + 1);
               }}
             >
-              {retrySeconds > 0 ? `${retrySeconds} 秒后可重试` : '重新加载'}
+              {retrySeconds > 0 ? `${retrySeconds}s` : <RotateCw size={14} aria-hidden="true" />}
             </button>
           )}
         </span>

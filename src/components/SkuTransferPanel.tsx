@@ -105,9 +105,6 @@ export default function SkuTransferPanel({
       <div className="section-heading">
         <div>
           <h2>SKU 批量导入与导出</h2>
-          <p className="field-note">
-            CSV 可用 Excel 编辑；JSON 保留同样的档案字段。先预检，确认后整批保存。
-          </p>
         </div>
       </div>
       <div className="sku-actions">
@@ -144,7 +141,7 @@ export default function SkuTransferPanel({
           onClick={() => fileInput.current?.click()}
         >
           <Upload size={15} />
-          选择导入文件
+          导入 CSV / JSON
         </button>
         <input
           ref={fileInput}
@@ -165,16 +162,11 @@ export default function SkuTransferPanel({
               if (rows.length) void validate(rows, next);
             }}
           >
-            <option value="create">仅新增（同 SKU 拒绝）</option>
+            <option value="create">仅新增</option>
             <option value="upsert">新增并更新同 SKU</option>
           </select>
         </label>
       </div>
-      <p className="field-note">
-        必填 sku、name、category、unit。空售价/库存的新商品进入待确认；status=active
-        时必须有本店售价和有效陈列位置。更新模式中，空的选填字段保留原值。来源平台商品编号与本店 SKU
-        分开保存。
-      </p>
       {filename && (
         <p>
           {filename} · {rows.length} 条 {busy ? '· 正在处理…' : ''}
@@ -231,7 +223,7 @@ export default function SkuTransferPanel({
             </table>
           </div>
           {result.preview.length > 100 && (
-            <p className="field-note">只展示前100条预览，确认会处理文件全部有效行。</p>
+            <p className="field-note">预览前 100 条 · 共 {result.preview.length} 条</p>
           )}
           {!result.applied && (
             <button
@@ -242,9 +234,6 @@ export default function SkuTransferPanel({
               确认导入 {result.created + result.updated} 个 SKU
             </button>
           )}
-          <p className="field-note">
-            有错误时整批不写入。确认时重新校验当前目录、设施与 SKU，价格变更会追加历史记录。
-          </p>
         </>
       )}
     </section>

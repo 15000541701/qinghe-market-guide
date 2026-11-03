@@ -6,7 +6,7 @@ const clone = (value) => JSON.parse(JSON.stringify(value));
 const welcome = {
   id: 'welcome',
   role: 'assistant',
-  text: '你好，我是小禾。说说想买什么，也可以告诉我人数、整单预算和家中已有的食材。',
+  text: '今天想吃什么？',
 };
 App({
   globalData: {

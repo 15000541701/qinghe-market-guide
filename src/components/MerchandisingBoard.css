@@ -28,8 +28,11 @@
   font-size: 12px;
   line-height: 1.6;
   margin: 16px 0;
-  height: 64px;
-  overflow: auto;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   overflow-wrap: anywhere;
 }
 .merch-feedback.invalid,
@@ -163,8 +166,7 @@
 }
 .placement-map-caption {
   padding: 11px 15px;
-  height: 50px;
-  overflow: auto;
+  min-height: 38px;
   color: #75816d;
   font-size: 11px;
   line-height: 1.7;

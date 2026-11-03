@@ -235,9 +235,8 @@ export default function ShelfPlacementMap({
     <div className="placement-map">
       <div className="placement-map-toolbar">
         <div>
-          <span className="merch-eyebrow">门店布局</span>
           <h3>
-            <Move size={16} /> 拖动货架，松手安放
+            <Move size={16} /> 门店布局
           </h3>
         </div>
         <div className="placement-zoom">
@@ -300,14 +299,6 @@ export default function ShelfPlacementMap({
           <Trash2 size={15} />
           删除{selectedIds.length > 1 ? ` (${selectedIds.length})` : ''}
         </button>
-        <span className="placement-selection-hint">
-          按住 Ctrl / ⌘ 点击多选；拖动已选货架可整体移动。组合后可分拆，删除可撤销。
-        </span>
-        {(selectedIds.length > 1 || selected?.groupId) && (
-          <span className="placement-selection-hint">
-            旋转或改占地需单选且未组合，可先分拆组合。
-          </span>
-        )}
         <button
           type="button"
           disabled={busy || !selected?.footprint || editingArea || !singleEditable}
@@ -397,16 +388,16 @@ export default function ShelfPlacementMap({
       <div className="placement-region-legend" aria-label="货架摆放范围说明">
         <span>
           <i aria-hidden="true" />
-          半透明绿底与虚线：可用于摆货架的整片地面，包含已占用区域
+          可摆放范围
         </span>
         <span>
           <i className="occupied" aria-hidden="true" />
-          实心柜体：已有货架占用，不能重叠安放
+          已占用
         </span>
         {editingArea && (
           <span className="placement-selection-legend">
             <i aria-hidden="true" />
-            当前框选范围：蓝色可保存，红色需调整
+            框选占地
           </span>
         )}
       </div>
@@ -736,24 +727,24 @@ export default function ShelfPlacementMap({
           )}
         </svg>
       </div>
-      <div className={`placement-map-caption ${error || notice ? 'invalid' : ''}`} role="status">
+      {(editingArea || drag?.moved || notice || error || selected) && <div className={`placement-map-caption ${error || notice ? 'invalid' : ''}`} role="status">
         {editingArea
           ? notice ||
             error ||
             (!firstCorner
-              ? '按住一个角，沿对角拖动框选矩形占地；松手确定范围。'
+              ? '框选占地'
               : !areaLocked
-                ? '范围和格数实时更新，松手后确认；可重新拖动调整。'
-                : '占地有效，点击“保存占地”后生效；商品与层数保持不变。')
+                ? '松手完成框选'
+                : '占地已选定')
           : drag?.moved
-            ? error || '可以安放 · 松手吸附到网格'
+            ? error || '松手安放'
             : notice ||
               (selected
                 ? selected.footprint
-                  ? `已选：${selected.name} · 点击查看陈列，拖动调整位置`
-                  : `已选旧位置：${selected.name} · 请先在“货架设施”中补全资料`
-                : '点击货架查看陈列；绿色轮廓可放置，红色轮廓不可放置。')}
-      </div>
+                  ? `已选：${selected.name}`
+                  : `${selected.name} · 待配置`
+                : '')}
+      </div>}
     </div>
   );
 }

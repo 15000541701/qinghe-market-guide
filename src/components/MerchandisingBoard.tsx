@@ -1,14 +1,17 @@
 import {
   Fragment,
   useEffect,
+  useImperativeHandle,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
   type PointerEvent,
+  type Ref,
 } from 'react';
+import type { DemoAdmin } from '../demo/types';
 import { createPortal } from 'react-dom';
-import { Check, GripVertical, LayoutGrid, Package, Search, Undo2 } from 'lucide-react';
+import { GripVertical, LayoutGrid, Package, Search, Undo2, X } from 'lucide-react';
 import type { Product, Shelf, StoreSection } from '../../shared/types';
 import { fixtureKindLabels, fixtureSideLabels, productLocationLabel } from '../../shared/layout';
 import { shelfSlotCapacity, type ShelfSide } from '../../shared/shelf-capacity';
@@ -73,12 +76,14 @@ const mergeProducts = (before: Product[], updates: Product[]) => [
   ...new Map([...before, ...updates].map((item) => [item.id, item])).values(),
 ];
 export default function MerchandisingBoard({
+  ref,
   products,
   shelves,
   sections,
   onRefresh,
   onToast,
 }: {
+  ref?: Ref<Pick<DemoAdmin, 'selectShelf' | 'unplace' | 'undoPlacement' | 'capture' | 'restore'>>;
   products: Product[];
   shelves: Shelf[];
   sections: StoreSection[];
@@ -350,7 +355,33 @@ export default function MerchandisingBoard({
       setBusy(false);
       setHover(null);
     }
+    return saved;
   };
+  useImperativeHandle(ref, () => ({
+    capture: () => ({ query, filter, facilityId, shelfSelection, side, selectedId, receipt, status }),
+    restore: (value) => {
+      const snapshot = value as { query: string; filter: typeof filter; facilityId: string;
+        shelfSelection: typeof shelfSelection; side: typeof side; selectedId: string; receipt: Receipt | null; status: string };
+      setQuery(snapshot.query); setFilter(snapshot.filter); setFacilityId(snapshot.facilityId);
+      setShelfSelection(snapshot.shelfSelection); setSide(snapshot.side); setSelectedId(snapshot.selectedId);
+      setReceipt(snapshot.receipt); setStatus(snapshot.status); setProductOverrides([]); setShelfOverrides([]);
+    },
+    selectShelf: (id) => {
+      const product = viewProducts.find((item) => item.id === id);
+      if (!product?.shelfId) return;
+      selectFacility(product.shelfId);
+      const place = effectivePlacement(product, viewProducts, viewShelves);
+      if (place?.shelfSide) setSide(place.shelfSide);
+      setSelectedId(id);
+    },
+    unplace: async (id) => {
+      const changes = planProductDrop(id, unplaced(), viewProducts, viewShelves);
+      return saveChanges(changes, '演示：商品已移回待摆放。');
+    },
+    undoPlacement: async () => receipt?.kind === 'products'
+      ? saveChanges(receipt.changes, receipt.label, true)
+      : false,
+  }));
   const dropProduct = (id: string, target: Placement) => {
     if (saving.current) return;
     const product = viewProducts.find((item) => item.id === id);
@@ -722,11 +753,7 @@ export default function MerchandisingBoard({
     >
       <div className="section-heading">
         <div>
-          <span className="merch-eyebrow">陈列工作台</span>
-          <h2>摆好货架，也摆好每一件商品</h2>
-          <p className="field-note">
-            地图上拖动货架；商品拖到空格是移动，拖到商品上是交换。新商品替换后，原商品回到待摆放。
-          </p>
+          <h2>陈列工作台</h2>
         </div>
         {receipt && (
           <button
@@ -780,18 +807,28 @@ export default function MerchandisingBoard({
           </button>
         </p>
       )}
-      <div
-        className={`merch-feedback ${preview?.error ? 'invalid' : ''}`}
-        role="status"
-        aria-live="polite"
-      >
-        {busy
-          ? '正在保存位置…'
-          : preview?.text ||
-            (activeProduct
-              ? `已选“${activeProduct.name}” · 点击目标格位，或直接拖动；Esc 取消`
-              : status || '选择货架查看陈列。每次操作自动保存，并可撤销上一步。')}
-      </div>
+      {(busy || preview || activeProduct) && (
+        <div
+          className={`merch-feedback ${preview?.error ? 'invalid' : ''}`}
+          role="status"
+          aria-live="polite"
+        >
+          <span>{busy ? '保存中…' : preview?.text || activeProduct?.name}</span>
+          {activeProduct && !busy && (
+            <button
+              type="button"
+              className="icon-button"
+              aria-label="取消选择商品"
+              onClick={() => {
+                setSelectedId('');
+                cancelDrag();
+              }}
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+      )}
       <div className="merch-workspace">
         <div className="merch-map-and-products">
           <ShelfPlacementMap
@@ -828,20 +865,6 @@ export default function MerchandisingBoard({
                     {rackCounts.get(facility.id) || 0} 件
                     {legacyFacility ? '关联商品' : '商品已陈列'}
                   </strong>
-                  <span>
-                    {legacyFacility
-                      ? '原有商品已列出，未推断具体格位。'
-                      : rackCounts.get(facility.id)
-                        ? '各侧数量见下方；已有商品直接显示在格位中。'
-                        : '整架为空，尚未安放商品。'}
-                  </span>
-                  <p>
-                    {legacyFacility
-                      ? '请先补全位置资料，再编辑具体格位。'
-                      : activeProduct
-                        ? `正在安放：${activeProduct.name}。各格位已提前校验。`
-                        : '先从商品库选择商品，再查看各格位能否安放。'}
-                  </p>
                 </div>
                 {!legacyFacility && (
                   <div className="merch-cell-legend" aria-label="格位状态说明">
@@ -864,12 +887,12 @@ export default function MerchandisingBoard({
                   ))}
                 </div>
                 {!facility.reachable && (
-                  <p className="inline-error">该货架当前不可达，请先在设施管理中配置通道点。</p>
+                  <p className="inline-error">通道未连接</p>
                 )}
                 {legacyFacility && (
                   <div className="merch-legacy-panel">
                     <p>
-                      以下商品已关联这个旧位置，但尚无具体格位。请在下方“货架设施”中补全占地、侧面与层数后再编辑陈列。
+                      格位待配置
                     </p>
                     {legacyProducts.map((product) => (
                       <div className="merch-legacy-product" key={product.id}>
@@ -963,21 +986,13 @@ export default function MerchandisingBoard({
                       );
                     })}
                 </div>
-                <p className="merch-rack-footnote">
-                  <Check size={14} />{' '}
-                  {legacyFacility ? '原有关联商品保持不变' : '松手自动保存 · 支持撤销'}
-                  <br />
-                  {legacyFacility
-                    ? '在下方“货架设施”中补全资料。'
-                    : '手机拖动商品左侧手柄，也可先选商品再点格位。'}
-                </p>
               </>
             )}
           </section>
         </div>
         <aside className="merch-rack-panel" aria-label="货架格位编辑">
           <div className="merch-rack-heading">
-            <span className="merch-eyebrow">选择目标货架 · 自动推荐商品</span>
+            <span className="merch-eyebrow">目标货架</span>
             <label>
               <LayoutGrid size={18} />
               <select
@@ -1020,7 +1035,7 @@ export default function MerchandisingBoard({
                   {preferredCount} 件适合当前货架 · {pendingCount} 件待摆放
                 </small>
               </h3>
-              <span>拖到这里可移回待摆放</span>
+              {hover && !hover.shelfId && <span>移回待摆放</span>}
             </div>
             <div className="merch-source-tools">
               <div className="merch-tabs" aria-label="商品陈列筛选">
@@ -1076,10 +1091,10 @@ export default function MerchandisingBoard({
                       candidateById.get(visible[index - 1].id)!.priority !== priority) && (
                       <h4 className={`merch-source-group priority-${priority}`}>
                         {priority === 0
-                          ? '优先安放 · 适合当前货架且尚未摆放'
+                          ? '优先安放'
                           : priority === 1
-                            ? '已陈列 · 可调整位置'
-                            : '不适用当前货架 · 原因见遮罩'}
+                            ? '已陈列'
+                            : '不适用当前货架'}
                       </h4>
                     )}
                     {card(product)}
@@ -1087,7 +1102,7 @@ export default function MerchandisingBoard({
                 );
               })}
               {!visible.length && (
-                <p className="field-note">这里还没有商品，试试切换筛选或搜索。</p>
+                <p className="field-note">暂无商品</p>
               )}
             </div>
             {visible.length > limit && (

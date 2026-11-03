@@ -1,0 +1,282 @@
+body.presentation-page {
+  padding-bottom: 100px;
+  scroll-padding-top: 90px;
+  scroll-padding-bottom: 112px;
+}
+.presentation-page .toast {
+  bottom: 114px;
+  z-index: 1900;
+}
+.presentation-playing #main-content,
+.presentation-playing .site-header {
+  pointer-events: none;
+}
+.presentation-page #main-content {
+  view-transition-name: demo-content;
+  transition:
+    opacity 900ms,
+    filter 900ms;
+}
+.demo-preparing #main-content {
+  opacity: 0.24;
+  filter: blur(4px);
+  pointer-events: none;
+}
+.presentation-page [data-demo],
+.presentation-page #meal-plan,
+.presentation-page #merchandising,
+.presentation-page #store-floor-viewport {
+  scroll-margin-top: 94px;
+  scroll-margin-bottom: 115px;
+}
+.demo-player {
+  position: fixed;
+  z-index: 2000;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(960px, calc(100vw - 40px));
+  color: #244c3b;
+  background: rgba(242, 248, 243, 0.72);
+  backdrop-filter: blur(22px) saturate(140%);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  border-radius: 14px;
+  box-shadow:
+    0 8px 34px #173c2826,
+    inset 0 1px 0 #ffffffa6;
+  font-family: inherit;
+}
+.demo-progress {
+  display: flex;
+  gap: 3px;
+  padding: 3px 13px 0;
+}
+.demo-progress button {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 17px;
+  padding: 6px 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.demo-progress i {
+  display: block;
+  height: 3px;
+  border-radius: 3px;
+  background: #315e422b;
+  transition:
+    background 0.4s,
+    transform 0.4s;
+}
+.demo-progress .visited i {
+  background: #81a581;
+}
+.demo-progress .current i {
+  background: #315d42;
+  transform: scaleY(1.6);
+}
+.demo-progress button:hover i,
+.demo-progress button:focus-visible i {
+  background: #315d42;
+  transform: scaleY(2);
+}
+.demo-progress button:focus-visible {
+  outline: 2px solid #315d42;
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+.demo-player-body {
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 3px 14px 11px;
+}
+.demo-scene-index {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  font-size: 22px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #315d42;
+  line-height: 1;
+}
+.demo-scene-index small {
+  font-size: 10px;
+  color: #668371;
+  font-weight: 400;
+  white-space: nowrap;
+}
+.demo-narration {
+  flex: 1;
+  min-width: 0;
+}
+.demo-eyebrow {
+  display: block;
+  color: #688171;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  margin-bottom: 3px;
+}
+.demo-narration h2 {
+  margin: 0;
+  color: #244c3b;
+  font-size: 14px;
+  font-weight: 550;
+  line-height: 1.45;
+}
+.demo-controls {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.demo-controls button,
+.demo-controls a,
+.demo-controls select {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  background: #ffffff40;
+  border: 1px solid #315d4226;
+  border-radius: 7px;
+  color: #315d42;
+  padding: 6px 8px;
+  font: inherit;
+  font-size: 11px;
+  min-height: 29px;
+  text-decoration: none;
+  cursor: pointer;
+}
+.demo-controls button:hover,
+.demo-controls a:hover {
+  background: #ffffffa8;
+}
+.demo-controls button.demo-primary {
+  background: #315d42;
+  border-color: #315d42;
+  color: #f4f8f2;
+  min-width: 62px;
+}
+.demo-controls button:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}
+.demo-controls select {
+  width: 63px;
+  padding: 5px 2px;
+}
+.demo-controls option {
+  color: #244c3b;
+  background: white;
+}
+.demo-spotlight {
+  position: fixed;
+  z-index: 1800;
+  pointer-events: none;
+  border: 2px solid #70aa75;
+  border-radius: 12px;
+  box-shadow: 0 0 0 5px #8fbb8417;
+  transition:
+    top 0.65s,
+    left 0.65s,
+    width 0.65s,
+    height 0.65s;
+}
+.demo-pointer {
+  position: absolute;
+  right: -10px;
+  bottom: -14px;
+  color: #2a744f;
+  filter: drop-shadow(0 2px 2px #fff);
+  transform: rotate(-12deg);
+}
+.demo-error .demo-narration h2 {
+  color: #9b4e30;
+}
+.demo-spinning {
+  animation: demo-spin 1.4s linear infinite;
+}
+@keyframes demo-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+::view-transition-group(demo-content) {
+  animation-duration: 1200ms;
+}
+::view-transition {
+  pointer-events: none;
+}
+::view-transition-old(demo-content) {
+  animation: demo-page-out 1000ms ease both;
+}
+::view-transition-new(demo-content) {
+  animation: demo-page-in 1200ms ease both;
+}
+@keyframes demo-page-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes demo-page-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (max-width: 700px) {
+  .demo-player {
+    width: calc(100vw - 16px);
+    bottom: 8px;
+  }
+  .demo-player-body {
+    gap: 9px;
+    padding-inline: 10px;
+  }
+  .demo-narration h2 {
+    font-size: 11px;
+  }
+  .demo-controls {
+    gap: 3px;
+  }
+  .demo-controls button,
+  .demo-controls a,
+  .demo-controls select {
+    padding: 5px;
+    min-height: 27px;
+  }
+  .demo-controls select {
+    width: 54px;
+  }
+  .demo-controls button.demo-primary {
+    min-width: 48px;
+  }
+  .demo-scene-index {
+    font-size: 18px;
+    flex-direction: column;
+    gap: 4px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .demo-spotlight,
+  .presentation-page #main-content {
+    transition: none;
+  }
+  .demo-spinning {
+    animation: none;
+  }
+  ::view-transition-old(demo-content),
+  ::view-transition-new(demo-content) {
+    animation-duration: 0.01ms;
+  }
+}

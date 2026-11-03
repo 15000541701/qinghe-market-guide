@@ -32,8 +32,14 @@
   height: 100%;
   object-fit: contain;
   padding: 28px;
+  animation: detail-image-in 1400ms ease both;
 }
+.detail-outgoing-image { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; padding: 28px; pointer-events: none; animation: detail-image-out 1400ms ease both; z-index: 1; }
+@keyframes detail-image-in { from { opacity: 0; transform: translateX(3%); } to { opacity: 1; transform: translateX(0); } }
+@keyframes detail-image-out { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(-3%); } }
+@media (prefers-reduced-motion: reduce) { .detail-main-image, .detail-outgoing-image { animation: none; } }
 .detail-image-arrow {
+  z-index: 2;
   position: absolute;
   top: calc(50% - 22px);
   display: grid;
@@ -54,6 +60,7 @@
   right: 12px;
 }
 .detail-image-count {
+  z-index: 2;
   position: absolute;
   right: 18px;
   bottom: 16px;

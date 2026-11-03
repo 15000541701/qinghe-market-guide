@@ -60,11 +60,13 @@ export default function MealPanel({
   categoryNames,
   busy,
   onSend,
+  demoExpanded = false,
 }: {
   plan: MealPlan;
   categoryNames: Record<string, string>;
   busy: boolean;
   onSend: (text: string) => void;
+  demoExpanded?: boolean;
 }) {
   const over = plan.remaining !== null && plan.remaining < 0;
   const symbol = currencySymbol(plan.currency || 'CNY');
@@ -84,7 +86,7 @@ export default function MealPanel({
             {plan.preferences.mealsPerDay} 餐
           </h2>
         </div>
-        <span className="small-tag">{mealCount} 餐 · 确认后加入清单</span>
+        <span className="small-tag">{mealCount} 餐</span>
       </div>
       <div className="meal-content">
         <div className={`meal-budget ${over ? 'over-budget' : ''}`}>
@@ -133,7 +135,7 @@ export default function MealPanel({
                   <h4>{meal}</h4>
                   <div className="meal-dishes">
                     {dishes.map((recipe) => (
-                      <details key={recipe.id} className="recipe-detail">
+                      <details key={recipe.id} className="recipe-detail" open={demoExpanded || undefined}>
                         <summary>
                           <CookingPot size={18} />
                           <span>
@@ -156,7 +158,6 @@ export default function MealPanel({
                               <li key={i}>{step}</li>
                             ))}
                           </ol>
-                          <p>份量按人数估算；肉、鱼和蛋请充分加热至熟透。</p>
                         </div>
                       </details>
                     ))}
@@ -169,10 +170,9 @@ export default function MealPanel({
 
         <details className="household-pantry">
           <summary>
-            家庭常备调味（可修改）
+            家中已有调味
             <ChevronDown size={15} />
           </summary>
-          <p>默认家中已有；切换后会在本设备保存，并按用量重新核算。</p>
           <div className="pantry-options">
             {defaultHomePantry.map((key) => {
               const available = plan.preferences.homePantry?.includes(key) ?? true;
@@ -248,7 +248,7 @@ export default function MealPanel({
             );
           })}
           {!plan.items.length && (
-            <p className="field-note">主要食材已备齐，或当前没有可采购的匹配商品。</p>
+            <p className="field-note">暂无待购食材</p>
           )}
         </div>
 
@@ -266,7 +266,6 @@ export default function MealPanel({
                 <small>用途：{[...new Set(item.dishes)].join('、')}</small>
               </p>
             ))}
-            <p>保留在食谱中，可另行购买；未计入本店可购金额，也不能据此判断是否符合预算。</p>
           </div>
         )}
         {!!plan.owned.length && (
@@ -277,12 +276,12 @@ export default function MealPanel({
         )}
         {!!plan.missing.length && (
           <div className="inline-error" role="status">
-            {plan.missing.join('；')}。目前不能确认完整采购。
+            {plan.missing.join('；')}
           </div>
         )}
         {over && (
           <p className="inline-error" role="status">
-            超过整单预算 {symbol}{money(-plan.remaining!)}，可以换便宜一点或调整预算；目前不能一键加入。
+            超过整单预算 {symbol}{money(-plan.remaining!)}
           </p>
         )}
 
@@ -312,11 +311,6 @@ export default function MealPanel({
           按清单开始导航
           <ArrowRight size={15} />
         </button>
-        <div className="meal-notes">
-          {plan.notes.map((note) => (
-            <p key={note}>{note}</p>
-          ))}
-        </div>
       </div>
     </section>
   );

@@ -58,6 +58,11 @@
   will-change: transform;
   user-select: none;
 }
+.floor-current-position { transition: cx 280ms linear, cy 280ms linear; }
+@media (prefers-reduced-motion: reduce) {
+  .store-floor-svg { transition: none !important; }
+  .floor-current-position { transition: none; }
+}
 .map-product-preview {
   position: absolute;
   z-index: 3;

@@ -83,6 +83,7 @@ app.put('/api/model-settings', (req, res) => {
 });
 app.get('/api/status', (_req, res) =>
   res.json({
+    presentation: process.env.DEMO_PRESENTATION === '1',
     ai: aiConfigured(),
     mode: aiConfigured() ? '大模型导购' : '规则导购',
     demo: true,
@@ -90,6 +91,32 @@ app.get('/api/status', (_req, res) =>
     providers: modelProviderReadiness(),
   }),
 );
+// This endpoint exists only in the launcher's disposable presentation server.
+// Restarting a presentation restores its own seed, never the user's normal store.
+if (process.env.DEMO_PRESENTATION === '1') {
+  const presentationProducts = structuredClone(getProducts());
+  const baseline = new Map(presentationProducts.map((product) => [product.id, JSON.stringify(product)]));
+  const checkpoints = new Map<string, Product[]>();
+  app.post('/api/demo/reset', (_req, res) => {
+    checkpoints.clear();
+    saveProductsAtomically(structuredClone(presentationProducts));
+    res.json({ ok: true });
+  });
+  app.post('/api/demo/checkpoints', (_req, res) => {
+    const id = randomUUID();
+    const changed = getProducts().filter((product) => JSON.stringify(product) !== baseline.get(product.id));
+    checkpoints.set(id, changed);
+    if (checkpoints.size > 256) checkpoints.delete(checkpoints.keys().next().value!);
+    res.json({ id });
+  });
+  app.post('/api/demo/checkpoints/:id/restore', (req, res) => {
+    const changed = checkpoints.get(req.params.id);
+    if (!changed) return res.status(404).json({ error: '演示进度已失效，请重新播放。' });
+    const overrides = new Map(changed.map((product) => [product.id, product]));
+    saveProductsAtomically(presentationProducts.map((product) => structuredClone(overrides.get(product.id) || product)));
+    res.json({ ok: true });
+  });
+}
 app.get('/api/products', (_req, res) => res.json(getProducts()));
 app.get('/api/products/:id', (req, res) => {
   const product = getProduct(req.params.id);
