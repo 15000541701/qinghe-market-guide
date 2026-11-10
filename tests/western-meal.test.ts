@@ -444,17 +444,20 @@ test('名录中的新蔬菜、奶酪和谷物具有实际餐食角色', () => {
 });
 
 test('整包装超预算反馈给模型修正，换一个方案会重新生成，确认不重复调用', async () => {
-  const variables = [
-    'AI_API_KEY',
-    'GEMINI_API_KEY',
-    'DEEPSEEK_API_KEY',
-    'GEMINI_BASE_URL',
-    'DEEPSEEK_BASE_URL',
-  ];
+  // Pin the provider and model too: a fresh checkout has no .env and no saved model settings,
+  // and an empty default model would silently send this test down the rules path.
+  const overrides: Record<string, string> = {
+    AI_PROVIDER: 'deepseek',
+    DEEPSEEK_MODEL: 'deepseek-flash',
+    AI_API_KEY: 'offline-test-only',
+    GEMINI_API_KEY: 'offline-test-only',
+    DEEPSEEK_API_KEY: 'offline-test-only',
+    GEMINI_BASE_URL: 'https://offline.invalid',
+    DEEPSEEK_BASE_URL: 'https://offline.invalid',
+  };
+  const variables = Object.keys(overrides);
   const saved = variables.map((key) => process.env[key]);
-  variables.forEach((key) => {
-    process.env[key] = key.endsWith('BASE_URL') ? 'https://offline.invalid' : 'offline-test-only';
-  });
+  Object.assign(process.env, overrides);
   const beforeFetch = globalThis.fetch;
   const cheapBread = {
     ...products.find((p) => p.id === 'samsclub-598443')!,

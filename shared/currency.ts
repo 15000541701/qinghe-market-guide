@@ -1,7 +1,18 @@
 import type { Currency, Product } from './types';
+import { availableForSale } from './catalog-status';
 
 export function productCurrency(product: Pick<Product, 'currency'> | undefined): Currency {
   return product?.currency === 'USD' ? 'USD' : 'CNY';
+}
+
+/**
+ * The catalog a client without a currency switch (the mini program) shows, matching the web
+ * default: USD whenever USD goods are on sale, otherwise CNY if only CNY goods are on sale.
+ */
+export function catalogCurrency(products: Product[]): Currency {
+  const onSale = products.filter((product) => availableForSale(product));
+  if (onSale.some((product) => productCurrency(product) === 'USD')) return 'USD';
+  return onSale.some((product) => productCurrency(product) === 'CNY') ? 'CNY' : 'USD';
 }
 
 export function currencySymbol(currency: Currency) {

@@ -7,15 +7,18 @@ import { buildMealPlan, createMealPreferences } from '../shared/meal-planner.ts'
 const require=createRequire(import.meta.url);
 const domain=require('../miniprogram/lib/domain.js');
 
+const zoneCategories=domain.zones.map(zone=>({id:zone.id,name:zone.name,active:true,kind:'food'}));
+const usd=products=>products.map(product=>({...product,currency:'USD'}));
 async function runtime(options={}) {
   const storage=new Map(options.storage||[]);const products=makeSeedProducts();const requests=[];let app;
   globalThis.App=definition=>{app=definition;};
-  globalThis.wx={getStorageSync:key=>storage.get(key),setStorageSync:(key,value)=>storage.set(key,JSON.parse(JSON.stringify(value))),setTabBarBadge(){},removeTabBarBadge(){},
+  globalThis.wx={getStorageSync:key=>storage.get(key),setStorageSync:(key,value)=>storage.set(key,JSON.parse(JSON.stringify(value))),setTabBarBadge(){},removeTabBarBadge(){},showToast(){},showModal(){},
     request(request){queueMicrotask(()=>{
-      const endpoint=new URL(request.url).pathname;requests.push({endpoint,timeout:request.timeout});
+      const endpoint=new URL(request.url).pathname;requests.push({endpoint,timeout:request.timeout,data:request.data});
       if(options.fail){request.fail({errMsg:options.errMsg||'request:fail network'});return;}
       if(endpoint==='/api/status')request.success({statusCode:200,data:{ai:true}});
       else if(endpoint==='/api/products')request.success({statusCode:200,data:options.products||products});
+      else if(endpoint==='/api/categories')request.success({statusCode:200,data:options.categories||zoneCategories});
       else if(endpoint==='/api/assistant')request.success({statusCode:200,data:options.answer||{text:'已查询',products:[products[0]],filters:{categories:['vegetables']},engine:'model'}});
       else request.success({statusCode:400,data:{error:'测试接口未配置'}});
     });}
@@ -23,6 +26,16 @@ async function runtime(options={}) {
   delete require.cache[require.resolve('../miniprogram/app.js')];require('../miniprogram/app.js');app.onLaunch();
   try{await app.refresh();}catch{}
   return {app,products,storage,requests};
+}
+// Loads a page definition against the given app, with a setData that understands 'a.b' paths.
+function loadPage(name,app){
+  let definition;globalThis.getApp=()=>app;globalThis.Page=value=>{definition=value;};
+  const file='../miniprogram/pages/'+name+'/index.js';delete require.cache[require.resolve(file)];require(file);
+  return {...definition,data:JSON.parse(JSON.stringify(definition.data)),setData(change,callback){
+    for(const [key,value] of Object.entries(change)){const parts=key.split('.');let target=this.data;
+      for(const part of parts.slice(0,-1))target=target[part]=target[part]&&typeof target[part]==='object'?target[part]:{};
+      target[parts.at(-1)]=value;}
+    if(callback)callback();}};
 }
 
 test('小程序 AppID、打包目录及七个原生页面完整',async()=>{
@@ -68,7 +81,7 @@ test('连接错误区分超时、拒绝和域名校验，并附微信原始信�
 });
 test('连接设置用短超时测试，普通请求保持长超时',async()=>{
   const {app,requests}=await runtime();assert.ok(requests.every(r=>r.timeout===55000));
-  requests.length=0;await app.refresh({timeout:6000});assert.equal(requests.length,2);assert.ok(requests.every(r=>r.timeout===6000));
+  requests.length=0;await app.refresh({timeout:6000});assert.equal(requests.length,3);assert.ok(requests.every(r=>r.timeout===6000));
 });
 test('扫码填写门店地址后自动连接，非地址二维码给出提示',async()=>{
   const {app,storage,requests}=await runtime();let page;const alerts=[];let scanned='http://192.168.173.166:3001/';
@@ -78,6 +91,77 @@ test('扫码填写门店地址后自动连接，非地址二维码给出提示',
   const ctx={...page,data:{...page.data},setData(d){Object.assign(this.data,d);}};
   requests.length=0;ctx.scan();await new Promise(resolve=>setTimeout(resolve,20));
   assert.equal(storage.get('qinghe-api-base'),'http://192.168.173.166:3001');assert.equal(ctx.data.base,'http://192.168.173.166:3001');
-  assert.ok(requests.length===2&&requests.every(r=>r.timeout===6000));assert.equal(alerts.length,0);
+  assert.ok(requests.length===3&&requests.every(r=>r.timeout===6000));assert.equal(alerts.length,0);
   scanned='WIFI:S:Redmi;;';ctx.scan();assert.match(alerts[0],/不是门店地址/);assert.equal(storage.get('qinghe-api-base'),'http://192.168.173.166:3001');
+});
+
+test('目录币种优先美元；美元商品都已归档或售罄时改用人民币',()=>{
+  const cny=makeSeedProducts();const dollars=usd(makeSeedProducts()).map(p=>({...p,id:'usd-'+p.id}));
+  assert.equal(domain.catalogCurrency([...cny,...dollars]),'USD');
+  assert.equal(domain.catalogCurrency([...cny,...dollars.map(p=>({...p,status:'archived'}))]),'CNY');
+  assert.equal(domain.catalogCurrency([...cny,...dollars.map(p=>({...p,stock:0}))]),'CNY');
+  assert.equal(domain.catalogCurrency(cny),'CNY');assert.equal(domain.catalogCurrency([]),'USD');
+});
+test('导购请求带上目录币种：美元目录不再按人民币查询',async()=>{
+  for(const [currency,products] of [['USD',usd(makeSeedProducts())],['CNY',makeSeedProducts()]]){
+    const {app,requests}=await runtime({products});assert.equal(app.globalData.currency,currency);
+    await app.send('推荐便宜的蔬菜');
+    const body=requests.find(r=>r.endpoint==='/api/assistant').data;assert.equal(body.currency,currency);
+  }
+});
+test('价格符号跟随商品币种，聊天记录中的商品再次渲染不丢币种',async()=>{
+  const products=usd(makeSeedProducts());const {app}=await runtime({products,categories:[{id:'vegetables',name:'新鲜蔬菜',active:true,kind:'food'}]});
+  const view=require('../miniprogram/utils/view.js');const item=view.product(products[0]);
+  assert.equal(item.priceSymbol,'US$');assert.equal(view.product(item).priceSymbol,'US$');
+  assert.equal(view.product(makeSeedProducts()[0]).priceSymbol,'¥');
+  assert.equal(item.categoryName,'新鲜蔬菜','store category names come from /api/categories');
+  assert.equal(app.symbol(),'US$');
+});
+test('清单只合计当前目录币种，其他目录的条目可以移出并撤销',async()=>{
+  const cny=makeSeedProducts();const dollars=usd(makeSeedProducts()).map(p=>({...p,id:'usd-'+p.id}));
+  const cart=[{productId:'spinach',quantity:1,checked:false},{productId:'usd-spinach',quantity:1,checked:false}];
+  const {app}=await runtime({products:[...cny,...dollars],storage:[['qinghe-mini-state',{version:1,cart,messages:[]}]]});
+  assert.deepEqual(app.currencyCart().map(i=>i.productId),['usd-spinach']);
+  const page=loadPage('cart',app);page.onLoad();
+  assert.equal(page.data.symbol,'US$');assert.equal(page.data.items.length,1);assert.equal(page.data.others,1);
+  const usdSpinach=dollars.find(p=>p.id==='usd-spinach');assert.equal(page.data.total,(domain.lineCents(usdSpinach,1)/100).toFixed(2));
+  page.clearOthers();assert.deepEqual(app.globalData.cart.map(i=>i.productId),['usd-spinach']);
+  await app.execute({type:'undo'});assert.equal(app.globalData.cart.length,2);
+});
+test('商品页分批显示在售商品，单次页面数据远低于 1MB 限制',async()=>{
+  const base=usd(makeSeedProducts())[0];const description='Club detail text for the product page. '.repeat(30);
+  const products=Array.from({length:1800},(_,i)=>({...base,id:'sku-'+i,name:'Item '+i,description,status:i%10===0?'archived':'active'}));
+  const {app}=await runtime({products});const page=loadPage('products',app);page.onLoad();
+  assert.equal(page.data.total,1620);assert.equal(page.data.items.length,48);assert.ok(page.data.hasMore);
+  assert.ok(page.data.items.every(i=>i.priceSymbol==='US$'&&i.description.length<=60));
+  page.more();assert.equal(page.data.items.length,96);
+  assert.ok(Buffer.byteLength(JSON.stringify(page.data))<256*1024);
+});
+test('导购示例和拍照找货使用目录币种',async()=>{
+  const {app}=await runtime({products:usd(makeSeedProducts())});const uploads=[];
+  Object.assign(globalThis.wx,{getWindowInfo:()=>({windowHeight:700,windowWidth:375}),
+    chooseMedia:o=>o.success({tempFiles:[{tempFilePath:'/tmp/item.jpg',size:1000}]}),
+    uploadFile:o=>{uploads.push(o.formData);o.success({statusCode:200,data:JSON.stringify({candidates:[],notice:'请确认图片里的商品。'})});}});
+  const page=loadPage('guide',app);page.onLoad();
+  assert.ok(page.data.starters.every(text=>text.includes('美元')));
+  await page.photo();assert.deepEqual(uploads,[{currency:'USD'}]);
+});
+test('简图未标注的分类明确提示，已标注的分区照常规划',async()=>{
+  const chips={...makeSeedProducts()[0],id:'chips',name:'薯片',category:'snacks'};
+  const {app}=await runtime({products:[...makeSeedProducts(),chips],categories:[...zoneCategories,{id:'snacks',name:'零食',active:true,kind:'food'}]});
+  await assert.rejects(app.execute({type:'navigate',category:'snacks'}),/零食暂未画进小程序简图，请在网页端地图查看货架位置/);assert.equal(app.globalData.route,null);
+  await app.execute({type:'add',items:[{productId:'spinach',quantity:1},{productId:'chips',quantity:1}]});
+  const text=await app.execute({type:'navigate'});
+  assert.deepEqual(app.globalData.route.stops,['vegetables']);assert.match(text,/零食暂未画进小程序简图/);
+});
+test('超市端编辑美元商品时隐藏人民币行情与建议价，新商品仍按人民币录入',async()=>{
+  const {app,requests}=await runtime({products:usd(makeSeedProducts())});Object.assign(globalThis.wx,{pageScrollTo(){}});
+  const page=loadPage('store',app);page.onLoad();
+  assert.equal(page.data.usd,false);assert.deepEqual(page.data.baselines,['新商品 / 暂无历史']);
+  assert.equal(page.data.inventory[0].priceSymbol,'US$');
+  requests.length=0;page.edit({currentTarget:{dataset:{id:'spinach'}}});await new Promise(resolve=>setTimeout(resolve,10));
+  assert.equal(page.data.usd,true);assert.match(page.data.sourcePrice,/^US\$\d+\.\d{2}\//);
+  assert.equal(page.data.marketQuery,'');assert.equal(page.data.advice,null);
+  assert.ok(!requests.some(r=>r.endpoint==='/api/pricing'));
+  page.reset();assert.equal(page.data.usd,false);assert.equal(page.data.sourcePrice,'');
 });

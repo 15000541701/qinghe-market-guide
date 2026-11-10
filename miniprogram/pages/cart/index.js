@@ -12,6 +12,8 @@ Page({
     budget: '',
     remaining: '',
     over: false,
+    symbol: '',
+    others: 0,
   },
   onLoad() {
     this.off = getApp().subscribe(() => this.sync());
@@ -30,9 +32,13 @@ Page({
       .finally(() => wx.stopPullDownRefresh());
   },
   sync() {
-    const state = getApp().globalData;
-    const items = state.cart.flatMap((i) => {
-      const p = state.products.find((p) => p.id === i.productId);
+    const app = getApp();
+    const state = app.globalData;
+    // Only goods in the catalog currency are listed and totalled; other entries stay saved.
+    const products = app.currencyProducts();
+    const cart = app.currencyCart();
+    const items = cart.flatMap((i) => {
+      const p = products.find((p) => p.id === i.productId);
       return p
         ? [
             {
@@ -47,8 +53,8 @@ Page({
           ]
         : [];
     });
-    const total = domain.cartTotal(state.cart, state.products);
-    const plan = getApp().plan();
+    const total = domain.cartTotal(cart, products);
+    const plan = app.plan();
     const budget = plan && plan.preferences.budget;
     this.setData({
       items,
@@ -61,6 +67,8 @@ Page({
       budget: budget == null ? '' : view.money(budget),
       remaining: budget == null ? '' : view.money(Math.abs(budget - total)),
       over: budget != null && total > budget,
+      symbol: app.symbol(),
+      others: state.cart.length - cart.length,
     });
   },
   changeQuantity(e) {
@@ -93,6 +101,11 @@ Page({
   clearPurchased() {
     getApp().replaceCart(getApp().globalData.cart.filter((i) => !i.checked));
   },
+  clearOthers() {
+    const ids = new Set(getApp().currencyCart().map((i) => i.productId));
+    if (getApp().replaceCart(getApp().globalData.cart.filter((i) => ids.has(i.productId))))
+      view.toast('已移除，可撤销');
+  },
   async undo() {
     view.toast(await getApp().execute({ type: 'undo' }));
   },
@@ -107,8 +120,12 @@ Page({
   async go(e) {
     const p = getApp().globalData.products.find((p) => p.id === e.currentTarget.dataset.id);
     if (!p) return;
-    await getApp().execute({ type: 'navigate', category: p.category });
-    wx.switchTab({ url: '/pages/map/index' });
+    try {
+      await getApp().execute({ type: 'navigate', category: p.category });
+      wx.switchTab({ url: '/pages/map/index' });
+    } catch (error) {
+      view.alert(error);
+    }
   },
   browse() {
     wx.switchTab({ url: '/pages/products/index' });

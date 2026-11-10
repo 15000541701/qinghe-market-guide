@@ -1,6 +1,8 @@
 const api = require('../../utils/api');
 const view = require('../../utils/view');
 const domain = require('../../lib/domain');
+// Matches the web SKU list; listing every product at once exceeds the 1 MB setData limit.
+const PAGE_SIZE = 60;
 const emptyForm = () => ({
   name: '',
   category: 'vegetables',
@@ -40,6 +42,13 @@ Page({
     manualSource: '',
     manualDate: domain.marketToday(),
     today: domain.marketToday(),
+    // New goods are created in CNY by the server; edited goods keep their own currency.
+    currency: 'CNY',
+    usd: false,
+    sourcePrice: '',
+    inventoryLimit: PAGE_SIZE,
+    inventoryTotal: 0,
+    hasMoreInventory: false,
   },
   onLoad() {
     this.active = true;
@@ -61,15 +70,30 @@ Page({
   },
   syncInventory() {
     this.products = getApp().globalData.products;
+    // Archived goods stay hidden as on the web store page: saving one here would re-list it.
+    const listed = this.products.filter((p) => p.status !== 'archived');
+    const query = this.data.search.trim().toLowerCase();
+    const matches = listed.filter((p) =>
+      [p.name, p.originalName || '', p.shelf || ''].join(' ').toLowerCase().includes(query),
+    );
+    const inventory = matches.slice(0, this.data.inventoryLimit).map(view.product);
+    // Price history is only comparable within one currency.
+    this.baselineProducts = listed.filter((p) => domain.productCurrency(p) === this.data.currency);
     this.setData({
-      inventory: this.products
-        .filter((p) => (p.name + ' ' + p.shelf).includes(this.data.search))
-        .map(view.product),
-      baselines: ['新商品 / 暂无历史'].concat(this.products.map((p) => p.name + ' · ' + p.unit)),
+      inventory,
+      inventoryTotal: matches.length,
+      hasMoreInventory: matches.length > inventory.length,
+      baselines: ['新商品 / 暂无历史'].concat(
+        this.baselineProducts.map((p) => p.name + ' · ' + p.unit),
+      ),
     });
   },
   search(e) {
-    this.setData({ search: e.detail.value });
+    this.setData({ search: e.detail.value, inventoryLimit: PAGE_SIZE });
+    this.syncInventory();
+  },
+  moreInventory() {
+    this.setData({ inventoryLimit: this.data.inventoryLimit + PAGE_SIZE });
     this.syncInventory();
   },
   field(e) {
@@ -126,11 +150,15 @@ Page({
       pricing: false,
       marketError: '',
       manualDate: domain.marketToday(),
+      currency: 'CNY',
+      usd: false,
+      sourcePrice: '',
     });
+    this.syncInventory();
   },
   baseline(e) {
     const index = Number(e.detail.value);
-    const p = this.products[index - 1];
+    const p = this.baselineProducts[index - 1];
     this.baselineId = p ? p.id : '';
     this.invalidateReference();
     const change = { baselineIndex: index };
@@ -148,8 +176,13 @@ Page({
     const p = this.products.find((p) => p.id === e.currentTarget.dataset.id);
     if (!p) return;
     this.reset();
+    const currency = domain.productCurrency(p);
+    const usd = currency === 'USD';
+    this.setData({ currency, usd });
+    this.syncInventory();
     this.baselineId = p.id;
-    this.reference = p.marketReference || null;
+    // Xinfadi references are CNY wholesale prices and never apply to USD goods.
+    this.reference = usd ? null : p.marketReference || null;
     this.setData({
       editingId: p.id,
       form: {
@@ -163,8 +196,9 @@ Page({
       },
       photo: api.image(p.image),
       categoryIndex: domain.zones.findIndex((z) => z.id === p.category),
-      baselineIndex: this.products.findIndex((x) => x.id === p.id) + 1,
-      marketQuery: domain.suggestMarketKeyword(p.name, p),
+      baselineIndex: this.baselineProducts.findIndex((x) => x.id === p.id) + 1,
+      marketQuery: usd ? '' : domain.suggestMarketKeyword(p.name, p),
+      sourcePrice: usd ? view.symbol(currency) + view.money(p.price) + '/' + p.unit : '',
       applied: this.reference
         ? '已保存参考：' + this.reference.source + ' · ' + this.reference.date
         : '',
@@ -173,6 +207,10 @@ Page({
     wx.pageScrollTo({ scrollTop: 0, duration: 200 });
   },
   async loadAdvice() {
+    if (this.data.usd) {
+      this.setData({ advice: null, pricing: false });
+      return;
+    }
     const p = this.products.find((p) => p.id === this.baselineId);
     const id = p && p.unit === this.data.form.unit ? p.id : undefined;
     if (!id && !this.reference) {
@@ -250,18 +288,20 @@ Page({
   applyCandidate(c) {
     if (!c) return;
     this.invalidateReference();
-    const p = this.products.find((p) => p.id === c.productId);
+    const p = this.baselineProducts.find((p) => p.id === c.productId);
     const zone = domain.zones.find((z) => z.id === c.category);
     this.baselineId = p ? p.id : '';
-    this.setData({
+    const change = {
       'form.name': p ? p.name : c.name,
       'form.category': c.category,
       'form.unit': p ? p.unit : this.data.form.unit,
-      'form.shelf': zone.code + '-01',
-      categoryIndex: domain.zones.indexOf(zone),
-      baselineIndex: p ? this.products.indexOf(p) + 1 : 0,
+      // Only the original seven departments have a zone code; other categories keep the shelf.
+      categoryIndex: zone ? domain.zones.indexOf(zone) : -1,
+      baselineIndex: p ? this.baselineProducts.indexOf(p) + 1 : 0,
       marketQuery: domain.suggestMarketKeyword(p ? p.name : c.name, p),
-    });
+    };
+    if (zone) change['form.shelf'] = zone.code + '-01';
+    this.setData(change);
     this.loadAdvice();
   },
   marketInput(e) {

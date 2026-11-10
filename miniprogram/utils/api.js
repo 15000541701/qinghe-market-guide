@@ -91,12 +91,15 @@ function chooseImage() {
     }),
   );
 }
-function upload(filePath) {
+// Customer photo search passes the catalog currency so candidates come from the goods on sale;
+// store-side recognition leaves it out, as the web store page does.
+function upload(filePath, currency) {
   return new Promise((resolve, reject) =>
     wx.uploadFile({
       url: base() + '/api/vision',
       filePath,
       name: 'image',
+      formData: currency ? { currency } : {},
       timeout: 55000,
       success(res) {
         let data;
