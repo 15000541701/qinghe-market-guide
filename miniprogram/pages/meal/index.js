@@ -13,6 +13,7 @@ Page({
     budget: '',
     remaining: '',
     over: false,
+    symbol: '',
   },
   onLoad() {
     this.off = getApp().subscribe(() => this.sync());
@@ -41,6 +42,7 @@ Page({
         })),
       },
       busy: getApp().globalData.busy,
+      symbol: getApp().symbol(),
       pantry: plan.pendingPantry.map((key) => domain.ingredientNames[key] || key).join('、'),
       total: view.money(plan.total),
       existing: view.money(plan.existingCost),

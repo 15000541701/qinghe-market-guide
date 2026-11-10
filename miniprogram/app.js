@@ -11,6 +11,9 @@ const welcome = {
 App({
   globalData: {
     products: [],
+    categories: [],
+    // Catalog currency, chosen from the goods on sale after each refresh (see catalogCurrency).
+    currency: 'USD',
     ai: false,
     connected: false,
     loading: false,
@@ -103,10 +106,17 @@ App({
     this.refreshing = Promise.all([
       api.request('/products', undefined, undefined, options),
       api.request('/status', undefined, undefined, options),
+      // Category names only label goods, so a failure here must not block the store.
+      api.request('/categories', undefined, undefined, options).catch(() => null),
     ])
-      .then(([products, status]) => {
+      .then(([products, status, categories]) => {
         if (!Array.isArray(products)) throw new Error('商品数据格式异常，请检查后端地址。');
         this.globalData.products = products;
+        this.globalData.currency = domain.catalogCurrency(products);
+        if (Array.isArray(categories)) {
+          this.globalData.categories = categories;
+          view.setCategories(categories);
+        }
         this.globalData.ai = !!status.ai;
         this.globalData.connected = true;
       })
@@ -122,14 +132,32 @@ App({
       });
     return this.refreshing;
   },
+  // Goods priced in the catalog currency, including sold-out and archived records, as on the web.
+  currencyProducts() {
+    const currency = this.globalData.currency;
+    return this.globalData.products.filter((p) => domain.productCurrency(p) === currency);
+  },
+  saleProducts() {
+    return this.currencyProducts().filter((p) => domain.availableForSale(p));
+  },
+  // Totals never add up two currencies; items from another catalog stay in storage untouched.
+  currencyCart() {
+    const ids = new Set(this.currencyProducts().map((p) => p.id));
+    return this.globalData.cart.filter((i) => ids.has(i.productId));
+  },
+  symbol() {
+    return view.symbol(this.globalData.currency);
+  },
   plan() {
     const state = this.globalData;
     if (!state.meal || !state.products.length) return null;
+    // Same inputs as the web page, so the rebuilt plan matches the one the server checked.
     return domain.buildMealPlan(
       state.meal.preferences,
-      state.products,
-      state.cart,
+      this.currencyProducts(),
+      this.currencyCart(),
       state.meal.recipeIds,
+      state.categories,
     );
   },
   replaceCart(next) {
@@ -151,24 +179,37 @@ App({
     if (action.type === 'navigate') {
       const targets = action.category
         ? [action.category]
-        : state.cart
+        : this.currencyCart()
             .filter((i) => !i.checked)
             .flatMap((i) => {
               const p = state.products.find((p) => p.id === i.productId && p.stock > 0);
               return p ? [p.category] : [];
             });
       if (!targets.length) throw new Error('请先将商品加入购物清单。');
-      if (targets.some((id) => !domain.zones.some((z) => z.id === id)))
-        throw new Error('商品分区不存在，请刷新门店数据。');
+      // The mini program map is the simplified seven-department plan; other categories have no
+      // area there, so say so instead of sending people to a wrong place.
+      const mapped = targets.filter((id) => domain.zones.some((z) => z.id === id));
+      const unmapped = targets
+        .filter((id, index) => !mapped.includes(id) && targets.indexOf(id) === index)
+        .map((id) => view.categoryName(id) || id);
+      const note = unmapped.length
+        ? unmapped.join('、') + '暂未画进小程序简图，请在网页端地图查看货架位置。'
+        : '';
+      if (!mapped.length) throw new Error(note);
       state.route = domain.buildRoute(
-        targets,
+        mapped,
         state.current === 'entrance'
           ? domain.entrance
           : domain.zones.find((z) => z.id === state.current).location,
       );
       this.notify();
       return (
-        '已规划 ' + state.route.stops.length + ' 个分区的路线，约 ' + state.route.distance + ' 米。'
+        '已规划 ' +
+        state.route.stops.length +
+        ' 个分区的路线，约 ' +
+        state.route.distance +
+        ' 米。' +
+        note
       );
     }
     if (action.type === 'next') {
@@ -192,6 +233,7 @@ App({
     try {
       const products = await api.request('/products');
       state.products = products;
+      state.currency = domain.catalogCurrency(products);
       const result = domain.mutateShoppingList(state.cart, products, action);
       if (result.changed) this.replaceCart(result.list);
       return result.text;
@@ -210,11 +252,14 @@ App({
     this.notify();
     let performed = null;
     try {
+      // Without a currency the server answers from the CNY catalog, which is empty for the
+      // Sam's Club (USD) goods.
       const result = await api.request('/assistant', {
         message: text,
+        currency: state.currency,
         previous: state.filters,
         context: {
-          cart: state.cart,
+          cart: this.currencyCart(),
           meal: state.meal ? state.meal.preferences : undefined,
           recipeIds: state.meal ? state.meal.recipeIds : undefined,
         },

@@ -13,7 +13,7 @@ if not exist node_modules (
 )
 if not exist .env (
   copy .env.example .env >nul
-  echo 已创建 .env。请填写 AI_BASE_URL、AI_API_KEY、AI_MODEL 后重启服务。
+  echo 已创建 .env。如需大模型，请填写 DEEPSEEK_API_KEY，或完整填写 GEMINI_BASE_URL 和 GEMINI_API_KEY，然后重启服务；不填写也能使用规则导购。
 )
 call npm.cmd run build
 if errorlevel 1 (

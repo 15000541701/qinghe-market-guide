@@ -1,6 +1,15 @@
 const api = require('../../utils/api');
 const view = require('../../utils/view');
-const domain = require('../../lib/domain');
+// Budgets in the catalog currency: a request in 元 against the USD catalog is answered with a
+// currency reminder instead of goods.
+function starters(currency) {
+  const unit = currency === 'USD' ? '美元' : '元';
+  return [
+    '两个人吃，预算50' + unit + '，想搭配西式鱼餐和沙拉',
+    '推荐10' + unit + '以内的绿叶蔬菜',
+    '20到40' + unit + '的鱼',
+  ];
+}
 Page({
   data: {
     messages: [],
@@ -13,11 +22,7 @@ Page({
     chatHeight: 320,
     pageHeight: 671,
     hasPlan: false,
-    starters: [
-      '两个人吃，预算50元，想搭配西式鱼餐和沙拉',
-      '推荐10元以内的绿叶蔬菜',
-      '20到40元的鱼',
-    ],
+    starters: starters('USD'),
   },
   onLoad() {
     const info = wx.getWindowInfo ? wx.getWindowInfo() : wx.getSystemInfoSync();
@@ -43,7 +48,7 @@ Page({
         imageUrl: api.image(m.image || ''),
         candidates: (m.candidates || []).map((c) => ({
           ...c,
-          categoryName: domain.categoryLabels[c.category],
+          categoryName: view.categoryName(c.category),
         })),
       })),
       busy: state.busy,
@@ -51,6 +56,7 @@ Page({
       loading: state.loading,
       error: state.error,
       hasPlan: !!state.meal,
+      starters: starters(state.currency),
       scrollTo: 'chat-bottom',
     });
   },
@@ -134,7 +140,7 @@ Page({
         image: file,
       });
       app.notify();
-      const result = await api.upload(file);
+      const result = await api.upload(file, app.globalData.currency);
       app.globalData.messages.push({
         id: 'vision-' + Date.now(),
         role: 'assistant',
@@ -158,17 +164,17 @@ Page({
     const message = state.messages.find((m) => m.id === event.currentTarget.dataset.message);
     const candidate = message && message.candidates[event.currentTarget.dataset.index];
     if (!candidate) return;
-    const products = state.products.filter(
-      (p) =>
-        p.stock > 0 &&
-        (candidate.productId ? p.id === candidate.productId : p.category === candidate.category),
-    );
+    const products = getApp()
+      .saleProducts()
+      .filter((p) =>
+        candidate.productId ? p.id === candidate.productId : p.category === candidate.category,
+      );
     state.messages.push({
       id: 'match-' + Date.now(),
       role: 'assistant',
       text: products.length
         ? '在' +
-          domain.categoryLabels[candidate.category] +
+          (view.categoryName(candidate.category) || '该分类') +
           '找到以下在售商品，点击“带我去”查看路线。'
         : '当前分区没有匹配的在售商品，可以换个名称查询。',
       products: products.slice(0, 5),
